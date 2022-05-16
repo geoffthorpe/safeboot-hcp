@@ -26,6 +26,7 @@ version: "2.4"
 # piece of documentation you'll see in this file.)
 
 volumes:
+    fqdn:
     enrolldb:
     attestdb:
     swtpm:
@@ -33,10 +34,23 @@ volumes:
 
 networks:
     hcpnetwork:
+        internal: true
 
 services:
 
+    common:
+        image: ${HCP_IMAGE_COMMON}
+        domainname: avoid-me-domain
+        volumes:
+          - fqdn:${HCP_FQDN_PATH}:rw
+        environment:
+          - HCP_FQDN_PATH=${HCP_FQDN_PATH}
+          - HCP_FQDN_REFRESH=${HCP_FQDN_REFRESH}
+          - HCP_FQDN_EXPIRY=${HCP_FQDN_EXPIRY}
+          - HCP_FQDN_DEFAULT_DOMAIN=${HCP_FQDN_DEFAULT_DOMAIN}
+
     enrollsvc_mgmt:
+        extends: common
         image: ${HCP_IMAGE_ENROLLSVC}
         command: /hcp/enrollsvc/run_mgmt.sh
         volumes:
@@ -46,6 +60,7 @@ services:
         networks:
           - hcpnetwork
         environment:
+          - HCP_HOSTNAME=${HCP_ENROLLSVC_MGMT_HOSTNAME}
           - HCP_ENROLLSVC_STATE_PREFIX=${HCP_ENROLLSVC_STATE_PREFIX}
           - HCP_ENROLLSVC_SIGNER=${HCP_ENROLLSVC_SIGNER}
           - HCP_ENROLLSVC_GENCERT=${HCP_ENROLLSVC_GENCERT}
@@ -56,6 +71,7 @@ services:
             interval: 2s
 
     enrollsvc_repl:
+        extends: common
         image: ${HCP_IMAGE_ENROLLSVC}
         command: /hcp/enrollsvc/run_repl.sh
         volumes:
@@ -63,6 +79,7 @@ services:
         networks:
           - hcpnetwork
         environment:
+          - HCP_HOSTNAME=${HCP_ENROLLSVC_REPL_HOSTNAME}
           - HCP_ENROLLSVC_STATE_PREFIX=${HCP_ENROLLSVC_STATE_PREFIX}
         healthcheck:
             test: git ls-remote --heads git://localhost/enrolldb || exit 1
@@ -70,6 +87,7 @@ services:
             interval: 2s
 
     attestsvc_repl:
+        extends: common
         image: ${HCP_IMAGE_ATTESTSVC}
         command: /hcp/attestsvc/run_repl.sh
         volumes:
@@ -77,6 +95,7 @@ services:
         networks:
           - hcpnetwork
         environment:
+          - HCP_HOSTNAME=${HCP_ATTESTSVC_REPL_HOSTNAME}
           - HCP_ATTESTSVC_STATE_PREFIX=${HCP_ATTESTSVC_STATE_PREFIX}
           - HCP_ATTESTSVC_REMOTE_REPO=${HCP_ATTESTSVC_REMOTE_REPO}
           - HCP_ATTESTSVC_UPDATE_TIMER=${HCP_ATTESTSVC_UPDATE_TIMER}
@@ -86,6 +105,7 @@ services:
             interval: 2s
 
     attestsvc_hcp:
+        extends: common
         image: ${HCP_IMAGE_ATTESTSVC}
         command: /hcp/attestsvc/run_hcp.sh
         volumes:
@@ -93,6 +113,7 @@ services:
         networks:
           - hcpnetwork
         environment:
+          - HCP_HOSTNAME=${HCP_ATTESTSVC_HCP_HOSTNAME}
           - HCP_ATTESTSVC_STATE_PREFIX=${HCP_ATTESTSVC_STATE_PREFIX}
         healthcheck:
             test: curl -f -G http://localhost:8080/ || exit 1
@@ -100,6 +121,7 @@ services:
             interval: 2s
 
     swtpmsvc:
+        extends: common
         image: ${HCP_IMAGE_SWTPMSVC}
         command: /hcp/swtpmsvc/run_swtpm.sh
         volumes:
@@ -108,6 +130,7 @@ services:
         networks:
           - hcpnetwork
         environment:
+          - HCP_HOSTNAME=${HCP_SWTPMSVC_HOSTNAME}
           - HCP_SWTPMSVC_STATE_PREFIX=${HCP_SWTPMSVC_STATE_PREFIX}
           - HCP_SWTPMSVC_NO_SETUP=${HCP_SWTPMSVC_NO_SETUP}
           - HCP_SWTPMSVC_NO_ENROLL=${HCP_SWTPMSVC_NO_ENROLL}
@@ -132,6 +155,7 @@ services:
           - HCP_SWTPMSVC_NO_ENROLL=1
 
     client:
+        extends: common
         image: ${HCP_IMAGE_CLIENT}
         command: /hcp/client/run_client.sh
         volumes:
@@ -140,6 +164,7 @@ services:
         networks:
           - hcpnetwork
         environment:
+          - HCP_HOSTNAME=${HCP_CLIENT_HOSTNAME}
           - HCP_CLIENT_ATTEST_URL=${HCP_CLIENT_ATTEST_URL}
           - HCP_CLIENT_TPM2TOOLS_TCTI=${HCP_CLIENT_TPM2TOOLS_TCTI}
           - HCP_CLIENT_VERIFIER=${HCP_CLIENT_VERIFIER}
@@ -149,11 +174,13 @@ services:
     # (which adds volume mounts, like 'client' does) and caboodle_alone (which
     # overrides some env-vars).
     caboodle_baseline:
+        extends: common
         image: ${HCP_IMAGE_CABOODLE}
         command: ${HCP_CABOODLE_DEFAULT_CMD}
         networks:
           - hcpnetwork
         environment:
+          - HCP_HOSTNAME=${HCP_CABOODLE_HOSTNAME}
           - HCP_ENROLLSVC_STATE_PREFIX=${HCP_ENROLLSVC_STATE_PREFIX}
           - HCP_ENROLLSVC_SIGNER=${HCP_ENROLLSVC_SIGNER}
           - HCP_ENROLLSVC_GENCERT=${HCP_ENROLLSVC_GENCERT}

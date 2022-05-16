@@ -1,5 +1,13 @@
 #!/bin/bash
 
+# If the configuration asks for it, the 'fqdn' routine runs a home-brewed FQDN
+# publication and discovery system, to connect us with any/all other HCP
+# containers. If we're running ALONE, then by definition our use-case isn't
+# supposed to hit any other containers, so it's a useful guard-rail not to
+# start it _automatically_ in that case. (But even then, it can be started
+# manually if desired.)
+[[ -n $HCP_CABOODLE_ALONE ]] || /hcp/common/fqdn.sh
+
 # This caboodle-specific 'hcp.sh' is expected to be a superset of the common
 # 'hcp.sh', so source that before we move on.
 source /hcp/common/hcp.sh

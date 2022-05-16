@@ -1,5 +1,7 @@
 #!/bin/bash
 
+. /hcp/caboodle/hcp.sh
+
 set -e
 
 export PATH=/install/bin:/safeboot/sbin:$PATH

@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Handles FQDN mappings, if the configuration requires it
+/hcp/common/fqdn.sh
+
 . /hcp/swtpmsvc/common.sh
 
 # Handle lazy-initialization.

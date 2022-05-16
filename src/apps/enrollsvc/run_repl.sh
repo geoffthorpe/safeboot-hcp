@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Handles FQDN mappings, if the configuration requires it
+/hcp/common/fqdn.sh
+
 # To handle the case where the persistent data isn't set up, we run a subshell
 # that does limited environment checks and waits for the volume to be ready.
 # This follows what the mgmt container does, which launches a similar limited
