@@ -183,9 +183,14 @@ $(HCP_TPMWARE_OUT)/install.tar.gz: $(foreach i,$(TPMWARE_MODULES),$(HCP_TPMWARE_
 $(HCP_TPMWARE_OUT)/install.tar.gz:
 	$Q$(HCP_TPMWARE_INSTALL_RUN) "$(TGZ_CMD)"
 
-# A wrapper target to build the tpmware
+# A wrapper target to build the tpmware submodules
 tpmware: $(HCP_TPMWARE_OUT)/install.tar.gz
 ALL += tpmware
+
+# A wrapper target to reset the tpmware submodules
+ifneq (,$(HCP_TPMWARE_SUBMODULE_RESET))
+tpmware_reset: $(foreach i,$(TPMWARE_MODULES),$(HCP_TPMWARE_OUT)/$i.reset)
+endif
 
 # Cleanup
 ifneq (,$(wildcard $(HCP_TPMWARE_OUT)))
