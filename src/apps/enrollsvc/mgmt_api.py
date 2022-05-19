@@ -23,6 +23,8 @@ def home():
 <table>
 <tr><td>ekpub</td><td><input type=file name=ekpub></td></tr>
 <tr><td>hostname</td><td><input type=text name=hostname></td></tr>
+<tr><td>profile</td><td><input type=text name=profile></td></tr>
+<tr><td>paramfile</td><td><input type=file name=paramfile></td></tr>
 </table>
 <input type="submit" value="Enroll">
 </form>
@@ -104,7 +106,7 @@ def my_add():
         form_paramfile.save(local_paramfile)
     opadd_args = sudoargs + ['/hcp/enrollsvc/op_add.sh',
                              local_ekpub, form_hostname, form_profile]
-    if form_paramfile is not None:
+    if form_paramfile:
         opadd_args += [local_paramfile]
     c = subprocess.run(opadd_args,
                        stdout = subprocess.PIPE, stderr = subprocess.PIPE,
