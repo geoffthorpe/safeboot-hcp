@@ -42,21 +42,27 @@ cd /safeboot
 #     in PEM format!) to determine the EKPUBHASH
 # - delete the temp output directory.
 
-export EPHEMERAL_ENROLL=`mktemp -d -u`
+export EPHEMERAL_ENROLL=`mktemp -d`
+trap 'rm -rf $EPHEMERAL_ENROLL' EXIT
 
-# For now, we pass the 'profile' ($3) and 'paramfile' ($4) arguments as
-# exported environment variables. Better would be to add the following to the
-# attest-enroll command line;
-#     -V PROFILE="$3"
-#     -V PARAMFILE="$4"
-# But this requires that sbin/attest-enroll support these configuration
-# variables. I.e.  by adding these declarations to the attest-enroll script;
-#     vars[PROFILE]=scalar
-#     vars[PARAMFILE]=scalar
-export ENROLL_PROFILE=$3
-export ENROLL_PARAMFILE=$4
+# If 'profile' ($3) begins with 'GENPROGS:', the rest of the string is assumed
+# to be a space-separated list of entries to be added to the bash array of the
+# same name in the enroll.conf file, which is then consumed by attest-enroll.
+#
+# Otherwise, 'profile' ($3) and 'paramfile' ($4) arguments are set as exported
+# environment variables for consumption somewhere (else) in safeboot code.
+cp /safeboot/enroll.conf $EPHEMERAL_ENROLL/enroll.conf
+genprog_regex='^GENPROGS:(.*)'
+if [[ $3 =~ $genprog_regex ]]; then
+	genprogs="${BASH_REMATCH[1]}"
+else
+	genprogs="gencert-pkinit-client gencert-https-server"
+	export ENROLL_PROFILE=$3
+	export ENROLL_PARAMFILE=$4
+fi
+echo "export GENPROGS+=($genprogs)" >> $EPHEMERAL_ENROLL/enroll.conf
 
-./sbin/attest-enroll -C /safeboot/enroll.conf \
+./sbin/attest-enroll -C $EPHEMERAL_ENROLL/enroll.conf \
 		-V CHECKOUT=/hcp/enrollsvc/cb_checkout.sh \
 		-V COMMIT=/hcp/enrollsvc/cb_commit.sh \
 		-I $1 $2 >&2 ||
