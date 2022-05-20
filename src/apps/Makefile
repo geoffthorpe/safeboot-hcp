@@ -87,8 +87,8 @@ $(eval $(call app_add,swtpmsvc,$(TOP)/api/,enroll_api.py))
 # Attestation Client #
 ######################
 
-$(eval $(call app_create,client,))
-$(eval $(call app_add,client,$(HCP_APPS_SRC)/client/,hcp.Dockerfile))
+$(eval $(call app_create,attestclient,))
+$(eval $(call app_add,attestclient,$(HCP_APPS_SRC)/attestclient/,hcp.Dockerfile))
 
 ############
 # Caboodle #
@@ -104,30 +104,30 @@ $(eval $(call app_add,client,$(HCP_APPS_SRC)/client/,hcp.Dockerfile))
 # (and/or mount volumes into the expected places) for this not to be a problem.
 $(eval $(shell bash -c 'source defaults.env && echo "HCP_ENROLLSVC_SIGNER := $$HCP_ENROLLSVC_SIGNER"'))
 $(eval $(shell bash -c 'source defaults.env && echo "HCP_ENROLLSVC_GENCERT := $$HCP_ENROLLSVC_GENCERT"'))
-$(eval $(shell bash -c 'source defaults.env && echo "HCP_CLIENT_VERIFIER := $$HCP_CLIENT_VERIFIER"'))
+$(eval $(shell bash -c 'source defaults.env && echo "HCP_ATTESTCLIENT_VERIFIER := $$HCP_ATTESTCLIENT_VERIFIER"'))
 $(eval $(call app_create,caboodle,\
 	--build-arg HCP_ENROLLSVC_SIGNER=$(HCP_ENROLLSVC_SIGNER) \
 	--build-arg HCP_ENROLLSVC_GENCERT=$(HCP_ENROLLSVC_GENCERT) \
-	--build-arg HCP_CLIENT_VERIFIER=$(HCP_CLIENT_VERIFIER)))
+	--build-arg HCP_ATTESTCLIENT_VERIFIER=$(HCP_ATTESTCLIENT_VERIFIER)))
 # These dependencies ensure that the "docker build" won't run until the sources
 # for all the component containers are replicated / up-to-date.
 $(HCP_APPS_OUT)/created.caboodle: $(HCP_APPS_OUT)/created.enrollsvc
 $(HCP_APPS_OUT)/created.caboodle: $(HCP_APPS_OUT)/created.attestsvc
 $(HCP_APPS_OUT)/created.caboodle: $(HCP_APPS_OUT)/created.swtpmsvc
-$(HCP_APPS_OUT)/created.caboodle: $(HCP_APPS_OUT)/created.client
+$(HCP_APPS_OUT)/created.caboodle: $(HCP_APPS_OUT)/created.attestclient
 # The following avoids the usual replicate-and-modify process for the
 # hcp.Dockerfile for caboodle, because we actually want to join it with the
 # other Dockerfiles.
 $(HCP_APPS_OUT)/caboodle/hcp.Dockerfile: $(HCP_APPS_OUT)/enrollsvc/hcp.Dockerfile
 $(HCP_APPS_OUT)/caboodle/hcp.Dockerfile: $(HCP_APPS_OUT)/attestsvc/hcp.Dockerfile
 $(HCP_APPS_OUT)/caboodle/hcp.Dockerfile: $(HCP_APPS_OUT)/swtpmsvc/hcp.Dockerfile
-$(HCP_APPS_OUT)/caboodle/hcp.Dockerfile: $(HCP_APPS_OUT)/client/hcp.Dockerfile
+$(HCP_APPS_OUT)/caboodle/hcp.Dockerfile: $(HCP_APPS_OUT)/attestclient/hcp.Dockerfile
 $(HCP_APPS_OUT)/caboodle/hcp.Dockerfile: $(HCP_APPS_SRC)/caboodle/hcp.Dockerfile
 	$Qecho "# The following is a concatenation of Dockerfiles" > $@
 	$Qcat $(HCP_APPS_OUT)/enrollsvc/hcp.Dockerfile >> $@
 	$Qcat $(HCP_APPS_OUT)/attestsvc/hcp.Dockerfile >> $@
 	$Qcat $(HCP_APPS_OUT)/swtpmsvc/hcp.Dockerfile >> $@
-	$Qcat $(HCP_APPS_OUT)/client/hcp.Dockerfile >> $@
+	$Qcat $(HCP_APPS_OUT)/attestclient/hcp.Dockerfile >> $@
 	$Qcat $(HCP_APPS_SRC)/caboodle/hcp.Dockerfile >> $@
 
 ###########

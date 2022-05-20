@@ -2,11 +2,11 @@
 
 mkdir -p $HCP_ENROLLSVC_SIGNER
 mkdir -p $HCP_ENROLLSVC_GENCERT
-mkdir -p $HCP_CLIENT_VERIFIER
+mkdir -p $HCP_ATTESTCLIENT_VERIFIER
 
 openssl genrsa -out $HCP_ENROLLSVC_SIGNER/key.priv
 openssl rsa -pubout -in $HCP_ENROLLSVC_SIGNER/key.priv -out $HCP_ENROLLSVC_SIGNER/key.pem
-cp $HCP_ENROLLSVC_SIGNER/key.pem $HCP_CLIENT_VERIFIER/
+cp $HCP_ENROLLSVC_SIGNER/key.pem $HCP_ATTESTCLIENT_VERIFIER/
 chown db_user:db_user $HCP_ENROLLSVC_SIGNER/key.*
 
 openssl genrsa -out $HCP_ENROLLSVC_GENCERT/CA.priv

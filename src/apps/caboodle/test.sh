@@ -10,8 +10,8 @@ if [[ -n $HCP_CABOODLE_ALONE ]] && ! hcp_services_any_started; then
 	hcp_services_start || exit 1
 fi
 
-echo "Starting client::run_client.sh"
-/hcp/client/run_client.sh > client.out 2>&1 ||
+echo "Starting attestclient::run_client.sh"
+/hcp/attestclient/run_client.sh > client.out 2>&1 ||
 (
 	echo "Hmmm, client failed. Dumping output;"
 	cat client.out

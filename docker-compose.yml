@@ -154,25 +154,24 @@ services:
         environment:
           - HCP_SWTPMSVC_NO_ENROLL=1
 
-    client:
+    attestclient:
         extends: common
-        image: ${HCP_IMAGE_CLIENT}
-        command: /hcp/client/run_client.sh
+        image: ${HCP_IMAGE_ATTESTCLIENT}
+        command: /hcp/attestclient/run_client.sh
         volumes:
-          - tpmsocket:${HCP_CLIENT_TPMSOCKET_DIR}
-          - ${HCP_CRED_ENROLL_VERIFIER}:${HCP_CLIENT_VERIFIER}:ro
+          - tpmsocket:${HCP_ATTESTCLIENT_TPMSOCKET_DIR}
+          - ${HCP_CRED_ENROLL_VERIFIER}:${HCP_ATTESTCLIENT_VERIFIER}:ro
         networks:
           - hcpnetwork
         environment:
-          - HCP_HOSTNAME=${HCP_CLIENT_HOSTNAME}
-          - HCP_CLIENT_ATTEST_URL=${HCP_CLIENT_ATTEST_URL}
-          - HCP_CLIENT_TPM2TOOLS_TCTI=${HCP_CLIENT_TPM2TOOLS_TCTI}
-          - HCP_CLIENT_VERIFIER=${HCP_CLIENT_VERIFIER}
-          - HCP_CLIENT_TPMSOCKET_DIR=${HCP_CLIENT_TPMSOCKET_DIR}
+          - HCP_HOSTNAME=${HCP_ATTESTCLIENT_HOSTNAME}
+          - HCP_ATTESTCLIENT_ATTEST_URL=${HCP_ATTESTCLIENT_ATTEST_URL}
+          - HCP_ATTESTCLIENT_TPM2TOOLS_TCTI=${HCP_ATTESTCLIENT_TPM2TOOLS_TCTI}
+          - HCP_ATTESTCLIENT_VERIFIER=${HCP_ATTESTCLIENT_VERIFIER}
+          - HCP_ATTESTCLIENT_TPMSOCKET_DIR=${HCP_ATTESTCLIENT_TPMSOCKET_DIR}
 
-    # unusable configuration, to facilitate extending by caboodle_services
-    # (which adds volume mounts, like 'client' does) and caboodle_alone (which
-    # overrides some env-vars).
+    # unusable configuration, to facilitate extending by caboodle_services and
+    # caboodle_alone.
     caboodle_baseline:
         extends: common
         image: ${HCP_IMAGE_CABOODLE}
@@ -194,10 +193,10 @@ services:
           - HCP_SWTPMSVC_ENROLL_HOSTNAME=${HCP_SWTPMSVC_ENROLL_HOSTNAME}
           - HCP_SWTPMSVC_TPMSOCKET_DIR=${HCP_SWTPMSVC_TPMSOCKET_DIR}
           - HCP_SWTPMSVC_TPMSOCKET=${HCP_SWTPMSVC_TPMSOCKET}
-          - HCP_CLIENT_ATTEST_URL=${HCP_CLIENT_ATTEST_URL}
-          - HCP_CLIENT_TPM2TOOLS_TCTI=${HCP_CLIENT_TPM2TOOLS_TCTI}
-          - HCP_CLIENT_VERIFIER=${HCP_CLIENT_VERIFIER}
-          - HCP_CLIENT_TPMSOCKET_DIR=${HCP_CLIENT_TPMSOCKET_DIR}
+          - HCP_ATTESTCLIENT_ATTEST_URL=${HCP_ATTESTCLIENT_ATTEST_URL}
+          - HCP_ATTESTCLIENT_TPM2TOOLS_TCTI=${HCP_ATTESTCLIENT_TPM2TOOLS_TCTI}
+          - HCP_ATTESTCLIENT_VERIFIER=${HCP_ATTESTCLIENT_VERIFIER}
+          - HCP_ATTESTCLIENT_TPMSOCKET_DIR=${HCP_ATTESTCLIENT_TPMSOCKET_DIR}
           - HCP_CABOODLE_SLEEP_IF_FAIL=${HCP_CABOODLE_SLEEP_IF_FAIL}
           - HCP_SOAK_PREFIX=${HCP_SOAK_PREFIX}
           - HCP_SOAK_NUM_SWTPMS=${HCP_SOAK_NUM_SWTPMS}
@@ -208,14 +207,14 @@ services:
     caboodle_services:
         extends: caboodle_baseline
         volumes:
-          - tpmsocket:${HCP_CLIENT_TPMSOCKET_DIR}
-          - ${HCP_CRED_ENROLL_VERIFIER}:${HCP_CLIENT_VERIFIER}:ro
+          - tpmsocket:${HCP_ATTESTCLIENT_TPMSOCKET_DIR}
+          - ${HCP_CRED_ENROLL_VERIFIER}:${HCP_ATTESTCLIENT_VERIFIER}:ro
     caboodle_alone:
         extends: caboodle_baseline
         environment:
           - HCP_CABOODLE_ALONE=1
           - HCP_ATTESTSVC_REMOTE_REPO=${HCP_CABOODLE_ATTESTSVC_REMOTE_REPO}
           - HCP_SWTPMSVC_ENROLL_API=${HCP_CABOODLE_SWTPMSVC_ENROLL_API}
-          - HCP_CLIENT_ATTEST_URL=${HCP_CABOODLE_CLIENT_ATTEST_URL}
+          - HCP_ATTESTCLIENT_ATTEST_URL=${HCP_CABOODLE_ATTESTCLIENT_ATTEST_URL}
     caboodle:
         extends: caboodle_alone

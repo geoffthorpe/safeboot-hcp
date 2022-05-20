@@ -1,7 +1,7 @@
 HCP_TESTS_SRC := $(TOP)/tests
 
 CREATED_CABOODLE := $(HCP_APPS_OUT)/created.caboodle
-CREATED_CLIENT := $(HCP_APPS_OUT)/created.client
+CREATED_ATTESTCLIENT := $(HCP_APPS_OUT)/created.attestclient
 CREATED_SERVICES := $(foreach i,enroll attest swtpm,\
 			$(HCP_APPS_OUT)/created.$isvc)
 CREATED_CREDS := $(HCP_CREDS_DONE)
@@ -29,7 +29,7 @@ $(eval TESTS += test_$(name))
 endef
 
 $(eval $(call test_case,caboodle_alone_basic,CABOODLE))
-$(eval $(call test_case,services_client_basic,CLIENT SERVICES CREDS))
+$(eval $(call test_case,services_client_basic,ATTESTCLIENT SERVICES CREDS))
 $(eval $(call test_case,services_soak_basic,CABOODLE SERVICES CREDS))
 $(eval $(call test_case,services_soak_persist,CABOODLE SERVICES CREDS))
 

@@ -145,7 +145,7 @@ function swtpm_start {
 	echo "SUCCESS (pid=${swtpm_pid[$1]})"
 	rm $pcrread_log
 	# Sneaky hack, see corresponding note in
-	# src/apps/client/run_client.sh
+	# src/apps/attestclient/run_client.sh
 	tpm2_dictionarylockout --clear-lockout > /dev/null 2>&1 || true
 }
 
@@ -275,7 +275,7 @@ function worker_item {
 		local waitsecs=0
 		local waitinc=3
 		local waitcount=0
-		until ./sbin/tpm2-attest attest $HCP_CLIENT_ATTEST_URL \
+		until ./sbin/tpm2-attest attest $HCP_ATTESTCLIENT_ATTEST_URL \
 					> ${worker_secrets[$1]} \
 					2>> ${worker_log[$1]} ||
 				[[ $failure -eq 1 ]];

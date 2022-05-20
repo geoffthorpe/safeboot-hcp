@@ -11,25 +11,25 @@ set -e
 echo "Running '$0'"
 show_hcp_env
 
-mkdir -p $HCP_CLIENT_VERIFIER
-mkdir -p $HCP_CLIENT_TPMSOCKET_DIR
+mkdir -p $HCP_ATTESTCLIENT_VERIFIER
+mkdir -p $HCP_ATTESTCLIENT_TPMSOCKET_DIR
 
-if [[ -z "$HCP_CLIENT_ATTEST_URL" ]]; then
-	echo "Error, HCP_CLIENT_ATTEST_URL (\"$HCP_CLIENT_ATTEST_URL\") is not set"
+if [[ -z "$HCP_ATTESTCLIENT_ATTEST_URL" ]]; then
+	echo "Error, HCP_ATTESTCLIENT_ATTEST_URL (\"$HCP_ATTESTCLIENT_ATTEST_URL\") is not set"
 	exit 1
 fi
-if [[ -z "$HCP_CLIENT_TPM2TOOLS_TCTI" ]]; then
-	echo "Error, HCP_CLIENT_TPM2TOOLS_TCTI (\"$HCP_CLIENT_TPM2TOOLS_TCTI\") is not set"
+if [[ -z "$HCP_ATTESTCLIENT_TPM2TOOLS_TCTI" ]]; then
+	echo "Error, HCP_ATTESTCLIENT_TPM2TOOLS_TCTI (\"$HCP_ATTESTCLIENT_TPM2TOOLS_TCTI\") is not set"
 	exit 1
 fi
-export TPM2TOOLS_TCTI=$HCP_CLIENT_TPM2TOOLS_TCTI
-if [[ -z "$HCP_CLIENT_VERIFIER" || ! -d "$HCP_CLIENT_VERIFIER" ]]; then
-	echo "Error, HCP_CLIENT_VERIFIER (\"$HCP_CLIENT_VERIFIER\") is not a valid directory" >&2
+export TPM2TOOLS_TCTI=$HCP_ATTESTCLIENT_TPM2TOOLS_TCTI
+if [[ -z "$HCP_ATTESTCLIENT_VERIFIER" || ! -d "$HCP_ATTESTCLIENT_VERIFIER" ]]; then
+	echo "Error, HCP_ATTESTCLIENT_VERIFIER (\"$HCP_ATTESTCLIENT_VERIFIER\") is not a valid directory" >&2
 	exit 1
 fi
-export ENROLL_SIGN_ANCHOR=$HCP_CLIENT_VERIFIER/key.pem
+export ENROLL_SIGN_ANCHOR=$HCP_ATTESTCLIENT_VERIFIER/key.pem
 if [[ ! -f "$ENROLL_SIGN_ANCHOR" ]]; then
-	echo "Error, HCP_CLIENT_VERIFIER does not contain key.pem" >&2
+	echo "Error, HCP_ATTESTCLIENT_VERIFIER does not contain key.pem" >&2
 	exit 1
 fi
 
@@ -60,10 +60,10 @@ export DIR=/safeboot
 cd $DIR
 
 # passed in from "docker run" cmd-line
-export HCP_CLIENT_TPM2TOOLS_TCTI
-export HCP_CLIENT_ATTEST_URL
+export HCP_ATTESTCLIENT_TPM2TOOLS_TCTI
+export HCP_ATTESTCLIENT_ATTEST_URL
 
-echo "Running 'client'"
+echo "Running 'attestclient'"
 
 # Check that our TPM is configured and alive
 tmp_pcrread=`mktemp`
@@ -88,14 +88,14 @@ rm $tmp_pcrread
 # that are set up (tpm2_startup) but not gracefully terminated (tpm2_shutdown)
 # are suspicious, and if it happens enough (3 or 4 times, it seems) the TPM
 # locks itself to protect against possible dictionary attack. However our
-# client is calling a high-level util ("tpm2-attest attest"), so it is not
-# clear where tpm2_startup is happening, and it is even less clear where to add
-# a matching tpm2_shutdown. Instead, we rely on the swtpm having non-zero
-# tolerance to preceed each run of the client (after it has already failed at
-# least once to call tpm2_shutdown), and we also rely on there being no
-# dictionary policy in place to prevent us from simply resetting the suspicion
-# counter!! On proper TPMs (e.g. GCE vTPM), this dictionarylockout call will
-# actually fail so has to be commented out.
+# attestclient is calling a high-level util ("tpm2-attest attest"), so it is
+# not clear where tpm2_startup is happening, and it is even less clear where to
+# add a matching tpm2_shutdown. Instead, we rely on the swtpm having non-zero
+# tolerance to preceed each run of the attestclient (after it has already
+# failed at least once to call tpm2_shutdown), and we also rely on there being
+# no dictionary policy in place to prevent us from simply resetting the
+# suspicion counter!! On proper TPMs (e.g. GCE vTPM), this dictionarylockout
+# call will actually fail so has to be commented out.
 tpm2_dictionarylockout --clear-lockout
 
 # Now keep trying to get a successful attestation. It may take a few seconds
@@ -105,7 +105,7 @@ tmp_attest=`mktemp`
 waitsecs=0
 waitinc=3
 waitcount=0
-until ./sbin/tpm2-attest attest $HCP_CLIENT_ATTEST_URL \
+until ./sbin/tpm2-attest attest $HCP_ATTESTCLIENT_ATTEST_URL \
 				> secrets 2>> "$tmp_attest"; do
 	if [[ $((++waitcount)) -eq 6 ]]; then
 		cat $tmp_attest >&2
