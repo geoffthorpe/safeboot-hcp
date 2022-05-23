@@ -22,8 +22,8 @@ include $(HCP_SRC)/ext-tpmware.Makefile
 # Produce a tarball of tools installed from safeboot
 include $(HCP_SRC)/ext-safeboot.Makefile
 
-# Produce HCP applications (container images)
+# Produce HCP applications (code tarballs and container images)
 include $(HCP_SRC)/apps/Makefile
 
 # Produce usable (but test, non-production) credentials
-include $(HCP_SRC)/creds.Makefile
+include $(HCP_SRC)/testcreds.Makefile

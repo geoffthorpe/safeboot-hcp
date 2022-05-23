@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Handles FQDN mappings, if the configuration requires it
-/hcp/common/fqdn.sh
-
 . /hcp/common/hcp.sh
 
 set -e
@@ -12,7 +9,6 @@ echo "Running '$0'"
 show_hcp_env
 
 mkdir -p $HCP_ATTESTCLIENT_VERIFIER
-mkdir -p $HCP_ATTESTCLIENT_TPMSOCKET_DIR
 
 if [[ -z "$HCP_ATTESTCLIENT_ATTEST_URL" ]]; then
 	echo "Error, HCP_ATTESTCLIENT_ATTEST_URL (\"$HCP_ATTESTCLIENT_ATTEST_URL\") is not set"

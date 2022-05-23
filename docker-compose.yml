@@ -29,8 +29,8 @@ volumes:
     fqdn:
     enrolldb:
     attestdb:
-    swtpm:
-    tpmsocket:
+    tpm_attestclient:
+    tpmsocket_attestclient:
 
 networks:
     hcpnetwork:
@@ -40,31 +40,22 @@ services:
 
     common:
         image: ${HCP_IMAGE_COMMON}
+        command: /hcp/common/launcher.sh
         domainname: avoid-me-domain
         volumes:
           - fqdn:${HCP_FQDN_PATH}:rw
-        environment:
-          - HCP_FQDN_PATH=${HCP_FQDN_PATH}
-          - HCP_FQDN_REFRESH=${HCP_FQDN_REFRESH}
-          - HCP_FQDN_EXPIRY=${HCP_FQDN_EXPIRY}
-          - HCP_FQDN_DEFAULT_DOMAIN=${HCP_FQDN_DEFAULT_DOMAIN}
 
     enrollsvc_mgmt:
         extends: common
         image: ${HCP_IMAGE_ENROLLSVC}
-        command: /hcp/enrollsvc/run_mgmt.sh
-        volumes:
-          - enrolldb:${HCP_ENROLLSVC_STATE_PREFIX}:rw
-          - ${HCP_CRED_ENROLL_SIGNER}:${HCP_ENROLLSVC_SIGNER}:ro
-          - ${HCP_CRED_ENROLL_X509_CA}:${HCP_ENROLLSVC_GENCERT}:ro
         networks:
           - hcpnetwork
+        volumes:
+          - enrolldb:${HCP_EMGMT_STATE}:rw
+          - ${HCP_TESTCREDS_ENROLLSIGNER}:${HCP_EMGMT_CREDS_SIGNER}:ro
+          - ${HCP_TESTCREDS_ENROLLCERTISSUER}:${HCP_EMGMT_CREDS_CERTISSUER}:ro
         environment:
-          - HCP_HOSTNAME=${HCP_ENROLLSVC_MGMT_HOSTNAME}
-          - HCP_ENROLLSVC_STATE_PREFIX=${HCP_ENROLLSVC_STATE_PREFIX}
-          - HCP_ENROLLSVC_SIGNER=${HCP_ENROLLSVC_SIGNER}
-          - HCP_ENROLLSVC_GENCERT=${HCP_ENROLLSVC_GENCERT}
-          - HCP_ENROLLSVC_REALM=${HCP_ENROLLSVC_REALM}
+          - HCP_INSTANCE=/hcp/usecase/enrollsvc_mgmt.env
         healthcheck:
             test: curl -f -G http://localhost:5000/ || exit 1
             timeout: 1s
@@ -73,14 +64,12 @@ services:
     enrollsvc_repl:
         extends: common
         image: ${HCP_IMAGE_ENROLLSVC}
-        command: /hcp/enrollsvc/run_repl.sh
-        volumes:
-          - enrolldb:${HCP_ENROLLSVC_STATE_PREFIX}:ro
         networks:
           - hcpnetwork
+        volumes:
+          - enrolldb:${HCP_EREPL_STATE}:ro
         environment:
-          - HCP_HOSTNAME=${HCP_ENROLLSVC_REPL_HOSTNAME}
-          - HCP_ENROLLSVC_STATE_PREFIX=${HCP_ENROLLSVC_STATE_PREFIX}
+          - HCP_INSTANCE=/hcp/usecase/enrollsvc_repl.env
         healthcheck:
             test: git ls-remote --heads git://localhost/enrolldb || exit 1
             timeout: 1s
@@ -89,132 +78,83 @@ services:
     attestsvc_repl:
         extends: common
         image: ${HCP_IMAGE_ATTESTSVC}
-        command: /hcp/attestsvc/run_repl.sh
-        volumes:
-          - attestdb:${HCP_ATTESTSVC_STATE_PREFIX}:rw
         networks:
           - hcpnetwork
+        volumes:
+          - attestdb:${HCP_AREPL_STATE}:rw
         environment:
-          - HCP_HOSTNAME=${HCP_ATTESTSVC_REPL_HOSTNAME}
-          - HCP_ATTESTSVC_STATE_PREFIX=${HCP_ATTESTSVC_STATE_PREFIX}
-          - HCP_ATTESTSVC_REMOTE_REPO=${HCP_ATTESTSVC_REMOTE_REPO}
-          - HCP_ATTESTSVC_UPDATE_TIMER=${HCP_ATTESTSVC_UPDATE_TIMER}
+          - HCP_INSTANCE=/hcp/usecase/attestsvc_repl.env
         healthcheck:
-            test: /hcp/attestsvc/healthcheck_repl.sh
+            test: test -f /attestdb/initialized && ! test -f /attestdb/transient-failure
             timeout: 1s
             interval: 2s
 
     attestsvc_hcp:
         extends: common
         image: ${HCP_IMAGE_ATTESTSVC}
-        command: /hcp/attestsvc/run_hcp.sh
-        volumes:
-          - attestdb:${HCP_ATTESTSVC_STATE_PREFIX}:ro
         networks:
           - hcpnetwork
+        volumes:
+          - attestdb:${HCP_AREPL_STATE}:ro
         environment:
-          - HCP_HOSTNAME=${HCP_ATTESTSVC_HCP_HOSTNAME}
-          - HCP_ATTESTSVC_STATE_PREFIX=${HCP_ATTESTSVC_STATE_PREFIX}
+          - HCP_INSTANCE=/hcp/usecase/attestsvc_hcp.env
         healthcheck:
             test: curl -f -G http://localhost:8080/ || exit 1
             timeout: 1s
             interval: 2s
 
-    swtpmsvc:
+    orchestrator:
         extends: common
-        image: ${HCP_IMAGE_SWTPMSVC}
-        command: /hcp/swtpmsvc/run_swtpm.sh
-        volumes:
-          - swtpm:${HCP_SWTPMSVC_STATE_PREFIX}
-          - tpmsocket:${HCP_SWTPMSVC_TPMSOCKET_DIR}
+        image: ${HCP_IMAGE_TOOLS}
         networks:
           - hcpnetwork
+        volumes:
+          - ${HCP_ORCHESTRATOR_JSON}:${HCP_ORCH_JSON}:ro
+          - tpm_attestclient:${HCP_ORCH_TPM_ATTESTCLIENT}
         environment:
-          - HCP_HOSTNAME=${HCP_SWTPMSVC_HOSTNAME}
-          - HCP_SWTPMSVC_STATE_PREFIX=${HCP_SWTPMSVC_STATE_PREFIX}
-          - HCP_SWTPMSVC_NO_SETUP=${HCP_SWTPMSVC_NO_SETUP}
-          - HCP_SWTPMSVC_NO_ENROLL=${HCP_SWTPMSVC_NO_ENROLL}
-          - HCP_SWTPMSVC_ENROLL_HOSTNAME=${HCP_SWTPMSVC_ENROLL_HOSTNAME}
-          - HCP_SWTPMSVC_ENROLL_API=${HCP_SWTPMSVC_ENROLL_API}
-          - HCP_SWTPMSVC_TPMSOCKET_DIR=${HCP_SWTPMSVC_TPMSOCKET_DIR}
-          - HCP_SWTPMSVC_TPMSOCKET=${HCP_SWTPMSVC_TPMSOCKET}
+          - HCP_INSTANCE=/hcp/usecase/orchestrator.env
+
+    attestclient:
+        extends: common
+        image: ${HCP_IMAGE_TOOLS}
+        networks:
+          - hcpnetwork
+        volumes:
+          - tpmsocket_attestclient:${HCP_ACLIENT_TCTI_SOCKDIR}
+          - ${HCP_TESTCREDS_ENROLLVERIFIER}:${HCP_ACLIENT_CREDS_VERIFIER}:ro
+        environment:
+          - HCP_INSTANCE=/hcp/usecase/attestclient.env
+    attestclient_tpm:
+        extends: common
+        image: ${HCP_IMAGE_SWTPMSVC}
+        network_mode: "none"
+        volumes:
+          - tpm_attestclient:${HCP_ACLIENTTPM_STATE}
+          - tpmsocket_attestclient:${HCP_ACLIENTTPM_SOCKDIR}
+        environment:
+          - HCP_INSTANCE=/hcp/usecase/attestclient_tpm.env
         healthcheck:
             test: /hcp/swtpmsvc/healthcheck.sh
             timeout: 1s
             interval: 2s
-    swtpmsvc_no_setup:
-        extends: swtpmsvc
-        environment:
-          - HCP_SWTPMSVC_NO_SETUP=1
-    swtpmsvc_setup:
-        extends: swtpmsvc
-        command: /hcp/swtpmsvc/setup_swtpm.sh
-    swtpmsvc_setup_no_enroll:
-        extends: swtpmsvc_setup
-        environment:
-          - HCP_SWTPMSVC_NO_ENROLL=1
 
-    attestclient:
-        extends: common
-        image: ${HCP_IMAGE_ATTESTCLIENT}
-        command: /hcp/attestclient/run_client.sh
-        volumes:
-          - tpmsocket:${HCP_ATTESTCLIENT_TPMSOCKET_DIR}
-          - ${HCP_CRED_ENROLL_VERIFIER}:${HCP_ATTESTCLIENT_VERIFIER}:ro
-        networks:
-          - hcpnetwork
-        environment:
-          - HCP_HOSTNAME=${HCP_ATTESTCLIENT_HOSTNAME}
-          - HCP_ATTESTCLIENT_ATTEST_URL=${HCP_ATTESTCLIENT_ATTEST_URL}
-          - HCP_ATTESTCLIENT_TPM2TOOLS_TCTI=${HCP_ATTESTCLIENT_TPM2TOOLS_TCTI}
-          - HCP_ATTESTCLIENT_VERIFIER=${HCP_ATTESTCLIENT_VERIFIER}
-          - HCP_ATTESTCLIENT_TPMSOCKET_DIR=${HCP_ATTESTCLIENT_TPMSOCKET_DIR}
-
-    # unusable configuration, to facilitate extending by caboodle_services and
-    # caboodle_alone.
-    caboodle_baseline:
+    caboodle_alone:
         extends: common
         image: ${HCP_IMAGE_CABOODLE}
-        command: ${HCP_CABOODLE_DEFAULT_CMD}
         networks:
           - hcpnetwork
         environment:
-          - HCP_HOSTNAME=${HCP_CABOODLE_HOSTNAME}
-          - HCP_ENROLLSVC_STATE_PREFIX=${HCP_ENROLLSVC_STATE_PREFIX}
-          - HCP_ENROLLSVC_SIGNER=${HCP_ENROLLSVC_SIGNER}
-          - HCP_ENROLLSVC_GENCERT=${HCP_ENROLLSVC_GENCERT}
-          - HCP_ENROLLSVC_REALM=${HCP_ENROLLSVC_REALM}
-          - HCP_ATTESTSVC_STATE_PREFIX=${HCP_ATTESTSVC_STATE_PREFIX}
-          - HCP_ATTESTSVC_REMOTE_REPO=${HCP_ATTESTSVC_REMOTE_REPO}
-          - HCP_ATTESTSVC_UPDATE_TIMER=${HCP_ATTESTSVC_UPDATE_TIMER}
-          - HCP_SWTPMSVC_STATE_PREFIX=${HCP_SWTPMSVC_STATE_PREFIX}
-          - HCP_SWTPMSVC_ENROLL_API=${HCP_SWTPMSVC_ENROLL_API}
-          - HCP_SWTPMSVC_NO_ENROLL=${HCP_SWTPMSVC_NO_ENROLL}
-          - HCP_SWTPMSVC_ENROLL_HOSTNAME=${HCP_SWTPMSVC_ENROLL_HOSTNAME}
-          - HCP_SWTPMSVC_TPMSOCKET_DIR=${HCP_SWTPMSVC_TPMSOCKET_DIR}
-          - HCP_SWTPMSVC_TPMSOCKET=${HCP_SWTPMSVC_TPMSOCKET}
-          - HCP_ATTESTCLIENT_ATTEST_URL=${HCP_ATTESTCLIENT_ATTEST_URL}
-          - HCP_ATTESTCLIENT_TPM2TOOLS_TCTI=${HCP_ATTESTCLIENT_TPM2TOOLS_TCTI}
-          - HCP_ATTESTCLIENT_VERIFIER=${HCP_ATTESTCLIENT_VERIFIER}
-          - HCP_ATTESTCLIENT_TPMSOCKET_DIR=${HCP_ATTESTCLIENT_TPMSOCKET_DIR}
-          - HCP_CABOODLE_SLEEP_IF_FAIL=${HCP_CABOODLE_SLEEP_IF_FAIL}
-          - HCP_SOAK_PREFIX=${HCP_SOAK_PREFIX}
-          - HCP_SOAK_NUM_SWTPMS=${HCP_SOAK_NUM_SWTPMS}
-          - HCP_SOAK_NUM_WORKERS=${HCP_SOAK_NUM_WORKERS}
-          - HCP_SOAK_NUM_LOOPS=${HCP_SOAK_NUM_LOOPS}
-          - HCP_SOAK_PC_ATTEST=${HCP_SOAK_PC_ATTEST}
-          - HCP_SOAK_NO_CREATE=${HCP_SOAK_NO_CREATE}
-    caboodle_services:
-        extends: caboodle_baseline
+          - HCP_INSTANCE=/hcp/usecase/caboodle_alone.env
         volumes:
-          - tpmsocket:${HCP_ATTESTCLIENT_TPMSOCKET_DIR}
-          - ${HCP_CRED_ENROLL_VERIFIER}:${HCP_ATTESTCLIENT_VERIFIER}:ro
-    caboodle_alone:
-        extends: caboodle_baseline
-        environment:
-          - HCP_CABOODLE_ALONE=1
-          - HCP_ATTESTSVC_REMOTE_REPO=${HCP_CABOODLE_ATTESTSVC_REMOTE_REPO}
-          - HCP_SWTPMSVC_ENROLL_API=${HCP_CABOODLE_SWTPMSVC_ENROLL_API}
-          - HCP_ATTESTCLIENT_ATTEST_URL=${HCP_CABOODLE_ATTESTCLIENT_ATTEST_URL}
-    caboodle:
+          - ${HCP_ORCHESTRATOR_JSON}:/fleet.json:ro
+    caboodle_test:
         extends: caboodle_alone
+        environment:
+          - HCP_INSTANCE=/hcp/usecase/caboodle_test.env
+    caboodle_networked:
+        extends: caboodle_alone
+        environment:
+          - HCP_INSTANCE=/hcp/usecase/caboodle_networked.env
+        volumes:
+          - tpmsocket_attestclient:${HCP_ACLIENT_TCTI_SOCKDIR}
+          - ${HCP_TESTCREDS_ENROLLVERIFIER}:${HCP_ACLIENT_CREDS_VERIFIER}:ro

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. /hcp/caboodle/hcp.sh
+. /hcp/common/hcp.sh
 
 set -e
 
@@ -91,7 +91,7 @@ function swtpm_setup {
 		mkdir -p ${swtpm_prefix[$1]}
 		# Run the setup
 		echo -n "Creating swtpm $1 ... "
-		export HCP_SWTPMSVC_STATE_PREFIX=${swtpm_prefix[$1]}
+		export HCP_SWTPMSVC_STATE=${swtpm_prefix[$1]}
 		export HCP_SOCKET=${swtpm_socket[$1]}
 		export HCP_SWTPMSVC_ENROLL_HOSTNAME=${swtpm_hostname[$1]}
 		/hcp/swtpmsvc/setup_swtpm.sh > ${swtpm_log[$1]} 2>&1 &&
@@ -121,7 +121,7 @@ function swtpm_setup {
 # Background the swtpm and check that we can read its PCRs
 function swtpm_start {
 	echo -n "Starting swtpm $1 ... "
-	export HCP_SWTPMSVC_STATE_PREFIX=${swtpm_prefix[$1]}
+	export HCP_SWTPMSVC_STATE=${swtpm_prefix[$1]}
 	export HCP_SWTPMSVC_TPMSOCKET=${swtpm_socket[$1]}
 	export HCP_SWTPMSVC_NO_SETUP=1
 	/hcp/swtpmsvc/run_swtpm.sh > ${swtpm_log[$1]} 2>&1 &

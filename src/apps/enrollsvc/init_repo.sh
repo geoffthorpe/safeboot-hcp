@@ -4,7 +4,7 @@
 
 expect_db_user
 
-cd $HCP_ENROLLSVC_STATE_PREFIX
+cd $HCP_ENROLLSVC_STATE
 echo "$HCP_VER" > version
 
 mkdir $REPO_PATH

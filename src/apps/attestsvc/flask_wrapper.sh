@@ -12,7 +12,7 @@ export DIR=/safeboot
 export BINDIR=$DIR
 
 # Steer attest-server (and attest-verify) towards our source of truth
-export SAFEBOOT_DB_DIR="$HCP_ATTESTSVC_STATE_PREFIX/current"
+export SAFEBOOT_DB_DIR="$HCP_ATTESTSVC_STATE/current"
 
 # Environment variable controls;
 # HCP_ATTESTSVC_UWSGI

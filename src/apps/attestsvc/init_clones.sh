@@ -4,7 +4,7 @@
 
 expect_hcp_user
 
-cd $HCP_ATTESTSVC_STATE_PREFIX
+cd $HCP_ATTESTSVC_STATE
 
 echo "$HCP_VER" > version
 
@@ -13,7 +13,7 @@ if [[ -d A || -d B || -h current || -h next || -h thirdwheel ]]; then
 	exit 1
 fi
 
-echo "First-time initialization of $HCP_ATTESTSVC_STATE_PREFIX. Two clones and two symlinks." >&2
+echo "First-time initialization of $HCP_ATTESTSVC_STATE. Two clones and two symlinks." >&2
 waitsecs=0
 waitinc=3
 waitcount=0

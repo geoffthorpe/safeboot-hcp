@@ -1,10 +1,10 @@
 HCP_TESTS_SRC := $(TOP)/tests
 
-CREATED_CABOODLE := $(HCP_APPS_OUT)/created.caboodle
-CREATED_ATTESTCLIENT := $(HCP_APPS_OUT)/created.attestclient
+CREATED_CABOODLE := $(HCP_APPS_OUT)/image.caboodle
+CREATED_TOOLS := $(HCP_APPS_OUT)/image.tools
 CREATED_SERVICES := $(foreach i,enroll attest swtpm,\
-			$(HCP_APPS_OUT)/created.$isvc)
-CREATED_CREDS := $(HCP_CREDS_DONE)
+			$(HCP_APPS_OUT)/image.$isvc)
+CREATED_TESTCREDS := $(HCP_TESTCREDS_DONE)
 
 # We need a unique ID that can be passed to docker-compose via the '-p'
 # flag, to ensure that any and all containers (and networks) that get
@@ -17,10 +17,10 @@ define test_case
 $(eval name := $(strip $1))
 $(eval deps := $(strip $2))
 $(eval bashcmd := export DCOMPOSE=$(DCOMPOSE) && \
-	source defaults.env && \
 	export HCP_TEST_PATH="$(HCP_TESTS_SRC)/$(name).sh" && \
 	"$(HCP_TESTS_SRC)/wrapper.sh")
 test_$(name): $(foreach i,$(deps),$(CREATED_$i))
+test_$(name): $(HCP_OUT)/docker-compose.env
 test_$(name):
 	$Qecho "Starting '$$@'"
 	$Qbash -c '$(bashcmd)'
@@ -29,8 +29,6 @@ $(eval TESTS += test_$(name))
 endef
 
 $(eval $(call test_case,caboodle_alone_basic,CABOODLE))
-$(eval $(call test_case,services_client_basic,ATTESTCLIENT SERVICES CREDS))
-$(eval $(call test_case,services_soak_basic,CABOODLE SERVICES CREDS))
-$(eval $(call test_case,services_soak_persist,CABOODLE SERVICES CREDS))
+$(eval $(call test_case,services_client_basic,TOOLS SERVICES TESTCREDS))
 
 tests: $(TESTS)

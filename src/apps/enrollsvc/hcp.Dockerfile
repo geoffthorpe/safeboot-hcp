@@ -5,10 +5,6 @@
 RUN useradd -m -s /bin/bash db_user
 RUN useradd -m -s /bin/bash flask_user
 
-RUN mkdir -p /hcp/enrollsvc
-COPY enrollsvc/*.sh enrollsvc/*.py /hcp/enrollsvc/
-RUN chmod 755 /hcp/enrollsvc/*.sh /hcp/enrollsvc/*.py
-
 # The following puts a sudo configuration into place for flask_user to be able
 # to invoke (only) the 4 /hcp/op_<verb>.sh scripts as db_user.
 

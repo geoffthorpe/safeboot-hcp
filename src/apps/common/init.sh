@@ -5,7 +5,7 @@
 # service and want your containers interacting with the host and other networks,
 # you don't want this.
 
-[[ -n $HCP_FQDN_PATH ]] || exit 0
+[[ -d $HCP_FQDN_PATH ]] || exit 0
 
 # Force all inter-container comms to use our explicitly orchestrated FQDNs.
 # Turns out there's a lot of "history" (and some bad feeling) around docker

@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Handles FQDN mappings, if the configuration requires it
-/hcp/common/fqdn.sh
-
 # To handle the case where the persistent data isn't set up, we run a subshell
 # that does limited environment checks and waits for the volume to be ready.
 # This follows what the mgmt container does, which launches a similar limited
@@ -14,18 +11,16 @@
 
 	expect_root
 
-	if [[ ! -f $HCP_ENROLLSVC_STATE_PREFIX/initialized ]]; then
-		echo "Warning: state not initialized, initializing now" >&2
-		[[ ! -d $HCP_ENROLLSVC_STATE_PREFIX ]] &&
-			mkdir $HCP_ENROLLSVC_STATE_PREFIX || true
+	if [[ ! -f $HCP_ENROLLSVC_STATE/initialized ]]; then
+		echo "Initializing enrollsvc state"
 		# This is the one-time init hook, so make sure the mounted dir
 		# has appropriate ownership
-		chown db_user:db_user $HCP_ENROLLSVC_STATE_PREFIX
+		chown db_user:db_user $HCP_ENROLLSVC_STATE
 		# drop_privs_*() performs an 'exec su', so we run this in a
 		# child process.
 		(drop_privs_db /hcp/enrollsvc/init_repo.sh)
-		touch $HCP_ENROLLSVC_STATE_PREFIX/initialized
-		echo "State now initialized" >&2
+		touch $HCP_ENROLLSVC_STATE/initialized
+		echo "State now initialized"
 	fi
 )
 
@@ -37,9 +32,9 @@ expect_root
 
 # Validate that version is an exact match (obviously we need the same major,
 # but right now we expect+tolerate nothing other than the same minor too).
-(state_version=`cat $HCP_ENROLLSVC_STATE_PREFIX/version` &&
+(state_version=`cat $HCP_ENROLLSVC_STATE/version` &&
 	[[ $state_version == $HCP_VER ]]) ||
-(echo "Error: expected version $HCP_VER, but got '$state_version' instead" &&
+(echo "Error: expected version $HCP_VER, but got '$state_version' instead" >&2 &&
 	exit 1) || exit 1
 
 # Persistent credentials are mounted but ownership is for root, naturally. We
@@ -50,24 +45,24 @@ if [[ -z "$HCP_ENROLLSVC_SIGNER" || ! -d "$HCP_ENROLLSVC_SIGNER" ]]; then
 	echo "Error, HCP_ENROLLSVC_SIGNER is not a valid directory" >&2
 	exit 1
 fi
-if [[ -z "$HCP_ENROLLSVC_GENCERT" || ! -d "$HCP_ENROLLSVC_GENCERT" ]]; then
-	echo "Error, HCP_ENROLLSVC_GENCERT is not a valid directory" >&2
+if [[ -z "$HCP_ENROLLSVC_CERTISSUER" || ! -d "$HCP_ENROLLSVC_CERTISSUER" ]]; then
+	echo "Error, HCP_ENROLLSVC_CERTISSUER is not a valid directory" >&2
 	exit 1
 fi
 
-cp -r $HCP_ENROLLSVC_SIGNER /home/db_user/enrollsig
-cp -r $HCP_ENROLLSVC_GENCERT /home/db_user/enrollca
+cp -r $HCP_ENROLLSVC_SIGNER /home/db_user/enrollsigner
+cp -r $HCP_ENROLLSVC_CERTISSUER /home/db_user/enrollcertissuer
 
-export HCP_ENROLLSVC_SIGNER=/home/db_user/enrollsig
-export HCP_ENROLLSVC_GENCERT=/home/db_user/enrollca
+export HCP_ENROLLSVC_SIGNER=/home/db_user/enrollsigner
+export HCP_ENROLLSVC_CERTISSUER=/home/db_user/enrollcertissuer
 
 chown -R db_user $HCP_ENROLLSVC_SIGNER
-chown -R db_user $HCP_ENROLLSVC_GENCERT
+chown -R db_user $HCP_ENROLLSVC_CERTISSUER
 
 export SIGNING_KEY_PUB=$HCP_ENROLLSVC_SIGNER/key.pem
 export SIGNING_KEY_PRIV=$HCP_ENROLLSVC_SIGNER/key.priv
-export GENCERT_CA_CERT=$HCP_ENROLLSVC_GENCERT/CA.cert
-export GENCERT_CA_PRIV=$HCP_ENROLLSVC_GENCERT/CA.priv
+export GENCERT_CA_CERT=$HCP_ENROLLSVC_CERTISSUER/CA.cert
+export GENCERT_CA_PRIV=$HCP_ENROLLSVC_CERTISSUER/CA.priv
 
 # Run the mgmt-specific checks (and fill in /etc/environmnet) the way all the other
 # environment stuff is done inside common.sh
@@ -77,7 +72,7 @@ if [[ ! -f "$SIGNING_KEY_PUB" || ! -f "$SIGNING_KEY_PRIV" ]]; then
 	exit 1
 fi
 if [[ ! -f "$GENCERT_CA_CERT" || ! -f "$GENCERT_CA_PRIV" ]]; then
-	echo "Error, HCP_ENROLLSVC_GENCERT ($HCP_ENROLLSVC_GENCERT) does not contain valid creds" >&2
+	echo "Error, HCP_ENROLLSVC_CERTISSUER ($HCP_ENROLLSVC_CERTISSUER) does not contain valid creds" >&2
 	exit 1
 fi
 

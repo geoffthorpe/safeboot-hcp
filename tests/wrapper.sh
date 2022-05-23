@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 # This wrapper sources the test script (at HCP_TEST_PATH) after setting a trap
 # handler to clean up. It also assumes DCOMPOSE is set to invoke
 # "docker-compose" with an ephemeral/unique "-p" argument, in order to keep
@@ -19,3 +21,5 @@ fi
 trap '$DCOMPOSE down -v' ERR EXIT
 
 source $HCP_TEST_PATH
+
+echo "Success"

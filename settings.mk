@@ -1,8 +1,6 @@
-# Docker image naming is used at build time (here) and at run time
-# (docker-compose.yml). The latter gets its assumptions from defaults.env, so
-# we import those here too, for consistency.
-HCP_IMAGE_PREFIX := $(shell bash -c "source defaults.env ; echo \$${HCP_IMAGE_PREFIX:-hcp_}")
-HCP_IMAGE_TAG := $(shell bash -c "source defaults.env ; echo \$${HCP_IMAGE_TAG:-devel}")
+# Docker image naming is controlled here.
+HCP_IMAGE_PREFIX ?= hcp_
+HCP_IMAGE_TAG ?= devel
 # Function for converting '$1' into a fully-qualified docker image name
 HCP_IMAGE=$(HCP_IMAGE_PREFIX)$1:$(HCP_IMAGE_TAG)
 

@@ -1,0 +1,24 @@
+{
+	"tpm_defaults": {
+		"create": true,
+		"recreate": false
+	},
+	"enroll_defaults": {
+		"api": "http://emgmt.hcphacking.xyz:5000",
+		"profile": "GENPROGS: gencert-pkinit-client, gencert-https-server",
+		"enroll": true,
+		"reenroll": false
+	},
+	"fleet": [
+		{
+			"name": "attestclient",
+			"tpm": {
+				"path": "/tpm_attestclient"
+			},
+			"enroll": {
+				"hostname": "attestclient.hcphacking.xyz",
+				"profile": "GENPROGS: gencert-https-client"
+			}
+		}
+	]
+}

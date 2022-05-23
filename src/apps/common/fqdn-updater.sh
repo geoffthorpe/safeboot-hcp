@@ -94,6 +94,8 @@
 #         out. (We only want to break hostname resolution for other containers,
 #         not ourselves.)
 
+echo "Running FQDN publishing and discovery mechanism"
+
 # Parameters
 MYBUS=$HCP_FQDN_PATH
 MYSLEEP=$HCP_FQDN_REFRESH
@@ -134,9 +136,9 @@ function update_my_hosts {
 		-newermt "$MYEXPIRE seconds ago") || return
 	cat /etc/hosts | sed -n '/^## HCP FQDNs follow/q;p' > /.hcp-hosts || return
 	echo "## HCP FQDNs follow" >> /.hcp-hosts
-	echo "" >> /.hcp-hosts
 	for i in $mypeers; do
-		cat "$i" | grep -v " $myhostname" >> /.hcp-hosts
+		cat "$i" | grep -v " $myhostname" | \
+			grep -v "do-not-contact-me" >> /.hcp-hosts
 	done
 	cp /.hcp-hosts /etc/hosts || return
 }

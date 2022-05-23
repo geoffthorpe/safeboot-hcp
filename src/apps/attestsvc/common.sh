@@ -8,7 +8,7 @@ set -e
 
 if [[ `whoami` != "root" ]]; then
 	if [[ -z "$HCP_ENVIRONMENT_SET" ]]; then
-		echo "Running in reduced non-root environment (sudo probably)." >&2
+		echo "Running in reduced non-root environment (sudo probably)."
 		cat /etc/environment >&2
 		source /etc/environment
 	fi
@@ -18,7 +18,7 @@ if [[ -z "$HCP_VER" ]]; then
 	echo "Error, HCP_VER (\"$HCP_VER\") must be set" >&2
 	exit 1
 fi
-mkdir -p $HCP_ATTESTSVC_STATE_PREFIX
+mkdir -p $HCP_ATTESTSVC_STATE
 if [[ ! -d "/home/hcp_user" ]]; then
 	echo "Error, 'hcp_user' account missing or misconfigured" >&2
 	exit 1
@@ -29,19 +29,19 @@ if [[ ! -d "/safeboot/sbin" ]]; then
 	exit 1
 fi
 export PATH=$PATH:/safeboot/sbin
-echo "Adding /safeboot/sbin to PATH" >&2
+echo "Adding /safeboot/sbin to PATH"
 
 if [[ -d "/install/bin" ]]; then
 	export PATH=$PATH:/install/bin
-	echo "Adding /install/sbin to PATH" >&2
+	echo "Adding /install/sbin to PATH"
 fi
 
 if [[ -d "/install/lib" ]]; then
 	export LD_LIBRARY_PATH=/install/lib:$LD_LIBRARY_PATH
-	echo "Adding /install/lib to LD_LIBRARY_PATH" >&2
+	echo "Adding /install/lib to LD_LIBRARY_PATH"
 	if [[ -d /install/lib/python3/dist-packages ]]; then
 		export PYTHONPATH=/install/lib/python3/dist-packages:$PYTHONPATH
-		echo "Adding /install/lib/python3/dist-packages to PYTHONPATH" >&2
+		echo "Adding /install/lib/python3/dist-packages to PYTHONPATH"
 	fi
 fi
 
@@ -53,8 +53,8 @@ if [[ `whoami` == "root" ]]; then
 fi
 
 # Print the base configuration
-echo "Running '$0'" >&2
-show_hcp_env >&2
+echo "Running '$0'"
+show_hcp_env
 
 # Basic functions
 

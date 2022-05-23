@@ -43,9 +43,8 @@ set -e
 # NB: because the user accounts (db_user and flask_user) are created by
 # Dockerfile, those values _are_ baked into the container images and get
 # propogated into the initial (root) environment by "ENV" commands in the
-# Dockerfile. HCP_ENROLLSVC_STATE_PREFIX, on the other hand, is specified at
-# "docker run" time. This file treats them all the same way, but it's worth
-# knowing.
+# Dockerfile. HCP_ENROLLSVC_STATE, on the other hand, is specified at "docker
+# run" time. This file treats them all the same way, but it's worth knowing.
 
 if [[ `whoami` != "root" ]]; then
 	if [[ -z "$HCP_ENVIRONMENT_SET" ]]; then
@@ -107,9 +106,9 @@ show_hcp_env >&2
 # Derive more configuration using these constants
 REPO_NAME=enrolldb.git
 EK_BASENAME=ekpubhash
-REPO_PATH=$HCP_ENROLLSVC_STATE_PREFIX/$REPO_NAME
+REPO_PATH=$HCP_ENROLLSVC_STATE/$REPO_NAME
 EK_PATH=$REPO_PATH/$EK_BASENAME
-REPO_LOCKPATH=$HCP_ENROLLSVC_STATE_PREFIX/lock-$REPO_NAME
+REPO_LOCKPATH=$HCP_ENROLLSVC_STATE/lock-$REPO_NAME
 
 # Print the additional configuration
 echo "                      REPO_NAME=$REPO_NAME" >&2

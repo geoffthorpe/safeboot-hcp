@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Handles FQDN mappings, if the configuration requires it
-/hcp/common/fqdn.sh
-
 . /hcp/attestsvc/common.sh
 
 expect_root
@@ -11,7 +8,7 @@ expect_root
 waitsecs=0
 waitinc=3
 waitcount=0
-until [[ -f $HCP_ATTESTSVC_STATE_PREFIX/initialized ]]; do
+until [[ -f $HCP_ATTESTSVC_STATE/initialized ]]; do
 	if [[ $((++waitcount)) -eq 10 ]]; then
 		echo "Error: state not initialized, failing" >&2
 		exit 1
@@ -25,7 +22,7 @@ done
 
 # Validate that version is an exact match (obviously we need the same major,
 # but right now we expect+tolerate nothing other than the same minor too).
-(state_version=`cat $HCP_ATTESTSVC_STATE_PREFIX/version` &&
+(state_version=`cat $HCP_ATTESTSVC_STATE/version` &&
 	[[ $state_version == $HCP_VER ]]) ||
 (echo "Error: expected version $HCP_VER, but got '$state_version' instead" &&
 	exit 1) || exit 1
