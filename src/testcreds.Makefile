@@ -3,10 +3,15 @@ HCP_TESTCREDS_OUT := $(HCP_OUT)/testcreds
 $(HCP_TESTCREDS_OUT): | $(HCP_OUT)
 MDIRS += $(HCP_TESTCREDS_OUT)
 
+# Note, we do _NOT_use HCP_BASE_DNAME for running our openssl commands, because
+# there's a gotcha: one of the options for building HCP_BASE is that you can
+# choose to have it inject (and trust) our "certissuer" test cred. So, circular
+# dependency alert! We depend on an earlier stage image (HCP_BASE2_DNAME),
+# prior to the stage where CA certs get embedded.
 HCP_TESTCREDS_DOCKER_RUN := \
 	docker run -i --rm --label $(HCP_IMAGE_PREFIX)all=1 \
 	--mount type=bind,source=$(HCP_TESTCREDS_OUT),destination=/testcreds \
-	$(HCP_BASE_DNAME) \
+	$(HCP_BASE3_DNAME) \
 	bash -c
 
 # A pre-requisite for all assets is the "reference" file. This gets used as the
@@ -15,7 +20,7 @@ HCP_TESTCREDS_DOCKER_RUN := \
 # host-side. It also, encapsulates the dependencies on $(HCP_OUT) being created
 # and the $(HCP_BASE_DNAME) image being built.
 $(HCP_TESTCREDS_OUT)/reference: | $(HCP_OUT)
-$(HCP_TESTCREDS_OUT)/reference: | $(HCP_BASE_TOUCHFILE)
+$(HCP_TESTCREDS_OUT)/reference: | $(HCP_BASE3_TOUCHFILE)
 $(HCP_TESTCREDS_OUT)/reference:
 	$Qecho "Unused file" > "$@"
 
@@ -62,6 +67,18 @@ $(HCP_TESTCREDS_OUT)/done.enrollcertissuer:
 	$Q$(HCP_TESTCREDS_DOCKER_RUN) "$(CMD_CREDS_ENROLLCERTISSUER)"
 	$Qtouch $@
 HCP_TESTCREDS_DONE += $(HCP_TESTCREDS_OUT)/done.enrollcertissuer
+
+# Special handling, see settings.mk for why and src/base/Makefile for how.
+# (Note, it would be preferable to put this rule in src/base, "where it
+# belongs", but we can't - the TESTCRED definitions don't exist when that stuff
+# gets processed.)
+ifdef HCP_4ADD_CACERTS_ENABLE
+ifdef HCP_4ADD_CACERTS_TESTCRED
+$(HCP_BASE_4CA_OUT)/HCP_TESTCRED.cert: | $(HCP_BASE_4CA_OUT)
+$(HCP_BASE_4CA_OUT)/HCP_TESTCRED.cert: $(HCP_TESTCREDS_OUT)/done.enrollcertissuer
+	$Qcp $(HCP_TESTCREDS_OUT)/enrollcertissuer/CA.cert $@
+endif
+endif
 
 # A wrapper target to package testcreds
 testcreds: $(HCP_TESTCREDS_DONE)

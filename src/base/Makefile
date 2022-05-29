@@ -22,20 +22,24 @@
 #         - twiddle with debconf and apt-utils to make the environment less
 #           spartan and hostile.
 #         - make the container image timezone-compatible with the host.
-#     3add-cacerts
-#         - optional, see SAFEBOOT_ADD_CACERTS in hcp/settings.mk
-#         - install host-side trust roots (CA certificates).
-#     4platform
+#     3platform
 #         - installs a common, base-line set of system tools that should show up
 #           in all other container images.
+#     4add-cacerts
+#         - optional, see SAFEBOOT_ADD_CACERTS in hcp/settings.mk
+#         - install host-side trust roots (CA certificates).
 
 HCP_BASE_SRC := $(HCP_SRC)/base
 HCP_BASE_OUT := $(HCP_OUT)/base
 HCP_BASE0_DNAME := $(call HCP_IMAGE,base_0import)
 HCP_BASE1_DNAME := $(call HCP_IMAGE,base_1apt-source)
+HCP_BASE1_TOUCHFILE := $(HCP_BASE_OUT)/1apt-source.built
 HCP_BASE2_DNAME := $(call HCP_IMAGE,base_2apt-usable)
-HCP_BASE3_DNAME := $(call HCP_IMAGE,base_3add-cacerts)
-HCP_BASE4_DNAME := $(call HCP_IMAGE,base_4platform)
+HCP_BASE2_TOUCHFILE := $(HCP_BASE_OUT)/2apt-usable.built
+HCP_BASE3_DNAME := $(call HCP_IMAGE,base_3platform)
+HCP_BASE3_TOUCHFILE := $(HCP_BASE_OUT)/3platform.built
+HCP_BASE4_DNAME := $(call HCP_IMAGE,base_4add-cacerts)
+HCP_BASE4_TOUCHFILE := $(HCP_BASE_OUT)/4add-cacerts.built
 
 $(HCP_BASE_OUT): | $(HCP_OUT)
 MDIRS += $(HCP_BASE_OUT)
@@ -43,9 +47,13 @@ MDIRS += $(HCP_BASE_OUT)
 # For downstream (builds, apps, ...) usage;
 # - Depend on $(HCP_BASE_TOUCHFILE) to ensure it is (re)built as required.
 # - Use "FROM $(HCP_BASE_DNAME)" to derive images.
-HCP_BASE_TOUCHFILE := $(HCP_BASE_OUT)/4platform.built
-HCP_BASE_IMAGE := base_4platform
-HCP_BASE_DNAME := $(call HCP_IMAGE,$(HCP_BASE_IMAGE))
+ifdef HCP_4ADD_CACERTS_ENABLE
+HCP_BASE_TOUCHFILE := $(HCP_BASE4_TOUCHFILE)
+HCP_BASE_DNAME := $(HCP_BASE4_DNAME)
+else
+HCP_BASE_TOUCHFILE := $(HCP_BASE3_TOUCHFILE)
+HCP_BASE_DNAME := $(HCP_BASE3_DNAME)
+endif
 
 # A wrapper target to build the "base platform" image
 base: $(HCP_BASE_TOUCHFILE)
@@ -90,15 +98,15 @@ $(HCP_BASE_OUT)/1apt-source.Dockerfile:
 	$Qecho "FROM $(HCP_BASE0_DNAME)" > $@
 	$Qcat $(HCP_BASE_SRC)/1apt-source.Dockerfile >> $@
 
-$(HCP_BASE_OUT)/1apt-source.built: $(HCP_BASE_OUT)/0import.built
-$(HCP_BASE_OUT)/1apt-source.built: $(HCP_BASE_OUT)/1apt-source.Dockerfile
-$(HCP_BASE_OUT)/1apt-source.built:
+$(HCP_BASE1_TOUCHFILE): $(HCP_BASE_OUT)/0import.built
+$(HCP_BASE1_TOUCHFILE): $(HCP_BASE_OUT)/1apt-source.Dockerfile
+$(HCP_BASE1_TOUCHFILE):
 	$Qdocker build -t $(HCP_BASE1_DNAME) \
 	               -f $(HCP_BASE_OUT)/1apt-source.Dockerfile \
 	               $(HCP_BASE_SRC)/1apt-source-context/
 	$Qtouch $@
 $(eval $(call pp_rule_docker_image_rm,\
-	$(HCP_BASE_OUT)/1apt-source.built,\
+	$(HCP_BASE1_TOUCHFILE),\
 	$(HCP_BASE1_DNAME),\
 	base_1apt-source,\
 	clean_base))
@@ -133,117 +141,115 @@ $(HCP_BASE_2APT_OUT)/timezone:
 	$Qcp $< $@
 
 ifdef HCP_1APT_ENABLE
-$(HCP_BASE_OUT)/2apt-usable.built: $(HCP_BASE_OUT)/1apt-source.built
+$(HCP_BASE2_TOUCHFILE): $(HCP_BASE1_TOUCHFILE)
 else
-$(HCP_BASE_OUT)/2apt-usable.built: $(HCP_BASE_OUT)/0import.built
+$(HCP_BASE2_TOUCHFILE): $(HCP_BASE_OUT)/0import.built
 endif
-$(HCP_BASE_OUT)/2apt-usable.built: $(HCP_BASE_OUT)/2apt-usable.Dockerfile
-$(HCP_BASE_OUT)/2apt-usable.built: $(HCP_BASE_2APT_OUT)/apt-proxy.sh
-$(HCP_BASE_OUT)/2apt-usable.built: $(HCP_BASE_2APT_OUT)/timezone
-$(HCP_BASE_OUT)/2apt-usable.built:
+$(HCP_BASE2_TOUCHFILE): $(HCP_BASE_OUT)/2apt-usable.Dockerfile
+$(HCP_BASE2_TOUCHFILE): $(HCP_BASE_2APT_OUT)/apt-proxy.sh
+$(HCP_BASE2_TOUCHFILE): $(HCP_BASE_2APT_OUT)/timezone
+$(HCP_BASE2_TOUCHFILE):
 	$Qdocker build -t $(HCP_BASE2_DNAME) \
 	               -f $(HCP_BASE_OUT)/2apt-usable.Dockerfile \
 		       --build-arg HCP_APT_PROXY=$(HCP_APT_PROXY) \
 	               $(HCP_BASE_2APT_OUT)/
 	$Qtouch $@
 $(eval $(call pp_rule_docker_image_rm,\
-	$(HCP_BASE_OUT)/2apt-usable.built,\
+	$(HCP_BASE2_TOUCHFILE),\
 	$(HCP_BASE2_DNAME),\
 	base_2apt-usable,\
 	clean_base))
 
-# LAYER: 3add-cacerts
+# LAYER: 3platform
 
-ifdef HCP_3ADD_CACERTS_ENABLE
-
-HCP_BASE_3CA_OUT := $(HCP_BASE_OUT)/3add-cacerts-context
-$(HCP_BASE_3CA_OUT): | $(HCP_BASE_OUT)
-MDIRS += $(HCP_BASE_3CA_OUT)
-
-HCP_BASE_3CA_CERT_SRC := $(shell cd $(HCP_3ADD_CACERTS_PATH) && find . -type f)
-define hcp_base_3ca_src
-	$(eval b := $(shell basename $1))
-$(HCP_BASE_3CA_OUT)/$b: | $(HCP_BASE_3CA_OUT)
-$(HCP_BASE_3CA_OUT)/$b: $(HCP_3ADD_CACERTS_PATH)/$1
-$(HCP_BASE_3CA_OUT)/$b:
-	$Qcp $$< $$@
-$(eval HCP_BASE_3CA_CERTS += $(HCP_BASE_3CA_OUT)/$b)
-endef
-$(foreach i,$(HCP_BASE_3CA_CERT_SRC),$(eval $(call hcp_base_3ca_src,$i)))
-
-$(HCP_BASE_OUT)/3add-cacerts.Dockerfile: | $(HCP_BASE_OUT)
-$(HCP_BASE_OUT)/3add-cacerts.Dockerfile: $(HCP_BASE_DEPS_COMMON)
-$(HCP_BASE_OUT)/3add-cacerts.Dockerfile: $(HCP_BASE_SRC)/3add-cacerts.Dockerfile
-$(HCP_BASE_OUT)/3add-cacerts.Dockerfile:
+ifdef HCP_3PLATFORM_NO_TPM2
+HCP_BASE_3PLATFORM_TPM2_TOOLS :=
+else
+HCP_BASE_3PLATFORM_TPM2_TOOLS := RUN apt-get install -y tpm2-tools
+endif
+ifdef HCP_3PLATFORM_XTRA
+HCP_BASE_3PLATFORM_XTRA := RUN apt-get install -y $(HCP_3PLATFORM_XTRA)
+else
+HCP_BASE_3PLATFORM_XTRA :=
+endif
+$(HCP_BASE_OUT)/3platform.Dockerfile: | $(HCP_BASE_OUT)
+$(HCP_BASE_OUT)/3platform.Dockerfile: $(HCP_BASE_DEPS_COMMON)
+$(HCP_BASE_OUT)/3platform.Dockerfile: $(HCP_BASE_SRC)/3platform.Dockerfile
+$(HCP_BASE_OUT)/3platform.Dockerfile:
 	$Qecho "FROM $(HCP_BASE2_DNAME)" > $@
-	$Qcat $(HCP_BASE_SRC)/3add-cacerts.Dockerfile >> $@
+	$Qcat $(HCP_BASE_SRC)/3platform.Dockerfile | \
+	sed -e "s/HCP_BASE_3PLATFORM_TPM2_TOOLS/$(HCP_BASE_3PLATFORM_TPM2_TOOLS)/" | \
+	sed -e "s/HCP_BASE_3PLATFORM_XTRA/$(HCP_BASE_3PLATFORM_XTRA)/" >> $@
 
-$(HCP_BASE_OUT)/3add-cacerts.built: $(HCP_BASE_OUT)/2apt-usable.built
-$(HCP_BASE_OUT)/3add-cacerts.built: $(HCP_BASE_OUT)/3add-cacerts.Dockerfile
-$(HCP_BASE_OUT)/3add-cacerts.built: $(HCP_BASE_3CA_CERTS)
-$(HCP_BASE_OUT)/3add-cacerts.built:
+$(HCP_BASE3_TOUCHFILE): $(HCP_BASE2_TOUCHFILE)
+$(HCP_BASE3_TOUCHFILE): $(HCP_BASE_OUT)/3platform.Dockerfile
+$(HCP_BASE3_TOUCHFILE): $(HCP_BASE_SRC)/3platform-context/chowner.sh
+$(HCP_BASE3_TOUCHFILE):
 	$Qdocker build -t $(HCP_BASE3_DNAME) \
-	               -f $(HCP_BASE_OUT)/3add-cacerts.Dockerfile \
-	               $(HCP_BASE_3CA_OUT)/
+		-f $(HCP_BASE_OUT)/3platform.Dockerfile \
+		$(HCP_BASE_SRC)/3platform-context/
 	$Qtouch $@
 $(eval $(call pp_rule_docker_image_rm,\
-	$(HCP_BASE_OUT)/3add-cacerts.built,\
+	$(HCP_BASE3_TOUCHFILE),\
 	$(HCP_BASE3_DNAME),\
-	base_3add-cacerts,\
+	base_3platform,\
 	clean_base))
 
-endif # HCP_3ADD_CACERTS_ENABLE
+# LAYER: 4add-cacerts
 
-# LAYER: 4platform
+ifdef HCP_4ADD_CACERTS_ENABLE
 
-ifdef HCP_3ADD_CACERTS_ENABLE
-HCP_BASE_4PLATFORM_ANCESTOR := $(HCP_BASE3_DNAME)
-else
-HCP_BASE_4PLATFORM_ANCESTOR := $(HCP_BASE2_DNAME)
-endif
-ifdef HCP_4PLATFORM_NO_TPM2
-HCP_BASE_4PLATFORM_TPM2_TOOLS :=
-else
-HCP_BASE_4PLATFORM_TPM2_TOOLS := RUN apt-get install -y tpm2-tools
-endif
-ifdef HCP_4PLATFORM_XTRA
-HCP_BASE_4PLATFORM_XTRA := RUN apt-get install -y $(HCP_4PLATFORM_XTRA)
-else
-HCP_BASE_4PLATFORM_XTRA :=
-endif
-$(HCP_BASE_OUT)/4platform.Dockerfile: | $(HCP_BASE_OUT)
-$(HCP_BASE_OUT)/4platform.Dockerfile: $(HCP_BASE_DEPS_COMMON)
-$(HCP_BASE_OUT)/4platform.Dockerfile: $(HCP_BASE_SRC)/4platform.Dockerfile
-$(HCP_BASE_OUT)/4platform.Dockerfile:
-	$Qecho "FROM $(HCP_BASE_4PLATFORM_ANCESTOR)" > $@
-	$Qcat $(HCP_BASE_SRC)/4platform.Dockerfile | \
-	sed -e "s/HCP_BASE_4PLATFORM_TPM2_TOOLS/$(HCP_BASE_4PLATFORM_TPM2_TOOLS)/" | \
-	sed -e "s/HCP_BASE_4PLATFORM_XTRA/$(HCP_BASE_4PLATFORM_XTRA)/" >> $@
+HCP_BASE_4CA_OUT := $(HCP_BASE_OUT)/4add-cacerts-context
+$(HCP_BASE_4CA_OUT): | $(HCP_BASE_OUT)
+MDIRS += $(HCP_BASE_4CA_OUT)
 
-ifdef HCP_3ADD_CACERTS_ENABLE
-$(HCP_BASE_OUT)/4platform.built: $(HCP_BASE_OUT)/3add-cacerts.built
-else
-$(HCP_BASE_OUT)/4platform.built: $(HCP_BASE_OUT)/2apt-usable.built
+ifdef HCP_4ADD_CACERTS_PATH
+define hcp_base_4ca_src
+	$(eval b := $(shell basename $1))
+$(HCP_BASE_4CA_OUT)/$b: | $(HCP_BASE_4CA_OUT)
+$(HCP_BASE_4CA_OUT)/$b: $(HCP_4ADD_CACERTS_PATH)/$1
+$(HCP_BASE_4CA_OUT)/$b:
+	$Qcp $$< $$@
+$(eval HCP_BASE_4CA_CERTS += $(HCP_BASE_4CA_OUT)/$b)
+endef
+HCP_BASE_4CA_CERT_SRC := $(shell cd $(HCP_4ADD_CACERTS_PATH) && find . -type f)
+$(foreach i,$(HCP_BASE_4CA_CERT_SRC),$(eval $(call hcp_base_4ca_src,$i)))
 endif
-$(HCP_BASE_OUT)/4platform.built: $(HCP_BASE_OUT)/4platform.Dockerfile
-$(HCP_BASE_OUT)/4platform.built: $(HCP_BASE_SRC)/4platform-context/chowner.sh
-$(HCP_BASE_OUT)/4platform.built:
+
+# The TESTCRED handling is completed in src/testcreds.Makefile
+ifdef HCP_4ADD_CACERTS_TESTCRED
+$(eval HCP_BASE_4CA_CERTS +=$(HCP_BASE_4CA_OUT)/HCP_TESTCRED.cert)
+endif
+
+$(HCP_BASE_OUT)/4add-cacerts.Dockerfile: | $(HCP_BASE_OUT)
+$(HCP_BASE_OUT)/4add-cacerts.Dockerfile: $(HCP_BASE_DEPS_COMMON)
+$(HCP_BASE_OUT)/4add-cacerts.Dockerfile: $(HCP_BASE_SRC)/4add-cacerts.Dockerfile
+$(HCP_BASE_OUT)/4add-cacerts.Dockerfile:
+	$Qecho "FROM $(HCP_BASE3_DNAME)" > $@
+	$Qcat $(HCP_BASE_SRC)/4add-cacerts.Dockerfile >> $@
+
+$(HCP_BASE4_TOUCHFILE): $(HCP_BASE3_TOUCHFILE)
+$(HCP_BASE4_TOUCHFILE): $(HCP_BASE_OUT)/4add-cacerts.Dockerfile
+$(HCP_BASE4_TOUCHFILE): $(HCP_BASE_4CA_CERTS)
+$(HCP_BASE4_TOUCHFILE):
 	$Qdocker build -t $(HCP_BASE4_DNAME) \
-		-f $(HCP_BASE_OUT)/4platform.Dockerfile \
-		$(HCP_BASE_SRC)/4platform-context/
+	               -f $(HCP_BASE_OUT)/4add-cacerts.Dockerfile \
+	               $(HCP_BASE_4CA_OUT)/
 	$Qtouch $@
 $(eval $(call pp_rule_docker_image_rm,\
-	$(HCP_BASE_OUT)/4platform.built,\
+	$(HCP_BASE4_TOUCHFILE),\
 	$(HCP_BASE4_DNAME),\
-	base_4platform,\
+	base_4add-cacerts,\
 	clean_base))
+
+endif # HCP_4ADD_CACERTS_ENABLE
 
 # Cleanup
 ifneq (,$(wildcard $(HCP_BASE_OUT)))
 clean_base: | preclean
-	$Qrm -f $(HCP_BASE_OUT)/4platform.Dockerfile
-	$Qrm -f $(HCP_BASE_OUT)/3add-cacerts.*
-	$Qrm -rf $(HCP_BASE_3CA_OUT)
+	$Qrm -f $(HCP_BASE_OUT)/4add-cacerts.*
+	$Qrm -rf $(HCP_BASE_4CA_OUT)
+	$Qrm -f $(HCP_BASE_OUT)/3platform.Dockerfile
 	$Qrm -f $(HCP_BASE_OUT)/2apt-usable.Dockerfile
 	$Qrm -rf $(HCP_BASE_2APT_OUT)
 	$Qrm -f $(HCP_BASE_OUT)/1apt-source.Dockerfile
