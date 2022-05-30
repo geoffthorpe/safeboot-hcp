@@ -104,6 +104,12 @@ echo "export GENCERT_REALM=$HCP_ENROLLSVC_REALM" >> /safeboot/enroll.conf
 echo "export GENCERT_KEY_BITS=2048" >> /safeboot/enroll.conf
 echo "export GENCERT_X509_TOOLING=OpenSSL" >> /safeboot/enroll.conf
 echo "export DIAGNOSTICS=$DIAGNOSTICS" >> /safeboot/enroll.conf
+echo "POLICIES[cert]=pcr11" >> /safeboot/enroll.conf
+echo "POLICIES[cert-https-client]=pcr11" >> /safeboot/enroll.conf
+echo "POLICIES[cert-https-server]=pcr11" >> /safeboot/enroll.conf
+echo "POLICIES[cert-pkinit-client]=pcr11" >> /safeboot/enroll.conf
+echo "POLICIES[cert-pkinit-kdc]=pcr11" >> /safeboot/enroll.conf
+echo "POLICIES[rootfskey]=pcr11" >> /safeboot/enroll.conf
 
 # Print the additional configuration (beyond what common.sh prints)
 echo "SIGNING_KEY_PRIV=$SIGNING_KEY_PRIV" >&2
