@@ -18,14 +18,19 @@ echo "  - Param2=$2 (hostname)" >&2
 echo "  - Param3=$3 (profile)" >&2
 echo "  - Param4=$4 (path to paramfile)" >&2
 
+MYEKPUB=$1
+MYHOSTNAME=$2
+MYPROFILE=$3
+MYPARAMFILE=$4
+
 # args must be non-empty
-if [[ -z $1 || -z $2 ]]; then
+if [[ -z $MYEKPUB || -z $MYHOSTNAME ]]; then
 	echo "Error, missing at least one argument" >&2
 	exit 1
 fi
 
-check_hostname "$2"
-HNREV=`echo "$2" | rev`
+check_hostname "$MYHOSTNAME"
+HNREV=`echo "$MYHOSTNAME" | rev`
 
 cd /safeboot
 
@@ -38,34 +43,34 @@ cd /safeboot
 #     (via stdout),
 #   - our COMMIT hook does nothing (flexibility later)
 # - add all the goodies to git
-#   - use the ek.pub goodie (which won't necessarily match $1, if the latter is
-#     in PEM format!) to determine the EKPUBHASH
+#   - use the ek.pub goodie (which won't necessarily match $MYEKPUB, if the
+#     latter is in PEM format!) to determine the EKPUBHASH
 # - delete the temp output directory.
 
 export EPHEMERAL_ENROLL=`mktemp -d`
 trap 'rm -rf $EPHEMERAL_ENROLL' EXIT
 
-# If 'profile' ($3) begins with 'GENPROGS:', the rest of the string is assumed
-# to be a space-separated list of entries to be added to the bash array of the
-# same name in the enroll.conf file, which is then consumed by attest-enroll.
+# If 'profile' begins with 'GENPROGS:', the rest of the string is assumed to be
+# a space-separated list of entries to be added to the bash array of the same
+# name in the enroll.conf file, which is then consumed by attest-enroll.
 #
-# Otherwise, 'profile' ($3) and 'paramfile' ($4) arguments are set as exported
+# Otherwise, 'profile' and 'paramfile' arguments are set as exported
 # environment variables for consumption somewhere (else) in safeboot code.
 cp /safeboot/enroll.conf $EPHEMERAL_ENROLL/enroll.conf
 genprog_regex='^GENPROGS:(.*)'
-if [[ $3 =~ $genprog_regex ]]; then
+if [[ $MYPROFILE =~ $genprog_regex ]]; then
 	genprogs="${BASH_REMATCH[1]}"
 else
 	genprogs="gencert-pkinit-client gencert-https-server"
-	export ENROLL_PROFILE=$3
-	export ENROLL_PARAMFILE=$4
+	export ENROLL_PROFILE=$MYPROFILE
+	export ENROLL_PARAMFILE=$MYPARAMFILE
 fi
 echo "export GENPROGS+=($genprogs)" >> $EPHEMERAL_ENROLL/enroll.conf
 
 ./sbin/attest-enroll -C $EPHEMERAL_ENROLL/enroll.conf \
 		-V CHECKOUT=/hcp/enrollsvc/cb_checkout.sh \
 		-V COMMIT=/hcp/enrollsvc/cb_commit.sh \
-		-I $1 $2 >&2 ||
+		-I $MYEKPUB $MYHOSTNAME >&2 ||
 	my_tee "Error, 'attest-enroll' failed" 1 ||
 	exit 1
 
@@ -124,9 +129,10 @@ function update_git {
 	[[ -n "$itfailed" ]] && return
 	(echo "$EKPUBHASH" > "$FPATH/ekpubhash" &&
 		cp -a $EPHEMERAL_ENROLL/* "$FPATH/" &&
+		( [[ -z $MYPROFILE ]] || echo "$MYPROFILE" > "$FPATH/profile" ) &&
 		mv $HN2EK_PATH.tmp $HN2EK_PATH &&
 		git add . &&
-		git commit -m "map $HALFHASH to $2") >&2 && return
+		git commit -m "map $HALFHASH to $MYHOSTNAME") >&2 && return
 	my_tee "Error, failed to add enrollment to git repo" 0
 	itfailed=1
 }
@@ -163,7 +169,9 @@ recover_git
 
 rm -rf $EPHEMERAL_ENROLL
 
-jq -Rn --arg hostname "$2" --arg ekpubhash "$HALFHASH" \
-	'{returncode: 0, hostname: $hostname, ekpubhash: $ekpubhash}'
+jq -Rn --arg hostname "$MYHOSTNAME" \
+	--arg ekpubhash "$HALFHASH" \
+	--arg profile "$MYPROFILE" \
+	'{returncode: 0, hostname: $hostname, ekpubhash: $ekpubhash, profile, $profile}'
 
 /bin/true
