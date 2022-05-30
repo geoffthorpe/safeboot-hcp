@@ -33,8 +33,14 @@ if [[ ! -d /safeboot/sbin ]]; then
 	echo "Error, Safeboot scripts aren't installed"
 	exit 1
 fi
-export PATH=/safeboot/sbin:$PATH
 echo "Adding /safeboot/sbin to PATH"
+export PATH=/safeboot/sbin:$PATH
+if [[ ! -f /safeboot/functions.sh ]]; then
+	echo "Error, Safeboot 'functions.sh' isn't installed"
+	exit 1
+fi
+echo "Sourcing /safeboot/functions.sh"
+source "/safeboot/functions.sh"
 
 if [[ -d "/install/bin" ]]; then
 	export PATH=$PATH:/install/bin
@@ -61,8 +67,15 @@ export HCP_ATTESTCLIENT_ATTEST_URL
 
 echo "Running 'attestclient'"
 
-# Check that our TPM is configured and alive
+# We store some stuff we should cleanup, so use a trap
 tmp_pcrread=`mktemp`
+tmp_secrets=`mktemp`
+tmp_attest=`mktemp`
+tmp_key=`mktemp`
+tmp_extract=`mktemp -d`
+trap 'rm -rf $tmp_pcrread $tmp_secrets $tmp_attest $tmp_key $tmp_extract' EXIT ERR
+
+# Check that our TPM is configured and alive
 waitsecs=0
 waitinc=3
 waitcount=0
@@ -78,7 +91,6 @@ done
 if [[ $waitcount -gt 0 ]]; then
 	echo "Info: TPM available after retrying" >&2
 fi
-rm $tmp_pcrread
 
 # TODO: this is a temporary and bad fix. The swtpm assumes that connections
 # that are set up (tpm2_startup) but not gracefully terminated (tpm2_shutdown)
@@ -97,12 +109,11 @@ tpm2_dictionarylockout --clear-lockout
 # Now keep trying to get a successful attestation. It may take a few seconds
 # for our TPM enrollment to propagate to the attestation server, so it's normal
 # for this to fail a couple of times before succeeding.
-tmp_attest=`mktemp`
 waitsecs=0
 waitinc=3
 waitcount=0
 until ./sbin/tpm2-attest attest $HCP_ATTESTCLIENT_ATTEST_URL \
-				> secrets 2>> "$tmp_attest"; do
+				> $tmp_secrets 2>> "$tmp_attest"; do
 	if [[ $((++waitcount)) -eq 6 ]]; then
 		cat $tmp_attest >&2
 		echo "Error: attestation failed multiple times, giving up" >&2
@@ -115,20 +126,35 @@ done
 if [[ $waitcount -gt 0 ]]; then
 	echo "Info: attestation succeeded after retrying" >&2
 fi
-rm $tmp_attest
 
-(
-	echo "Extracting the attestation result;" && \
-	tar xvf secrets && \
-	echo "Signature-checking the received assets;" && \
-	./sbin/tpm2-attest verify-unsealed .
-) || \
-(
-	echo "Error of some kind." && \
-	echo "Copying 'secrets' out to caller's directory for inspection" && \
-	SECRETS_NAME=secrets.`date +%Y-%m-%d` && \
-	echo "It will be called $SECRETS_NAME" && \
-	cp secrets /escapehatch/$SECRETS_NAME && exit 1
-)
-
-echo "Client ending"
+if (
+	echo "Extracting the attestation result"
+	tar xvf $tmp_secrets -C $tmp_extract
+	echo "Signature-checking the received assets"
+	./sbin/tpm2-attest verify-unsealed $tmp_extract > /dev/null
+	cd $tmp_extract
+	MYSEALED=$(ls -1 *.symkeyenc | sed -e "s/.symkeyenc\$//")
+	for i in $MYSEALED; do
+		if [[ ! -f "$i.policy" || ! -f "$i.enc" ]]; then
+			echo "Warning, asset '$i' missing attributes" >&2
+			continue
+		fi
+		echo "Unsealing asset '$i'"
+		rm $tmp_key
+		tpm2-recv "$i.symkeyenc" $tmp_key \
+			tpm2 policypcr '--pcr-list=sha256:11' > /dev/null 2>&1
+		aead_decrypt "$i.enc" $tmp_key "$i"
+	done
+	if [[ -n $HCP_ATTESTCLIENT_CALLBACK ]]; then
+		echo "Running callback '$HCP_ATTESTCLIENT_CALLBACK'"
+		(exec $HCP_ATTESTCLIENT_CALLBACK)
+	fi
+); then
+	echo "Success!"
+else
+	echo "Error of some kind."
+	echo "Leaving tarball: $tmp_secrets"
+	echo "Leaving extraction: $tmp_extract"
+	tmp_secrets=""
+	tpm_extract=""
+fi
