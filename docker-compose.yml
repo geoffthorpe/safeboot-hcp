@@ -31,6 +31,9 @@ volumes:
     attestdb:
     tpm_attestclient:
     tpmsocket_attestclient:
+    kdc:
+    tpm_kdc:
+    tpmsocket_kdc:
 
 networks:
     hcpnetwork:
@@ -112,6 +115,7 @@ services:
         volumes:
           - ${HCP_ORCHESTRATOR_JSON}:${HCP_ORCH_JSON}:ro
           - tpm_attestclient:${HCP_ORCH_TPM_ATTESTCLIENT}
+          - tpm_kdc:${HCP_ORCH_TPM_KDC1}
         environment:
           - HCP_INSTANCE=/usecase/orchestrator.env
 
@@ -159,3 +163,28 @@ services:
         volumes:
           - tpmsocket_attestclient:${HCP_ACLIENT_TCTI_SOCKDIR}
           - ${HCP_TESTCREDS_ENROLLVERIFIER}:${HCP_ACLIENT_CREDS_VERIFIER}:ro
+
+    kdc:
+        extends: common
+        image: ${HCP_IMAGE_KDC}
+        volumes:
+          - kdc:${HCP_KDC1_STATE}
+          - tpmsocket_kdc:${HCP_KDC1_ATTEST_TCTI_SOCKDIR}
+          - ${HCP_TESTCREDS_ENROLLVERIFIER}:${HCP_KDC1_ATTEST_CREDS_VERIFIER}:ro
+        networks:
+          - hcpnetwork
+        environment:
+          - HCP_INSTANCE=/usecase/kdc.env
+    kdc_tpm:
+        extends: common
+        image: ${HCP_IMAGE_SWTPMSVC}
+        network_mode: "none"
+        volumes:
+          - tpm_kdc:${HCP_KDC1TPM_STATE}
+          - tpmsocket_kdc:${HCP_KDC1TPM_SOCKDIR}
+        environment:
+          - HCP_INSTANCE=/usecase/kdc_tpm.env
+        healthcheck:
+            test: /hcp/swtpmsvc/healthcheck.sh
+            timeout: 1s
+            interval: 2s

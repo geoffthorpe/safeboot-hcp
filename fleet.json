@@ -19,6 +19,16 @@
 				"hostname": "attestclient.hcphacking.xyz",
 				"profile": "GENPROGS: gencert-https-client"
 			}
+		},
+		{
+			"name": "kdc",
+			"tpm": {
+				"path": "/tpm_kdc1"
+			},
+			"enroll": {
+				"hostname": "kdc.hcphacking.xyz",
+				"profile": "GENPROGS: gencert-pkinit-kdc gencert-pkinit-client"
+			}
 		}
 	]
 }
