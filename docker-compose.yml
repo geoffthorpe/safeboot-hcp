@@ -29,8 +29,8 @@ volumes:
     fqdn:
     enrolldb:
     attestdb:
-    tpm_attestclient:
-    tpmsocket_attestclient:
+    tpm_aclient:
+    tpmsocket_aclient:
     kdc:
     tpm_kdc:
     tpmsocket_kdc:
@@ -49,7 +49,7 @@ services:
           - fqdn:${HCP_FQDN_PATH}:rw
           - ${HCP_TOP}/usecase:/usecase:ro
 
-    enrollsvc_mgmt:
+    emgmt:
         extends: common
         image: ${HCP_IMAGE_ENROLLSVC}
         networks:
@@ -59,13 +59,13 @@ services:
           - ${HCP_TESTCREDS_ENROLLSIGNER}:${HCP_EMGMT_CREDS_SIGNER}:ro
           - ${HCP_TESTCREDS_ENROLLCERTISSUER}:${HCP_EMGMT_CREDS_CERTISSUER}:ro
         environment:
-          - HCP_INSTANCE=/usecase/enrollsvc_mgmt.env
+          - HCP_INSTANCE=/usecase/emgmt.env
         healthcheck:
             test: curl -f -G http://localhost:5000/ || exit 1
             timeout: 1s
             interval: 2s
 
-    enrollsvc_repl:
+    erepl:
         extends: common
         image: ${HCP_IMAGE_ENROLLSVC}
         networks:
@@ -73,13 +73,13 @@ services:
         volumes:
           - enrolldb:${HCP_EREPL_STATE}:ro
         environment:
-          - HCP_INSTANCE=/usecase/enrollsvc_repl.env
+          - HCP_INSTANCE=/usecase/erepl.env
         healthcheck:
             test: git ls-remote --heads git://localhost/enrolldb || exit 1
             timeout: 1s
             interval: 2s
 
-    attestsvc_repl:
+    arepl:
         extends: common
         image: ${HCP_IMAGE_ATTESTSVC}
         networks:
@@ -87,13 +87,13 @@ services:
         volumes:
           - attestdb:${HCP_AREPL_STATE}:rw
         environment:
-          - HCP_INSTANCE=/usecase/attestsvc_repl.env
+          - HCP_INSTANCE=/usecase/arepl.env
         healthcheck:
             test: test -f /attestdb/initialized && ! test -f /attestdb/transient-failure
             timeout: 1s
             interval: 2s
 
-    attestsvc_hcp:
+    ahcp:
         extends: common
         image: ${HCP_IMAGE_ATTESTSVC}
         networks:
@@ -101,7 +101,7 @@ services:
         volumes:
           - attestdb:${HCP_AREPL_STATE}:ro
         environment:
-          - HCP_INSTANCE=/usecase/attestsvc_hcp.env
+          - HCP_INSTANCE=/usecase/ahcp.env
         healthcheck:
             test: curl -f -G http://localhost:8080/ || exit 1
             timeout: 1s
@@ -114,30 +114,30 @@ services:
           - hcpnetwork
         volumes:
           - ${HCP_ORCHESTRATOR_JSON}:${HCP_ORCH_JSON}:ro
-          - tpm_attestclient:${HCP_ORCH_TPM_ATTESTCLIENT}
+          - tpm_aclient:${HCP_ORCH_TPM_ACLIENT}
           - tpm_kdc:${HCP_ORCH_TPM_KDC1}
         environment:
           - HCP_INSTANCE=/usecase/orchestrator.env
 
-    attestclient:
+    aclient:
         extends: common
         image: ${HCP_IMAGE_TOOLS}
         networks:
           - hcpnetwork
         volumes:
-          - tpmsocket_attestclient:${HCP_ACLIENT_TCTI_SOCKDIR}
+          - tpmsocket_aclient:${HCP_ACLIENT_TCTI_SOCKDIR}
           - ${HCP_TESTCREDS_ENROLLVERIFIER}:${HCP_ACLIENT_CREDS_VERIFIER}:ro
         environment:
-          - HCP_INSTANCE=/usecase/attestclient.env
-    attestclient_tpm:
+          - HCP_INSTANCE=/usecase/aclient.env
+    aclient_tpm:
         extends: common
         image: ${HCP_IMAGE_SWTPMSVC}
         network_mode: "none"
         volumes:
-          - tpm_attestclient:${HCP_ACLIENTTPM_STATE}
-          - tpmsocket_attestclient:${HCP_ACLIENTTPM_SOCKDIR}
+          - tpm_aclient:${HCP_ACLIENTTPM_STATE}
+          - tpmsocket_aclient:${HCP_ACLIENTTPM_SOCKDIR}
         environment:
-          - HCP_INSTANCE=/usecase/attestclient_tpm.env
+          - HCP_INSTANCE=/usecase/aclient_tpm.env
         healthcheck:
             test: /hcp/swtpmsvc/healthcheck.sh
             timeout: 1s
@@ -161,7 +161,7 @@ services:
         environment:
           - HCP_INSTANCE=/usecase/caboodle_networked.env
         volumes:
-          - tpmsocket_attestclient:${HCP_ACLIENT_TCTI_SOCKDIR}
+          - tpmsocket_aclient:${HCP_ACLIENT_TCTI_SOCKDIR}
           - ${HCP_TESTCREDS_ENROLLVERIFIER}:${HCP_ACLIENT_CREDS_VERIFIER}:ro
 
     kdc:

@@ -39,27 +39,27 @@ mkdir -p /pids /logs
 
 # Declare service existence and corresponding .env file
 declare -A hcp_entity=( \
-	[enrollsvc_mgmt]=./enrollsvc_mgmt.env \
-	[enrollsvc_repl]=./enrollsvc_repl.env \
-	[attestsvc_repl]=./attestsvc_repl.env \
-	[attestsvc_hcp]=./attestsvc_hcp.env \
+	[emgmt]=./emgmt.env \
+	[erepl]=./erepl.env \
+	[arepl]=./arepl.env \
+	[ahcp]=./ahcp.env \
 	[orchestrator]=./orchestrator.env \
 	[kdc]=./kdc.env \
 	[kdc_tpm]=./kdc_tpm.env \
-	[attestclient]=./attestclient.env \
-	[attestclient_tpm]=./attestclient_tpm.env \
+	[aclient]=./aclient.env \
+	[aclient_tpm]=./aclient_tpm.env \
         )
 # Declare what type of service it is (lifetime)
 declare -A hcp_entity_type=( \
-	[enrollsvc_mgmt]=service \
-	[enrollsvc_repl]=service \
-	[attestsvc_repl]=service \
-	[attestsvc_hcp]=service \
+	[emgmt]=service \
+	[erepl]=service \
+	[arepl]=service \
+	[ahcp]=service \
 	[orchestrator]=setup \
 	[kdc]=service \
 	[kdc_tpm]=service \
-	[attestclient]=util \
-	[attestclient_tpm]=service \
+	[aclient]=util \
+	[aclient_tpm]=service \
 	)
 # Ordered list of entities
 hcp_entities=$(echo "${!hcp_entity[@]}" | tr " " "\n" | sort)

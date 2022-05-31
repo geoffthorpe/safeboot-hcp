@@ -11,12 +11,12 @@
 	},
 	"fleet": [
 		{
-			"name": "attestclient",
+			"name": "aclient",
 			"tpm": {
-				"path": "/tpm_attestclient"
+				"path": "/tpm_aclient"
 			},
 			"enroll": {
-				"hostname": "attestclient.hcphacking.xyz",
+				"hostname": "aclient.hcphacking.xyz",
 				"profile": "GENPROGS: gencert-https-client"
 			}
 		},

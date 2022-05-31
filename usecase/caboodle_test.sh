@@ -7,7 +7,7 @@ if [[ -n $HCP_CABOODLE_ALONE ]]; then
 	hcp_setup_all
 fi
 
-hcp_util_run attestclient
+hcp_util_run aclient
 
 if [[ -n $HCP_CABOODLE_ALONE ]]; then
 	hcp_stop_all
