@@ -3,15 +3,12 @@
 source /hcp/caboodle/common.sh
 
 if [[ -n $HCP_CABOODLE_ALONE ]]; then
-	hcp_services_start
-
-	echo "Running HCP orchestrator"
-	HCP_INSTANCE=./orchestrator.env /hcp/common/launcher.sh
+	hcp_start_all
+	hcp_setup_all
 fi
 
-echo "Running HCP attestation client"
-HCP_INSTANCE=./attestclient.env /hcp/common/launcher.sh
+hcp_util_run attestclient
 
 if [[ -n $HCP_CABOODLE_ALONE ]]; then
-	hcp_services_stop
+	hcp_stop_all
 fi
