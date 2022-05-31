@@ -12,15 +12,14 @@ include $(HCP_APPS_SRC)/attestsvc/Makefile
 include $(HCP_APPS_SRC)/swtpmsvc/Makefile
 include $(HCP_APPS_SRC)/tools/Makefile
 include $(HCP_APPS_SRC)/caboodle/Makefile
-include $(HCP_APPS_SRC)/usecase/Makefile
 
 # Produce container images
 include $(HCP_APPS_SRC)/Makefile.images
-$(eval $(call app_image,enrollsvc,common enrollsvc usecase,install safeboot))
-$(eval $(call app_image,attestsvc,common attestsvc usecase,install safeboot))
-$(eval $(call app_image,swtpmsvc,common swtpmsvc usecase,install safeboot))
-$(eval $(call app_image,tools,common tools usecase,install safeboot))
-$(eval $(call app_image,caboodle,common enrollsvc attestsvc swtpmsvc tools caboodle usecase,install safeboot))
+$(eval $(call app_image,enrollsvc,common enrollsvc,install safeboot))
+$(eval $(call app_image,attestsvc,common attestsvc,install safeboot))
+$(eval $(call app_image,swtpmsvc,common swtpmsvc,install safeboot))
+$(eval $(call app_image,tools,common tools,install safeboot))
+$(eval $(call app_image,caboodle,common enrollsvc attestsvc swtpmsvc kdc tools caboodle,install safeboot))
 
 ALL += $(APPS)
 
