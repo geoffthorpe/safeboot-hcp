@@ -4,10 +4,6 @@
 
 set -e
 
-# Print the base configuration
-echo "Running '$0'"
-show_hcp_env
-
 mkdir -p $HCP_ATTESTCLIENT_VERIFIER
 
 if [[ -z "$HCP_ATTESTCLIENT_ATTEST_URL" ]]; then

@@ -52,10 +52,6 @@ if [[ `whoami` == "root" ]]; then
 	echo "export HCP_ENVIRONMENT_SET=1" >> /etc/environment
 fi
 
-# Print the base configuration
-echo "Running '$0'"
-show_hcp_env
-
 # Basic functions
 
 function expect_root {

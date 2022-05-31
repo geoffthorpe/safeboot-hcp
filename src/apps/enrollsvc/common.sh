@@ -99,23 +99,12 @@ if [[ `whoami` == "root" ]]; then
 	echo "export HCP_ENVIRONMENT_SET=1" >> /etc/environment
 fi
 
-# Print the base configuration
-echo "Running '$0'" >&2
-show_hcp_env >&2
-
 # Derive more configuration using these constants
 REPO_NAME=enrolldb.git
 EK_BASENAME=ekpubhash
 REPO_PATH=$HCP_ENROLLSVC_STATE/$REPO_NAME
 EK_PATH=$REPO_PATH/$EK_BASENAME
 REPO_LOCKPATH=$HCP_ENROLLSVC_STATE/lock-$REPO_NAME
-
-# Print the additional configuration
-echo "                      REPO_NAME=$REPO_NAME" >&2
-echo "                    EK_BASENAME=$EK_BASENAME" >&2
-echo "                      REPO_PATH=$REPO_PATH" >&2
-echo "                        EK_PATH=$EK_PATH" >&2
-echo "                  REPO_LOCKPATH=$REPO_LOCKPATH" >&2
 
 # Basic functions
 

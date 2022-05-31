@@ -4,10 +4,6 @@
 
 set -e
 
-# Print the base configuration
-echo "Running '$0'" >&2
-show_hcp_env >&2
-
 if [[ ! -d "/safeboot/sbin" ]]; then
 	echo "Error, /safeboot/sbin is not present" >&2
 	exit 1
