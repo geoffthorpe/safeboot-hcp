@@ -29,6 +29,11 @@ if [[ ! -f "$ENROLL_SIGN_ANCHOR" ]]; then
 	exit 1
 fi
 
+if [[ -d "/install/bin" ]]; then
+	echo "Adding /install/sbin to PATH"
+	export PATH=$PATH:/install/bin
+fi
+
 if [[ ! -d /safeboot/sbin ]]; then
 	echo "Error, Safeboot scripts aren't installed"
 	exit 1
@@ -41,11 +46,6 @@ if [[ ! -f /safeboot/functions.sh ]]; then
 fi
 echo "Sourcing /safeboot/functions.sh"
 source "/safeboot/functions.sh"
-
-if [[ -d "/install/bin" ]]; then
-	export PATH=$PATH:/install/bin
-	echo "Adding /install/sbin to PATH"
-fi
 
 if [[ -d "/install/lib" ]]; then
 	export LD_LIBRARY_PATH=/install/lib:$LD_LIBRARY_PATH
