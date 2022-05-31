@@ -18,7 +18,16 @@ include settings.mk
 HCP_OUT ?= $(TOP)/output
 HCP_SRC := $(TOP)/src
 HCP_UTIL := $(TOP)/util
-MDIRS += $(HCP_OUT)
+
+# $(HCP_OUT) is the only directory we explicitly create during preprocessing,
+# rather than adding it to MDIRS and relying on order-only dependencies to
+# create it. This is because preprocessing also creates a suite of hidden
+# dependency files ("$(HCP_OUT)/.deps.<whatever>") and that can't rely on
+# recipe-time directory-creation, per MDIRS.
+ifeq (,$(wildcard $(HCP_OUT)))
+$(info Creating HCP_OUT=$(HCP_OUT))
+$(shell mkdir $(HCP_OUT))
+endif
 
 # Used in dependency chains, as a change in these files can have effects that
 # require rebuilding other things.
@@ -106,6 +115,7 @@ preclean:
 clean:
 ifneq (,$(wildcard $(HCP_OUT)))
 	$Qrm -f $(HCP_OUT)/docker-compose.env
+	$Qrm -f $(HCP_OUT)/.deps.*
 	$Qrmdir $(HCP_OUT)
 endif
 
@@ -113,13 +123,13 @@ endif
 # Lazy-initialization #
 #######################
 
-# General-purpose directory creation. Adding any path to
-# MDIRS ensures it gets this rule. That's why it's the the last declaration.
-# Note, we deliberately avoid "mkdir -p". It's a discipline measure, to ensure
-# things don't get sloppy over time. If make tries to create a child directory
-# before creating its parent, that's either because the child is in MDIRS but
-# the parent isn't, or we're missing a "|" dependency (of the child upon the
-# parent) to control the ordering.
+# General-purpose directory creation. Adding any path to MDIRS ensures it gets
+# this rule. That's why it's the the last declaration.  Note, we deliberately
+# avoid "mkdir -p". It's a discipline measure, to ensure things don't get
+# sloppy over time. If make tries to create a child directory before creating
+# its parent, that's either because the child is in MDIRS but the parent isn't,
+# or we're missing a "|" dependency (of the child upon the parent) to control
+# the ordering.
 
 $(MDIRS):
 	$Qmkdir $@

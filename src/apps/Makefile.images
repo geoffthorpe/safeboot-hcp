@@ -4,31 +4,49 @@
 # $3 = list of non-apps tarballs to consume
 # TODO: processing of $3 should be like $2, rather than the manual matching.
 define app_image
-$(eval myImgDeps :=)
-$(eval myDockerDeps :=)
+$(eval myDockerInputs :=)
+$(eval myImgDepCmd := echo "$(HCP_APPS_OUT)/image.$1: | $(HCP_APPS_OUT)" > $(HCP_OUT)/.deps.image.$1.tmp ;)
+$(eval myImgDepCmd += echo "$(HCP_APPS_OUT)/image.$1: $(HCP_OUT)/.deps.image.$1" > $(HCP_OUT)/.deps.image.$1.tmp ;)
+$(eval myDockerDepCmd := echo "$(HCP_APPS_OUT)/Dockerfile.$1: | $(HCP_APPS_OUT)" > $(HCP_OUT)/.deps.Dockerfile.$1.tmp ;)
+$(eval myDockerDepCmd += echo "$(HCP_APPS_OUT)/Dockerfile.$1: $(HCP_OUT)/.deps.Dockerfile.$1" > $(HCP_OUT)/.deps.Dockerfile.$1.tmp ;)
 $(if $(findstring safeboot,$3),
-	$(eval myImgDeps += $(HCP_OUT)/safeboot/safeboot.tar.gz)
-	$(eval myDockerDeps += $(HCP_OUT)/Dockerfile.safeboot))
+	$(eval myImgDepCmd += echo "$(HCP_APPS_OUT)/image.$1: $(HCP_OUT)/safeboot/safeboot.tar.gz" >> $(HCP_OUT)/.deps.image.$1.tmp ;)
+	$(eval myDockerDepCmd += echo "$(HCP_APPS_OUT)/Dockerfile.$1: $(HCP_OUT)/Dockerfile.safeboot" >> $(HCP_OUT)/.deps.Dockerfile.$1.tmp ;)
+	$(eval myDockerInputs += $(HCP_OUT)/Dockerfile.safeboot))
 $(if $(findstring install,$3),
-	$(eval myImgDeps += $(HCP_OUT)/tpmware/install.tar.gz)
-	$(eval myDockerDeps += $(HCP_OUT)/Dockerfile.install))
-$(eval myDockerDeps += $(foreach i,$2,$(HCP_APPS_OUT)/Dockerfile.stub.$i))
+	$(eval myImgDepCmd += echo "$(HCP_APPS_OUT)/image.$1: $(HCP_OUT)/tpmware/install.tar.gz" >> $(HCP_OUT)/.deps.image.$1.tmp ;)
+	$(eval myDockerDepCmd += echo "$(HCP_APPS_OUT)/Dockerfile.$1: $(HCP_OUT)/Dockerfile.install" >> $(HCP_OUT)/.deps.Dockerfile.$1.tmp ;)
+	$(eval myDockerInputs += $(HCP_OUT)/Dockerfile.install))
+$(foreach i,$2,
+	$(eval myImgDepCmd += echo "$(HCP_APPS_OUT)/image.$1: $(HCP_APPS_OUT)/$i.tar.gz" >> $(HCP_OUT)/.deps.image.$1.tmp ;)
+	$(eval myDockerDepCmd += echo "$(HCP_APPS_OUT)/Dockerfile.$1: $(HCP_APPS_OUT)/Dockerfile.stub.$i" >> $(HCP_OUT)/.deps.Dockerfile.$1.tmp ;))
+$(eval myDockerInputs += $(foreach i,$2,$(HCP_APPS_OUT)/Dockerfile.stub.$i))
+$(eval myImgDepCmd += if test -f $(HCP_OUT)/.deps.image.$1 && \
+	cmp $(HCP_OUT)/.deps.image.$1 $(HCP_OUT)/.deps.image.$1.tmp > /dev/null 2>&1; \
+	then rm -f $(HCP_OUT)/.deps.image.$1.tmp; else \
+	mv $(HCP_OUT)/.deps.image.$1.tmp $(HCP_OUT)/.deps.image.$1; fi )
+$(eval myDockerDepCmd += if test -f $(HCP_OUT)/.deps.Dockerfile.$1 && \
+	cmp $(HCP_OUT)/.deps.Dockerfile.$1 $(HCP_OUT)/.deps.Dockerfile.$1.tmp > /dev/null 2>&1; \
+	then rm -f $(HCP_OUT)/.deps.Dockerfile.$1.tmp; else \
+	mv $(HCP_OUT)/.deps.Dockerfile.$1.tmp $(HCP_OUT)/.deps.Dockerfile.$1; fi )
 $1: $(HCP_APPS_OUT)/image.$1
 $(HCP_APPS_OUT)/image.$1: $(HCP_BASE_TOUCHFILE)
 $(HCP_APPS_OUT)/image.$1: $(HCP_APPS_OUT)/Dockerfile.$1
-$(HCP_APPS_OUT)/image.$1: $(foreach i,$2,$(HCP_APPS_OUT)/$i.tar.gz)
-$(HCP_APPS_OUT)/image.$1: $(myImgDeps)
 	$Qecho "Generating: $(call HCP_IMAGE,$1) (container image $1)"
 	$Qdocker build \
 		-t $(call HCP_IMAGE,$1) \
 		-f $(HCP_APPS_OUT)/Dockerfile.$1 \
 		$(HCP_OUT)
 	$Qtouch $(HCP_APPS_OUT)/image.$1
+$(shell $(myImgDepCmd))
+-include $(HCP_OUT)/.deps.image.$1
 $(HCP_APPS_OUT)/Dockerfile.$1: | $(HCP_APPS_OUT)
-$(HCP_APPS_OUT)/Dockerfile.$1: $(myDockerDeps)
+$(HCP_APPS_OUT)/Dockerfile.$1:
 	$Qecho "Generating: $(HCP_APPS_OUT)/Dockerfile.$1"
 	$Qecho "FROM $(HCP_BASE_DNAME)" > $(HCP_APPS_OUT)/Dockerfile.$1
-	$Qcat $(myDockerDeps) >> $(HCP_APPS_OUT)/Dockerfile.$1
+	$Qcat $(myDockerInputs) >> $(HCP_APPS_OUT)/Dockerfile.$1
+$(shell $(myDockerDepCmd))
+-include $(HCP_OUT)/.deps.Dockerfile.$1
 $(eval APPS += $1)
 ifneq (,$(wildcard $(HCP_APPS_OUT)/image.$1 $(HCP_APPS_OUT)/Dockerfile.$1))
 clean_image_$1:

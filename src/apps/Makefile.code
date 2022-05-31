@@ -40,24 +40,23 @@ endef
 # This should be called _AFTER_ the app_add() calls that construct the app.
 define app_finalize
 $(eval myAllFiles :=)
-$(eval myDepCmd := if test -d "$(HCP_APPS_OUT)"; then )
-$(eval myDepCmd += echo "$(HCP_APPS_OUT)/$1.tar.gz: $(HCP_APPS_OUT)/deps.$1" > $(HCP_APPS_OUT)/deps.$1.tmp ;)
+$(eval myDepCmd := echo "$(HCP_APPS_OUT)/$1.tar.gz: | $(HCP_APPS_OUT)" > $(HCP_OUT)/.deps.app.$1.tmp ;)
+$(eval myDepCmd += echo "$(HCP_APPS_OUT)/$1.tar.gz: $(HCP_OUT)/.deps.apps.$1" > $(HCP_OUT)/.deps.app.$1.tmp ;)
 $(eval myBuildCmd := mkdir -p $(HCP_APPS_INSTALL_DEST)/$1 ;)
 $(foreach i,$(HCP_APPS_BATCHES_$1),
 	$(eval myAllFiles += $(HCP_APPS_BATCH_FILES_$1_$i))
 	$(foreach j,$(HCP_APPS_BATCH_FILES_$1_$i),
-	$(eval myDepCmd += echo "$(HCP_APPS_OUT)/$1.tar.gz: $(HCP_APPS_SRC)/$1/$j" >> $(HCP_APPS_OUT)/deps.$1.tmp ;))
+	$(eval myDepCmd += echo "$(HCP_APPS_OUT)/$1.tar.gz: $(HCP_APPS_SRC)/$1/$j" >> $(HCP_OUT)/.deps.apps.$1.tmp ;))
 	$(eval myBuildCmd += cd /source/$1 ;)
 	$(eval myBuildCmd += cp --parents $(HCP_APPS_BATCH_FILES_$1_$i) \
 				$(HCP_APPS_INSTALL_DEST)/$1/ ;)
 	$(eval myBuildCmd += cd /$(HCP_APPS_INSTALL_DEST)/$1 ;)
 	$(eval myBuildCmd += chmod $(HCP_APPS_BATCH_CHMOD_$1_$i) \
 				$(HCP_APPS_BATCH_FILES_$1_$i) ;))
-$(eval myDepCmd += if test -f $(HCP_APPS_OUT)/deps.$1 && \
-	cmp $(HCP_APPS_OUT)/deps.$1 $(HCP_APPS_OUT)/deps.$1.tmp > /dev/null 2>&1; \
-	then rm -f $(HCP_APPS_OUT)/deps.$1.tmp; else \
-	mv $(HCP_APPS_OUT)/deps.$1.tmp $(HCP_APPS_OUT)/deps.$1; fi )
-$(eval myDepCmd += fi)
+$(eval myDepCmd += if test -f $(HCP_OUT)/.deps.apps.$1 && \
+	cmp $(HCP_OUT)/.deps.apps.$1 $(HCP_OUT)/.deps.apps.$1.tmp > /dev/null 2>&1; \
+	then rm -f $(HCP_OUT)/.deps.apps.$1.tmp; else \
+	mv $(HCP_OUT)/.deps.apps.$1.tmp $(HCP_OUT)/.deps.apps.$1; fi )
 $(eval myBuildCmd += cd /put_it_here ;)
 $(eval myBuildCmd += tar zcf $1.tar.gz $(HCP_APPS_INSTALL_DEST)/$1 ;)
 $(eval myBuildCmd += /hcp/base/chowner.sh reference $1.tar.gz)
@@ -77,13 +76,12 @@ $(HCP_APPS_OUT)/Dockerfile.stub.$1:
 	$Qcat $(HCP_APPS_SRC)/$1/hcp.Dockerfile >> $(HCP_APPS_OUT)/Dockerfile.stub.$1
 
 $(shell $(myDepCmd))
--include $(HCP_APPS_OUT)/deps.$1
+-include $(HCP_OUT)/.deps.apps.$1
 $(HCP_APPS_OUT)/$1.tar.gz: $(foreach i,$(myAllFiles),$(HCP_APPS_SRC)/$1/$i)
 $(eval APPS += code_$1)
-ifneq (,$(wildcard $(HCP_APPS_OUT)/$1.tar.gz $(HCP_APPS_OUT)/deps.$1 $(HCP_APPS_OUT)/Dockerfile.stub.$1))
+ifneq (,$(wildcard $(HCP_APPS_OUT)/$1.tar.gz $(HCP_APPS_OUT)/Dockerfile.stub.$1))
 clean_code_$1:
 	$Qrm -f $(HCP_APPS_OUT)/$1.tar.gz
-	$Qrm -f $(HCP_APPS_OUT)/deps.$1
 	$Qrm -f $(HCP_APPS_OUT)/Dockerfile.stub.$1
 clean_apps: clean_code_$1
 endif
