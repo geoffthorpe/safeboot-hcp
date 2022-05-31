@@ -1,11 +1,13 @@
 #!/bin/bash
 
+set -e
+
 # The following is only relevant when running a closed system inside a docker
 # network, usually to test use-cases/scenarios. If you're deploying a production
 # service and want your containers interacting with the host and other networks,
 # you don't want this.
 
-[[ -d $HCP_FQDN_PATH ]] || exit 0
+[[ -z $HCP_NO_INIT ]] || exit 0
 
 # Force all inter-container comms to use our explicitly orchestrated FQDNs.
 # Turns out there's a lot of "history" (and some bad feeling) around docker
@@ -47,6 +49,15 @@
 #  - we launch /hcp/common/fqdn-updater.sh as a background task to take care
 #    of the other requirements. Details of how it works are outlined in
 #    fqdn-updater.sh itself.
+#
+#  - note, docker can be ... odd ... in terms of the lifetime of a container
+#    itself versus its processes. E.g. if we use a touchfile in the FS to
+#    indicate that fqdn-updater.sh has started, and the container gets stopped,
+#    the touchfile will disappear when the container is restarted if _and only
+#    if_ the container _image_ has changed. Instead, we crudely scan the
+#    process list looking to see if it is literally running.
 
+[[ -d $HCP_FQDN_PATH ]] || exit 0
+ps ax | grep fqdn-updater.sh | grep bash | grep -v grep > /dev/null 2>&1 && exit 0
 test -x /hcp/common/fqdn-updater.sh &&
 	nohup /hcp/common/fqdn-updater.sh > /.hcp-fqdn-updater.output 2>&1 &

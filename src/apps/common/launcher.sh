@@ -6,8 +6,6 @@ set -e
 
 hcp_pre_launch
 
-[[ -n $HCP_NO_INIT ]] || /hcp/common/init.sh
-
 if [[ $# -gt 0 ]]; then
 	echo "Launching '$@'"
 	exec $@

@@ -27,4 +27,7 @@ function hcp_pre_launch {
 	fi
 	echo "Sourcing specific config: $HCP_LAUNCH_ENV"
 	source "$HCP_LAUNCH_ENV"
+	# If we're supposed to launch any background tasks (eg. FQDN
+	# discovery), use this opportunity.
+	/hcp/common/init.sh
 }
