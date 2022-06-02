@@ -5,8 +5,6 @@
 #     0import
 #         - imports the upstream/baseline image, see HCP_BASE in
 #           hcp/settings.mk
-#         - puts our (source) version into the image environment, see HCP_VER
-#           in hcp/Makefile.
 #     1apt-source
 #         - optional, see HCP_1APT_ENABLE in hcp/settings.mk
 #         - overrides or supplements the source repositories and signature keys
@@ -64,13 +62,11 @@ HCP_BASE_DEPS_COMMON := $(HCP_DEPS_COMMON) $(HCP_BASE_SRC)/Makefile
 
 # LAYER: 0import
 #      - inherit the debian image we're based on (per hcp/settings.mk)
-#      - stamps in the HCP_VER version
 
 $(HCP_BASE_OUT)/0import.Dockerfile: | $(HCP_BASE_OUT)
 $(HCP_BASE_OUT)/0import.Dockerfile: $(HCP_BASE_DEPS_COMMON)
 $(HCP_BASE_OUT)/0import.Dockerfile:
 	$Qecho "FROM $(HCP_BASE)" > $@
-	$Qecho "ENV HCP_VER=$(HCP_VER)" >> $@
 	$Qecho "LABEL $(HCP_IMAGE_PREFIX)all=1" >> $@
 
 $(HCP_BASE_OUT)/0import.built: $(HCP_BASE_OUT)/0import.Dockerfile

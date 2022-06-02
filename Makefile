@@ -1,11 +1,3 @@
-##############
-# Versioning #
-##############
-
-HCP_VER_MAJOR := 1
-HCP_VER_MINOR := 1
-HCP_VER := $(HCP_VER_MAJOR):$(HCP_VER_MINOR)
-
 #######################################
 # Top-level control, defaults, config #
 #######################################

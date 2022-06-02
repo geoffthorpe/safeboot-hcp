@@ -6,8 +6,6 @@ expect_hcp_user
 
 cd $HCP_ATTESTSVC_STATE
 
-echo "$HCP_VER" > version
-
 if [[ -d A || -d B || -h current || -h next || -h thirdwheel ]]; then
 	echo "Error, updater state half-baked?" >&2
 	exit 1

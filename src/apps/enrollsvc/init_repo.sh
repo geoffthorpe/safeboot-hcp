@@ -5,12 +5,10 @@
 expect_db_user
 
 cd $HCP_ENROLLSVC_STATE
-echo "$HCP_VER" > version
 
 mkdir $REPO_PATH
 cd $REPO_PATH
 git init
-echo "$HCP_VER" > version
 touch .git/git-daemon-export-ok
 touch $HN2EK_PATH
 mkdir $EK_BASENAME

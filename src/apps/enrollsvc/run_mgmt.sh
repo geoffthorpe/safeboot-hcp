@@ -30,13 +30,6 @@
 
 expect_root
 
-# Validate that version is an exact match (obviously we need the same major,
-# but right now we expect+tolerate nothing other than the same minor too).
-(state_version=`cat $HCP_ENROLLSVC_STATE/version` &&
-	[[ $state_version == $HCP_VER ]]) ||
-(echo "Error: expected version $HCP_VER, but got '$state_version' instead" >&2 &&
-	exit 1) || exit 1
-
 # Persistent credentials are mounted but ownership is for root, naturally. We
 # need them accessible to db_user. Easiest is to copy the directory to the
 # user's home dir (which isn't persistent, so we can do this on each startup).

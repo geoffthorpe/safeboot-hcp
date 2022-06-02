@@ -20,13 +20,6 @@ until [[ -f $HCP_ATTESTSVC_STATE/initialized ]]; do
 	echo "Warning: retrying after $waitsecs-second wait" >&2
 done
 
-# Validate that version is an exact match (obviously we need the same major,
-# but right now we expect+tolerate nothing other than the same minor too).
-(state_version=`cat $HCP_ATTESTSVC_STATE/version` &&
-	[[ $state_version == $HCP_VER ]]) ||
-(echo "Error: expected version $HCP_VER, but got '$state_version' instead" &&
-	exit 1) || exit 1
-
 echo "Running 'attestsvc-hcp' service"
 
 drop_privs_hcp /hcp/attestsvc/flask_wrapper.sh

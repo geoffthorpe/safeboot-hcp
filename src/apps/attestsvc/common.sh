@@ -14,10 +14,6 @@ if [[ `whoami` != "root" ]]; then
 	fi
 fi
 
-if [[ -z "$HCP_VER" ]]; then
-	echo "Error, HCP_VER (\"$HCP_VER\") must be set" >&2
-	exit 1
-fi
 mkdir -p $HCP_ATTESTSVC_STATE
 if [[ ! -d "/home/hcp_user" ]]; then
 	echo "Error, 'hcp_user' account missing or misconfigured" >&2

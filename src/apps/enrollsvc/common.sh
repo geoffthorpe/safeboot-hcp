@@ -54,9 +54,6 @@ if [[ `whoami` != "root" ]]; then
 	fi
 fi
 
-if [[ -z "$HCP_VER" ]]; then
-	echo "Error, HCP_VER must be set" >&2
-fi
 if [[ ! -d "/home/db_user" ]]; then
 	echo "Error, 'db_user' account missing or misconfigured" >&2
 	exit 1

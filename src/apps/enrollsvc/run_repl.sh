@@ -31,13 +31,6 @@
 
 expect_root
 
-# Validate that version is an exact match (obviously we need the same major,
-# but right now we expect+tolerate nothing other than the same minor too).
-(state_version=`cat $HCP_ENROLLSVC_STATE/version` &&
-	[[ $state_version == $HCP_VER ]]) ||
-(echo "Error: expected version $HCP_VER, but got '$state_version' instead" >&2  &&
-	exit 1) || exit 1
-
 echo "Running 'enrollsvc-repl' service (git-daemon)"
 
 GITDAEMON=${HCP_ENROLLSVC_GITDAEMON:=/usr/lib/git-core/git-daemon}
