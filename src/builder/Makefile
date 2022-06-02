@@ -7,7 +7,7 @@ MDIRS += $(HCP_BUILDER_OUT)
 
 # A wrapper target to build the "builder" image
 builder: $(HCP_BUILDER_OUT)/built
-ALL += builder
+ALL += $(HCP_BUILDER_OUT)/built
 
 $(HCP_BUILDER_OUT)/Dockerfile: | $(HCP_BUILDER_OUT)
 $(HCP_BUILDER_OUT)/Dockerfile: $(HCP_BUILDER_SRC)/Makefile

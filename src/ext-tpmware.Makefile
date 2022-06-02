@@ -185,7 +185,7 @@ $(HCP_TPMWARE_OUT)/install.tar.gz:
 
 # A wrapper target to build the tpmware submodules
 tpmware: $(HCP_TPMWARE_OUT)/install.tar.gz
-ALL += tpmware
+ALL += $(HCP_TPMWARE_OUT)/install.tar.gz
 
 # A wrapper target to reset the tpmware submodules
 ifneq (,$(HCP_TPMWARE_SUBMODULE_RESET))

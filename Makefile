@@ -84,7 +84,14 @@ ALL += $(HCP_OUT)/docker-compose.env
 # Cumulative rule #
 ###################
 
-all: $(ALL)
+$(HCP_OUT)/.deps.done: $(DEPS)
+	$Qtouch $@
+	$Qecho "Completed 'deps' target"
+deps: $(HCP_OUT)/.deps.done
+$(HCP_OUT)/.all.done: $(ALL)
+	$Qtouch $@
+	$Qecho "Completed 'all' target"
+all: $(HCP_OUT)/.all.done
 
 ########################
 # Hierarchical cleanup #
@@ -117,8 +124,13 @@ preclean:
 clean:
 ifneq (,$(wildcard $(HCP_OUT)))
 	$Qrm -f $(HCP_OUT)/docker-compose.env
-	$Qrm -f $(HCP_OUT)/.deps.*
+	$Qrm -f $(HCP_OUT)/.all.done
 	$Qrmdir $(HCP_OUT)
+clean: clean_deps
+endif
+clean_deps:
+ifneq (,$(wildcard $(HCP_OUT)))
+	$Qrm -f $(HCP_OUT)/.deps.*
 endif
 
 #######################

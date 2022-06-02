@@ -57,7 +57,7 @@ endif
 
 # A wrapper target to build the "base platform" image
 base: $(HCP_BASE_TOUCHFILE)
-ALL += base
+ALL += $(HCP_BASE_TOUCHFILE)
 
 # A change to these files automatically puts (derived) Dockerfiles out of date.
 HCP_BASE_DEPS_COMMON := $(HCP_DEPS_COMMON) $(HCP_BASE_SRC)/Makefile

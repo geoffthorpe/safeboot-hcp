@@ -82,7 +82,7 @@ endif
 
 # A wrapper target to package testcreds
 testcreds: $(HCP_TESTCREDS_DONE)
-ALL += testcreds
+ALL += $(HCP_TESTCREDS_DONE)
 
 # Cleanup
 ifneq (,$(wildcard $(HCP_TESTCREDS_OUT)))

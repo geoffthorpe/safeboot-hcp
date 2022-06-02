@@ -79,7 +79,7 @@ $(HCP_SAFEBOOT_OUT)/safeboot.tar.gz:
 
 # A wrapper target to package safeboot
 safeboot: $(HCP_SAFEBOOT_OUT)/safeboot.tar.gz
-ALL += safeboot
+ALL += $(HCP_SAFEBOOT_OUT)/safeboot.tar.gz
 
 # Cleanup
 ifneq (,$(wildcard $(HCP_SAFEBOOT_OUT)))

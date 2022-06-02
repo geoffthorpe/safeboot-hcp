@@ -62,6 +62,7 @@ $(eval myBuildCmd += tar zcf $1.tar.gz $(HCP_APPS_INSTALL_DEST)/$1 ;)
 $(eval myBuildCmd += /hcp/base/chowner.sh reference $1.tar.gz)
 apps_$1: code_$1
 code_$1: $(HCP_APPS_OUT)/$1.tar.gz $(HCP_APPS_OUT)/Dockerfile.stub.$1
+$(eval APPS += $(HCP_APPS_OUT)/$1.tar.gz $(HCP_APPS_OUT)/Dockerfile.stub.$1)
 $(HCP_APPS_OUT)/$1.tar.gz: | $(HCP_APPS_OUT)/reference
 $(HCP_APPS_OUT)/$1.tar.gz: | $(HCP_BASE_TOUCHFILE)
 $(HCP_APPS_OUT)/$1.tar.gz:
@@ -77,8 +78,8 @@ $(HCP_APPS_OUT)/Dockerfile.stub.$1:
 
 $(shell $(myDepCmd))
 -include $(HCP_OUT)/.deps.apps.$1
+$(eval DEPS += $(HCP_OUT)/.deps.apps.$1)
 $(HCP_APPS_OUT)/$1.tar.gz: $(foreach i,$(myAllFiles),$(HCP_APPS_SRC)/$1/$i)
-$(eval APPS += code_$1)
 ifneq (,$(wildcard $(HCP_APPS_OUT)/$1.tar.gz $(HCP_APPS_OUT)/Dockerfile.stub.$1))
 clean_code_$1:
 	$Qrm -f $(HCP_APPS_OUT)/$1.tar.gz

@@ -40,6 +40,7 @@ $(HCP_APPS_OUT)/image.$1: $(HCP_APPS_OUT)/Dockerfile.$1
 	$Qtouch $(HCP_APPS_OUT)/image.$1
 $(shell $(myImgDepCmd))
 -include $(HCP_OUT)/.deps.image.$1
+$(eval DEPS += $(HCP_OUT)/.deps.image.$1)
 $(HCP_APPS_OUT)/Dockerfile.$1: | $(HCP_APPS_OUT)
 $(HCP_APPS_OUT)/Dockerfile.$1:
 	$Qecho "Generating: $(HCP_APPS_OUT)/Dockerfile.$1"
@@ -47,7 +48,8 @@ $(HCP_APPS_OUT)/Dockerfile.$1:
 	$Qcat $(myDockerInputs) >> $(HCP_APPS_OUT)/Dockerfile.$1
 $(shell $(myDockerDepCmd))
 -include $(HCP_OUT)/.deps.Dockerfile.$1
-$(eval APPS += $1)
+$(eval DEPS += $(HCP_OUT)/.deps.Dockerfile.$1)
+$(eval APPS += $(HCP_APPS_OUT)/image.$1)
 ifneq (,$(wildcard $(HCP_APPS_OUT)/image.$1 $(HCP_APPS_OUT)/Dockerfile.$1))
 clean_image_$1:
 	$Qrm -f $(HCP_APPS_OUT)/image.$1
