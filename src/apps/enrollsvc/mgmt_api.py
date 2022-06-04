@@ -70,7 +70,8 @@ def home():
 #
 # This is the sudo preamble to pass to subprocess.run(), the actual script name
 # and arguments follow this, and are appended by each handler.
-sudoargs=['sudo','-u','db_user']
+db_user=os.environ['HCP_ENROLLSVC_USER_DB']
+sudoargs=['sudo','-u',db_user]
 
 @app.route('/v1/add', methods=['POST'])
 def my_add():

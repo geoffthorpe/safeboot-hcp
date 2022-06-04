@@ -1,15 +1,10 @@
 #!/bin/bash
 
-# To handle the case where the persistent data isn't set up, we run a subshell
-# that does limited environment checks and waits for the volume to be ready.
-# This follows what the mgmt container does, which launches a similar limited
-# environment to _perform_ the initialization.
 (
-	export DB_IN_SETUP=1
-
-	. /hcp/enrollsvc/common.sh
-
-	expect_root
+	if [[ ! -d $HCP_ENROLLSVC_STATE ]]; then
+		echo "Error, HCP_ENROLLSVC_STATE ($HCP_ENROLLSVC_STATE) doesn't exist" >&2
+		exit 1
+	fi
 
 	waitsecs=0
 	waitinc=3
@@ -37,7 +32,7 @@ GITDAEMON=${HCP_ENROLLSVC_GITDAEMON:=/usr/lib/git-core/git-daemon}
 GITDAEMON_FLAGS=${HCP_ENROLLSVC_GITDAEMON_FLAGS:=--reuseaddr --listen=0.0.0.0 --port=9418}
 
 TO_RUN="$GITDAEMON \
-	--base-path=$HCP_ENROLLSVC_STATE \
+	--base-path=$HCP_DB_DIR \
 	$GITDAEMON_FLAGS \
 	$REPO_PATH"
 

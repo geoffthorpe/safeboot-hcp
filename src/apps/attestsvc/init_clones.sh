@@ -4,14 +4,14 @@
 
 expect_hcp_user
 
-cd $HCP_ATTESTSVC_STATE
+cd $HCP_USER_DIR
 
 if [[ -d A || -d B || -h current || -h next || -h thirdwheel ]]; then
 	echo "Error, updater state half-baked?" >&2
 	exit 1
 fi
 
-echo "First-time initialization of $HCP_ATTESTSVC_STATE. Two clones and two symlinks." >&2
+echo "First-time initialization of $HCP_USER_DIR. Two clones and two symlinks." >&2
 waitsecs=0
 waitinc=3
 waitcount=0

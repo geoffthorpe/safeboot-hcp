@@ -2,6 +2,36 @@
 
 set -e
 
+# Shouldn't this be in /hcp/common/hcp.sh?
+if [[ ! -d "/safeboot/sbin" ]]; then
+	echo "Error, /safeboot/sbin is not present" >&2
+	exit 1
+fi
+export PATH=$PATH:/safeboot/sbin
+echo "Adding /safeboot/sbin to PATH" >&2
+if [[ -d "/install/bin" ]]; then
+	export PATH=$PATH:/install/bin
+	echo "Adding /install/sbin to PATH" >&2
+fi
+if [[ -d "/install/lib" ]]; then
+	export LD_LIBRARY_PATH=/install/lib:$LD_LIBRARY_PATH
+	echo "Adding /install/lib to LD_LIBRARY_PATH" >&2
+	if [[ -d /install/lib/python3/dist-packages ]]; then
+		export PYTHONPATH=/install/lib/python3/dist-packages:$PYTHONPATH
+		echo "Adding /install/lib/python3/dist-packages to PYTHONPATH" >&2
+	fi
+fi
+
+function expect_root {
+	if [[ `whoami` != "root" ]]; then
+		echo "Error, running as \"`whoami`\" rather than \"root\"" >&2
+		exit 1
+	fi
+}
+
+# The root-written environment is stored here
+export ENROLLSVC_ENV=/etc/environment.enrollsvc
+
 # A note about security. We priv-sep the flask app (that implements the URL
 # handlers for the management interface) from the enrollment code
 # (asset-generation and DB manipulation). We run them both as distinct,
@@ -14,8 +44,9 @@ set -e
 #
 # We can't solve this by baking all configuration into the container image
 # (/etc/environment), because we want general-purpose Enrollment Service images
-# (not configuration-specific), and we want images to be built and deployed
-# from behind a CI pipeline, not by prod hosts and operators.
+# that isn't configuration-specific, and we also want images to be (able to be)
+# built and deployed from behind a CI pipeline, unaware of their intended
+# usage.
 #
 # So, here's what we do;
 # - "docker run" invocations always run, initially, as root within their
@@ -31,105 +62,193 @@ set -e
 #   - when a call is made across a sudo boundary.
 # - No whitelisting or other environment carry-over.
 #
-# NB: because the user accounts (db_user and flask_user) are created by
-# Dockerfile, those values _are_ baked into the container images and get
-# propogated into the initial (root) environment by "ENV" commands in the
-# Dockerfile. HCP_ENROLLSVC_STATE, on the other hand, is specified at "docker
-# run" time. This file treats them all the same way, but it's worth knowing.
+# NB: we support composite container images (like 'caboodle') that not only
+# contain the implementation of multiple services but can also run multiple
+# such instances within the same container instance. As a consequence, if
+# multiple distinct enrollsvc instances are run (or instances of another,
+# similar service that uses similar "flask_user"/"db_user" accounts), they will
+# collide! As such, we rely on environment variables to tell us the actual
+# account names to use for those two system roles.
+#
+# Further, our service may be started and stopped within a single long-running
+# environment, and/or it may be a container that gets torn down and started up.
+# In the former case, accounts within the OS will persist across invocations,
+# whereas the latter will disappear each time a new container is created. This
+# is independently true for the two co-services (mgmt and repl). This is why
+# common.sh always tries to create these system accounts on the fly, and checks
+# whether failure is because of a race.
+#
+# Needless to say, the environment passed in when a service instance is first
+# configured must be the same each and every other time that the service is
+# started!
 
 if [[ `whoami` != "root" ]]; then
+
+	# We're not root, so we source the env-vars that root put there.
 	if [[ -z "$HCP_ENVIRONMENT_SET" ]]; then
 		echo "Running in reduced non-root environment (sudo probably)." >&2
-		cat /etc/environment >&2
-		source /etc/environment
+		source $ENROLLSVC_ENV
 	fi
-fi
 
-if [[ ! -d "/home/db_user" ]]; then
-	echo "Error, 'db_user' account missing or misconfigured" >&2
+else
+
+# If we're root, this environment should already be known
+if [[ ! -d $HCP_ENROLLSVC_STATE ]]; then
+	echo "Error, HCP_ENROLLSVC_STATE ($HCP_ENROLLSVC_STATE) doesn't exist" >&2
 	exit 1
 fi
-if [[ ! -d "/home/flask_user" ]]; then
-	echo "Error, 'flask_user' account missing or misconfigured" >&2
+if [[ -z $HCP_ENROLLSVC_USER_FLASK || -z $HCP_ENROLLSVC_USER_DB ]]; then
+	echo "Error, HCP_ENROLLSVC_USER_{FLASK,DB} must be set" >&2
 	exit 1
 fi
 
-if [[ ! -d "/safeboot/sbin" ]]; then
-	echo "Error, /safeboot/sbin is not present" >&2
+# All the DB_USER-owned stuff goes into this sub-directory
+export HCP_DB_DIR=$HCP_ENROLLSVC_STATE/db
+
+role_account_uid_file \
+	$HCP_ENROLLSVC_USER_FLASK  \
+	$HCP_ENROLLSVC_STATE/uid_flask_user \
+	"Flask User,,,,"
+role_account_uid_file \
+	$HCP_ENROLLSVC_USER_DB \
+	$HCP_ENROLLSVC_STATE/uid_db_user \
+	"EnrollDB User,,,,"
+
+# Generate env file if it doesn't exist yet
+if [[ ! -f $ENROLLSVC_ENV ]]; then
+	echo " - generating '$ENROLLSVC_ENV'"
+	touch $ENROLLSVC_ENV
+	chmod 644 $ENROLLSVC_ENV
+	echo "# HCP enrollsvc settings" > $ENROLLSVC_ENV
+	export_hcp_env >> $ENROLLSVC_ENV
+	# We also set some stuff that isn't "HCP_"-prefixed, as consumed by
+	# safeboot scripts.
+	export SIGNING_KEY_DIR=/home/$HCP_ENROLLSVC_USER_DB/enrollsigner
+	export SIGNING_KEY_PUB=$SIGNING_KEY_DIR/key.pem
+	export SIGNING_KEY_PRIV=$SIGNING_KEY_DIR/key.priv
+	export GENCERT_CA_DIR=/home/$HCP_ENROLLSVC_USER_DB/enrollcertissuer
+	export GENCERT_CA_CERT=$GENCERT_CA_DIR/CA.cert
+	export GENCERT_CA_PRIV=$GENCERT_CA_DIR/CA.priv
+	cat >> $ENROLLSVC_ENV <<EOF
+export SIGNING_KEY_DIR=$SIGNING_KEY_DIR
+export SIGNING_KEY_PUB=$SIGNING_KEY_PUB
+export SIGNING_KEY_PRIV=$SIGNING_KEY_PRIV
+export GENCERT_CA_DIR=$GENCERT_CA_DIR
+export GENCERT_CA_CERT=$GENCERT_CA_CERT
+export GENCERT_CA_PRIV=$GENCERT_CA_PRIV
+EOF
+	echo "export HCP_ENVIRONMENT_SET=1" >> $ENROLLSVC_ENV
+fi
+
+# Copy creds to the home dir if we have them and they aren't copied yet
+if [[ -n $HCP_ENROLLSVC_SIGNER && -d "$HCP_ENROLLSVC_SIGNER" &&
+		! -d "$SIGNING_KEY_DIR" ]]; then
+	echo "Copying asset-signing creds to '$SIGNING_KEY_DIR'"
+	cp -r $HCP_ENROLLSVC_SIGNER $SIGNING_KEY_DIR
+	chown -R $HCP_ENROLLSVC_USER_DB $SIGNING_KEY_DIR
+fi
+if [[ -n $HCP_ENROLLSVC_CERTISSUER && -d "$HCP_ENROLLSVC_CERTISSUER" &&
+		! -d "$GENCERT_CA_DIR" ]]; then
+	echo "Copying cert-issuer creds to '$GENCERT_CA_DIR'"
+	cp -r $HCP_ENROLLSVC_CERTISSUER $GENCERT_CA_DIR
+	chown -R $HCP_ENROLLSVC_USER_DB $GENCERT_CA_DIR
+fi
+
+# Handle global state initialization, part A
+if [[ ! -f $HCP_ENROLLSVC_STATE/initialized ]]; then
+
+	echo "Initializing enrollsvc state"
+
+	echo " - generating '$HCP_ENROLLSVC_STATE/sudoers'"
+	cat > "$HCP_ENROLLSVC_STATE/sudoers" <<EOF
+# sudo rules for enrollsvc-mgmt" > /etc/sudoers.d/hcp
+Cmnd_Alias HCP = /hcp/enrollsvc/op_add.sh,/hcp/enrollsvc/op_delete.sh,/hcp/enrollsvc/op_find.sh,/hcp/enrollsvc/op_query.sh
+Defaults !lecture
+Defaults !authenticate
+$HCP_ENROLLSVC_USER_FLASK ALL = ($HCP_ENROLLSVC_USER_DB) HCP
+EOF
+
+	echo " - generating '$HCP_ENROLLSVC_STATE/safeboot-enroll.conf'"
+	cat > $HCP_ENROLLSVC_STATE/safeboot-enroll.conf <<EOF
+# Autogenerated by enrollsvc/run_mgmt.sh
+export GENCERT_CA_PRIV=$GENCERT_CA_PRIV
+export GENCERT_CA_CERT=$GENCERT_CA_CERT
+export GENCERT_REALM=$HCP_ENROLLSVC_REALM
+export GENCERT_KEY_BITS=2048
+export GENCERT_X509_TOOLING=OpenSSL
+export DIAGNOSTICS=$DIAGNOSTICS
+POLICIES[cert]=pcr11
+POLICIES[cert-https-client]=pcr11
+POLICIES[cert-https-server]=pcr11
+POLICIES[cert-pkinit-client]=pcr11
+POLICIES[cert-pkinit-kdc]=pcr11
+POLICIES[rootfskey]=pcr11
+EOF
+
+	echo " - generating DB_USER-owned data in '$HCP_DB_DIR'"
+	mkdir $HCP_DB_DIR
+	chown $HCP_ENROLLSVC_USER_DB $HCP_DB_DIR
+
+fi
+
+# Steps that may need running on each container launch (not just first-time
+# initialization)
+if ! ln -s "$HCP_ENROLLSVC_STATE/sudoers" /etc/sudoers.d/hcp > /dev/null 2>&1 && \
+		[[ ! -h /etc/sudoers.d/hcp ]]; then
+	echo "Error, couldn't create symlink '/etc/sudoers.d/hcp'" >&2
 	exit 1
 fi
-export PATH=$PATH:/safeboot/sbin
-echo "Adding /safeboot/sbin to PATH" >&2
-
-if [[ -d "/install/bin" ]]; then
-	export PATH=$PATH:/install/bin
-	echo "Adding /install/sbin to PATH" >&2
+if ! ln -s "$HCP_ENROLLSVC_STATE/safeboot-enroll.conf" \
+			/safeboot/enroll.conf > /dev/null 2>&1 &&
+		[[ ! -h /safeboot/enroll.conf ]]; then
+	echo "Error, couldn't create symlink '/safeboot/enroll.conf'" >&2
+	exit 1
 fi
 
-if [[ -d "/install/lib" ]]; then
-	export LD_LIBRARY_PATH=/install/lib:$LD_LIBRARY_PATH
-	echo "Adding /install/lib to LD_LIBRARY_PATH" >&2
-	if [[ -d /install/lib/python3/dist-packages ]]; then
-		export PYTHONPATH=/install/lib/python3/dist-packages:$PYTHONPATH
-		echo "Adding /install/lib/python3/dist-packages to PYTHONPATH" >&2
-	fi
-fi
-
-if [[ `whoami` == "root" ]]; then
-	# We're root, so we write the env-vars we got (from docker-run) to
-	# /etc/environment so that non-root paths through common.sh source
-	# those known-good values.
-	touch /etc/environment
-	chmod 644 /etc/environment
-	echo "# HCP enrollsvc settings, put here so that non-root environments" >> /etc/environment
-	echo "# always get known-good values, especially via sudo!" >> /etc/environment
-	export_hcp_env >> /etc/environment
-	echo "export HCP_ENVIRONMENT_SET=1" >> /etc/environment
-fi
-
-# Derive more configuration using these constants
-REPO_NAME=enrolldb.git
-EK_BASENAME=ekpubhash
-REPO_PATH=$HCP_ENROLLSVC_STATE/$REPO_NAME
-EK_PATH=$REPO_PATH/$EK_BASENAME
-REPO_LOCKPATH=$HCP_ENROLLSVC_STATE/lock-$REPO_NAME
-
-# Basic functions
-
-function expect_root {
-	if [[ `whoami` != "root" ]]; then
-		echo "Error, running as \"`whoami`\" rather than \"root\"" >&2
-		exit 1
-	fi
+# Functions that are needed by root environments. (Including the "part B" code
+# just below, which needs to know how to drop_privs_db.)
+function drop_privs_db {
+	# The only thing we need to whitelist is ENROLLSVC_IN_SETUP, to
+	# suppress our checks for the existence of a directory at $(EK_PATH).
+	# I.e.  run_repl.sh uses this when polling to wait for the database to
+	# be initialized (without which our check would cause it to exit), and
+	# run_mgmt.sh uses it when making the same check and when subsequently
+	# initializing the database.
+	exec su --whitelist-environment ENROLLSVC_IN_SETUP -c "$*" - $HCP_ENROLLSVC_USER_DB
+}
+function drop_privs_flask {
+	exec su -c "$*" - $HCP_ENROLLSVC_USER_FLASK
 }
 
+# Handle first-time initialization, part B
+if [[ ! -f $HCP_ENROLLSVC_STATE/initialized ]]; then
+	echo "   - initializing repo"
+	(ENROLLSVC_IN_SETUP=1 drop_privs_db /hcp/enrollsvc/init_repo.sh)
+	touch $HCP_ENROLLSVC_STATE/initialized
+	echo "State now initialized"
+fi
+
+fi # end of if(whoami==root)
+
+# The remaining code is processed by all includers, in all contexts.
+
 function expect_db_user {
-	if [[ `whoami` != "db_user" ]]; then
-		echo "Error, running as \"`whoami`\" rather than \"db_user\"" >&2
+	if [[ `whoami` != "$HCP_ENROLLSVC_USER_DB" ]]; then
+		echo "Error, running as \"`whoami`\" rather than \"$HCP_ENROLLSVC_USER_DB\"" >&2
 		exit 1
 	fi
 }
 
 function expect_flask_user {
-	if [[ `whoami` != "flask_user" ]]; then
-		echo "Error, running as \"`whoami`\" rather than \"flask_user\"" >&2
+	if [[ `whoami` != "$HCP_ENROLLSVC_USER_FLASK" ]]; then
+		echo "Error, running as \"`whoami`\" rather than \"$HCP_ENROLLSVC_USER_FLASK\"" >&2
 		exit 1
 	fi
 }
 
-function drop_privs_db {
-	# The only thing we need to whitelist is DB_IN_SETUP, to suppress our
-	# checks for the existence of a directory at $(EK_PATH). I.e.
-	# run_repl.sh uses this when polling to wait for the database to be
-	# initialized (without which our check would cause it to exit), and
-	# run_mgmt.sh uses it when making the same check and when subsequently
-	# initializing the database.
-	exec su --whitelist-environment DB_IN_SETUP -c "$*" - db_user
-}
-
-function drop_privs_flask {
-	exec su -c "$*" - flask_user
-}
+if [[ -z "$DIAGNOSTICS" ]]; then
+	export DIAGNOSTICS="false"
+fi
 
 function repo_cmd_lock {
 	[[ -f $REPO_LOCKPATH ]] && echo "Warning, lockfile contention" >&2
@@ -165,17 +284,22 @@ function repo_cmd_unlock {
 # - the ekpubhash (truncated to 32 characters if appropriate, i.e. to match the
 #   name of the per-TPM sub-sub-sub-drectory in the ekpubhash/ directory tree).
 
-# The initially-empty file
+# Variables concerning the enrolldb
+REPO_NAME=enrolldb.git
+REPO_PATH=$HCP_DB_DIR/$REPO_NAME
+REPO_LOCKPATH=$HCP_DB_DIR/lock-$REPO_NAME
+EK_BASENAME=ekpubhash
+EK_PATH=$REPO_PATH/$EK_BASENAME
+
+# Variables concerning the HN2EK reverse-mapping file
 HN2EK_BASENAME=hn2ek
 HN2EK_PATH=$REPO_PATH/$HN2EK_BASENAME
-
-# The following definitions are for the git-based enrolldb.
 
 # EK_PATH must point to the 'ekpubhash' directory (in the "enrolldb.git"
 # repo/clone), unless (of course) we are being sourced by the script that is
 # creating the repo.
 if [[ -z "$EK_PATH" || ! -d "$EK_PATH" ]]; then
-	if [[ -z "$DB_IN_SETUP" ]]; then
+	if [[ -z "$ENROLLSVC_IN_SETUP" ]]; then
 		echo "Error, EK_PATH must point to the ekpubhash lookup tree" >&2
 		exit 1
 	fi

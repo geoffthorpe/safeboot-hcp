@@ -30,7 +30,7 @@ function pull_updates {
 # vanishes for a while, so we can't let bash abort the script due to an error
 # in git-fetch.
 #
-# On the other hand if something like "cd $HCP_ATTESTSVC_STATE", "cd next", or
+# On the other hand if something like "cd $HCP_USER_DIR", "cd next", or
 # "datetime_log" fails, then the appropriate thing _is_ for bash to kill the
 # script and attract the attention of someone to come and investigate.
 # (Rationale: in such cases, trying to recover or even endure just adds
@@ -38,10 +38,10 @@ function pull_updates {
 # "bury the lede" when someone sifts through the wreckage later trying to
 # figure out what happened.)
 while /bin/true; do
-	cd $HCP_ATTESTSVC_STATE
+	cd $HCP_USER_DIR
 	cd next
 	if pull_updates; then
-		cd $HCP_ATTESTSVC_STATE
+		cd $HCP_USER_DIR
 		rm -f transient-failure
 		cp -P current thirdwheel
 		cp -T -P next current
@@ -61,7 +61,7 @@ while /bin/true; do
 		# by a db failure. I.e. we need error-handling around our
 		# error-handling, to raise a different kind of alert.
 		datetime_log "Transient error. Trying to revert from incomplete update."
-		touch $HCP_ATTESTSVC_STATE/transient-failure
+		touch $HCP_USER_DIR/transient-failure
 		git reset --hard
 		git clean -f -d -x
 		datetime_log "sleeping for $BACKOFF_TIMER seconds"

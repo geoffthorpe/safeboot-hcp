@@ -89,7 +89,7 @@ services:
         environment:
           - HCP_INSTANCE=/usecase/arepl.env
         healthcheck:
-            test: test -f /attestdb/initialized && ! test -f /attestdb/transient-failure
+            test: test -f /attestdb/initialized && ! test -f /attestdb/hcp/transient-failure
             timeout: 1s
             interval: 2s
 
