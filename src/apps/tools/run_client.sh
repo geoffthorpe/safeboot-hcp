@@ -72,17 +72,18 @@ tmp_extract=`mktemp -d`
 trap 'rm -rf $tmp_pcrread $tmp_secrets $tmp_attest $tmp_key $tmp_extract' EXIT ERR
 
 # Check that our TPM is configured and alive
-waitsecs=0
-waitinc=3
 waitcount=0
 until tpm2_pcrread >> "$tmp_pcrread" 2>&1; do
-	if [[ $((++waitcount)) -eq 6 ]]; then
+	waitcount=$((waitcount+1))
+	if [[ $waitcount -eq 1 ]]; then
+		echo "Warning: waiting for TPM to initialize" >&2
+	fi
+	if [[ $waitcount -eq 11 ]]; then
+		echo "Error: giving up. Outputs of tpm_pcrread follow;" >&2
 		cat $tmp_pcrread >&2
-		echo "Error: TPM not available, failing" >&2
 		exit 1
 	fi
-	echo "Warning: TPM not available, waiting $((waitsecs+=waitinc)) seconds" >&2
-	sleep $waitsecs
+	sleep 1
 done
 if [[ $waitcount -gt 0 ]]; then
 	echo "Info: TPM available after retrying" >&2
@@ -105,23 +106,27 @@ tpm2_dictionarylockout --clear-lockout
 # Now keep trying to get a successful attestation. It may take a few seconds
 # for our TPM enrollment to propagate to the attestation server, so it's normal
 # for this to fail a couple of times before succeeding.
-waitsecs=0
-waitinc=3
 waitcount=0
+wait_tens=2
 until ./sbin/tpm2-attest attest $HCP_ATTESTCLIENT_ATTEST_URL \
 				> $tmp_secrets 2>> "$tmp_attest"; do
-	if [[ $((++waitcount)) -eq 6 ]]; then
-		cat $tmp_attest >&2
-		echo "Error: attestation failed multiple times, giving up" >&2
-		exit 1
+	waitcount=$((waitcount+1))
+	if [[ $waitcount -eq 1 ]]; then
+		echo "Warning: attestation failed, may just be replication latency" >&2
 	fi
-	echo "Warning: attestation failed, may just be replication latency" >&2
-	echo "Sleeping for $((waitsecs+=waitinc)) seconds" >&2
-	sleep $waitsecs
+	if [[ $waitcount -eq 11 ]]; then
+		if [[ $wait_tens -eq 1 ]]; then
+			echo "Error: attestation failed many times, giving up" >&2
+			cat $tmp_attest >&2
+			exit 1
+		fi
+		wait_tens=$((wait_tens-1))
+		echo "Warning: retried for another 10 seconds" >&2
+		waitcount=1
+	fi
+	sleep 1
 done
-if [[ $waitcount -gt 0 ]]; then
-	echo "Info: attestation succeeded after retrying" >&2
-fi
+echo "Info: attestation succeeded after retrying" >&2
 
 if (
 	echo "Extracting the attestation result"

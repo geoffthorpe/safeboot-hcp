@@ -6,19 +6,17 @@
 		exit 1
 	fi
 
-	waitsecs=0
-	waitinc=3
 	waitcount=0
 	until [[ -f $HCP_ENROLLSVC_STATE/initialized ]]; do
-		if [[ $((++waitcount)) -eq 10 ]]; then
-			echo "Error: state not initialized, failing" >&2
-			exit 1
-		fi
+		waitcount=$((waitcount+1))
 		if [[ $waitcount -eq 1 ]]; then
-			echo "Warning: state not initialized, waiting" >&2
+			echo "Warning: waiting for enrollsvc state to initialize" >&2
 		fi
-		sleep $((waitsecs+=waitinc))
-		echo "Warning: retrying after $waitsecs-second wait" >&2
+		if [[ $waitcount -eq 11 ]]; then
+			echo "Warning: waited for another 10 seconds" >&2
+			waitcount=1
+		fi
+		sleep 1
 	done
 )
 

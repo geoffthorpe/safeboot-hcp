@@ -181,18 +181,19 @@ raw_enroll_tpm()
 	ekpubhash=$(openssl sha256 "$tpm_path/tpm/ek.pub" | \
 		sed -e "s/^.*= //" | cut -c 1-32)
 	# Query to see if this TPM is already enrolled
-	waitsecs=0
-	waitinc=3
 	waitcount=0
 	until myquery=$(python3 /hcp/tools/enroll_api.py \
 				--api "$enroll_api" \
 				query $ekpubhash); do
-		if [[ $((++waitcount)) -eq 10 ]]; then
-			echo "Error, failed query API '$enroll_api' $ekpubhash" >&2
+		waitcount=$((waitcount+1))
+		if [[ $waitcount -eq 1 ]]; then
+			echo "Warning: retrying query API '$enroll_api' $ekpubhash" >&2
+		fi
+		if [[ $waitcount -eq 11 ]]; then
+			echo "Error: giving up" >&2
 			return 1
 		fi
-		sleep $((waitsecs+=waitinc))
-		echo "Warning, retrying query API '$enroll_api' in ${waitsecs}s" >&2
+		sleep 1
 	done
 	if echo "$myquery" | jq -e '.entries | length>0' >&2 ; then
 		# If we're not asked to reenroll, that's that
@@ -204,20 +205,21 @@ raw_enroll_tpm()
 	fi
 	# Enroll
 	echo "Enrolling TPM '$name'" >&2
-	waitsecs=0
-	waitinc=3
 	waitcount=0
 	until myquery=$(python3 /hcp/tools/enroll_api.py \
 				--api "$enroll_api" \
 				add \
 				--profile "$enroll_profile" \
 				$tpm_path/tpm/ek.pub $enroll_hostname); do
-		if [[ $((++waitcount)) -eq 10 ]]; then
-			echo "Error, failed enroll API '$enroll_api'" >&2
+		waitcount=$((waitcount+1))
+		if [[ $waitcount -eq 1 ]]; then
+			echo "Warning: retrying enroll API '$enroll_api' $ekpubhash" >&2
+		fi
+		if [[ $waitcount -eq 11 ]]; then
+			echo "Error: giving up" >&2
 			return 1
 		fi
-		sleep $((waitsecs+=waitinc))
-		echo "RETRYING in ${waitsecs}s\n..."
+		sleep 1
 	done
 	echo "TPM '$name' enrolled"
 }

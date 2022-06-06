@@ -12,19 +12,17 @@ if [[ -d A || -d B || -h current || -h next || -h thirdwheel ]]; then
 fi
 
 echo "First-time initialization of $HCP_USER_DIR. Two clones and two symlinks." >&2
-waitsecs=0
-waitinc=3
 waitcount=0
 until git clone -o origin $HCP_ATTESTSVC_REMOTE_REPO A; do
-	if [[ $((++waitcount)) -eq 10 ]]; then
-		echo "Error: can't clone from enrollsvc, failing" >&2
-		exit 1
-	fi
+	waitcount=$((waitcount+1))
 	if [[ $waitcount -eq 1 ]]; then
 		echo "Warning: can't clone from enrollsvc, waiting" >&2
 	fi
-	sleep $((waitsecs+=waitinc))
-	echo "Warning: retrying after $waitsecs-second wait" >&2
+	if [[ $waitcount -eq 11 ]]; then
+		echo "Warning: waited for another 10 seconds" >&2
+		waitcount=1
+	fi
+	sleep 1
 done
 git clone -o twin A B
 ln -s A current

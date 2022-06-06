@@ -3,16 +3,17 @@
 . /hcp/swtpmsvc/common.sh
 
 # Handle initialization ordering issues by retrying.
-waitsecs=0
-waitinc=3
 waitcount=0
-while [[ ! -d $HCP_SWTPMSVC_STATE/tpm ]]; do
-	if [[ $((++waitcount)) -eq 10 ]]; then
-		echo "Error: swtpmsvc state uninitialized" >&2
-		exit 1
+until [[ -d $HCP_SWTPMSVC_STATE/tpm ]]; do
+	waitcount=$((waitcount+1))
+	if [[ $waitcount -eq 1 ]]; then
+		echo "Warning: waiting for swtpmsvc state to initialize" >&2
 	fi
-	sleep $((waitsecs+=waitinc))
-	echo "Warning, waiting for TPM to be initialized" >&2
+	if [[ $waitcount -eq 11 ]]; then
+		echo "Warning: waited for another 10 seconds" >&2
+		waitcount=1
+	fi
+	sleep 1
 done
 
 TPMPORT1=9876
