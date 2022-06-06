@@ -25,32 +25,8 @@ if [[ ! -f "$ENROLL_SIGN_ANCHOR" ]]; then
 	exit 1
 fi
 
-if [[ -d "/install/bin" ]]; then
-	echo "Adding /install/sbin to PATH"
-	export PATH=$PATH:/install/bin
-fi
-
-if [[ ! -d /safeboot/sbin ]]; then
-	echo "Error, Safeboot scripts aren't installed"
-	exit 1
-fi
-echo "Adding /safeboot/sbin to PATH"
-export PATH=/safeboot/sbin:$PATH
-if [[ ! -f /safeboot/functions.sh ]]; then
-	echo "Error, Safeboot 'functions.sh' isn't installed"
-	exit 1
-fi
-echo "Sourcing /safeboot/functions.sh"
-source "/safeboot/functions.sh"
-
-if [[ -d "/install/lib" ]]; then
-	export LD_LIBRARY_PATH=/install/lib:$LD_LIBRARY_PATH
-	echo "Adding /install/lib to LD_LIBRARY_PATH"
-	if [[ -d /install/lib/python3/dist-packages ]]; then
-		export PYTHONPATH=/install/lib/python3/dist-packages:$PYTHONPATH
-		echo "Adding /install/lib/python3/dist-packages to PYTHONPATH"
-	fi
-fi
+add_install
+need_safeboot 1
 
 # The following helps to convince the safeboot scripts to find safeboot.conf
 # and functions.sh

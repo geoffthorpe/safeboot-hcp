@@ -1,5 +1,46 @@
 #!/bin/bash
 
+# Adds safeboot's "sbin" to the PATH. If optional argument $1 is non-empty, we
+# also source safeboot's "functions.sh"
+function need_safeboot {
+	if [[ ! -d "/safeboot/sbin" ]]; then
+		echo "Error, /safeboot/sbin is not present" >&2
+		return 1
+	fi
+	echo "Adding /safeboot/sbin to PATH" >&2
+	export PATH=$PATH:/safeboot/sbin
+	if [[ -z $1 ]]; then
+		return 0
+	fi
+	if [[ ! -f /safeboot/functions.sh ]]; then
+		echo "Error, Safeboot 'functions.sh' isn't installed"
+		return 1
+	fi
+	echo "Sourcing /safeboot/functions.sh"
+	source "/safeboot/functions.sh"
+}
+
+# Add's /install/{bin,lib[/python3/dist-packages]} to the relevant environment
+# variables. Note, unlike need_safeboot, there is no error case, because the
+# depended-upon software may be installed via OS-native packages in other
+# paths. (That's why it's "add_*" rather than "need_*".)
+function add_install {
+	if [[ -d "/install/bin" ]]; then
+		export PATH=$PATH:/install/bin
+		echo "Adding /install/sbin to PATH" >&2
+	fi
+	if [[ ! -d "/install/lib" ]]; then
+		return 0
+	fi
+	export LD_LIBRARY_PATH=/install/lib:$LD_LIBRARY_PATH
+	echo "Adding /install/lib to LD_LIBRARY_PATH" >&2
+	if [[ ! -d /install/lib/python3/dist-packages ]]; then
+		return 0
+	fi
+	export PYTHONPATH=/install/lib/python3/dist-packages:$PYTHONPATH
+	echo "Adding /install/lib/python3/dist-packages to PYTHONPATH" >&2
+}
+
 function show_hcp_env {
 	printenv | egrep -e "^HCP_" | sort
 }
