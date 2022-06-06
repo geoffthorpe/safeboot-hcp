@@ -1,3 +1,3 @@
 #!/bin/bash
 
-$DCOMPOSE up caboodle_test
+$DCOMPOSE run caboodle_test
