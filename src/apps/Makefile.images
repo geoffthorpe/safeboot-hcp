@@ -50,6 +50,7 @@ $(shell $(myDockerDepCmd))
 -include $(HCP_OUT)/.deps.Dockerfile.$1
 $(eval DEPS += $(HCP_OUT)/.deps.Dockerfile.$1)
 $(eval APPS += $(HCP_APPS_OUT)/image.$1)
+$(eval IMAGES += $1)
 ifneq (,$(wildcard $(HCP_APPS_OUT)/image.$1 $(HCP_APPS_OUT)/Dockerfile.$1))
 clean_image_$1:
 	$Qrm -f $(HCP_APPS_OUT)/image.$1

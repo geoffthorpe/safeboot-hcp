@@ -4,24 +4,27 @@ HCP_APPS_SRC := $(HCP_SRC)/apps
 $(HCP_APPS_OUT): | $(HCP_OUT)
 MDIRS += $(HCP_APPS_OUT)
 
-# Produce code tarballs
-include $(HCP_APPS_SRC)/Makefile.code
-include $(HCP_APPS_SRC)/common/Makefile
-include $(HCP_APPS_SRC)/enrollsvc/Makefile
-include $(HCP_APPS_SRC)/attestsvc/Makefile
-include $(HCP_APPS_SRC)/swtpmsvc/Makefile
-include $(HCP_APPS_SRC)/tools/Makefile
-include $(HCP_APPS_SRC)/kdc/Makefile
-include $(HCP_APPS_SRC)/caboodle/Makefile
+# HCP_CODEBALLS is the list of codebases, <foo>, that get installed to
+# /hcp/<foo> in container images. Their code is assumed to be in src/apps/<foo>,
+# which must contain a Makefile. Those Makefiles are of the form;
+#
+# (0 or more subsets of files with corresponding chmod attributes)
+#    $(eval $(call app_add,<foo>,shell-exec,755,run_*.sh))
+#    $(eval $(call app_add,<foo>,shell-include,644,common.env))
+#    $(eval $(call app_add,<foo>,utils,755,util_*.sh util_*.py))
+# (0 or more finalizers to declare output tarballs)
+#    $(eval $(call app_finalize,<foo>))
+# (0 or more container images, producing "hcp_<fooapp>", that includes the
+# named list of tarballs from HCP_CODEBALLS, plus 0 or more external tarballs,
+# as required)
+#    $(eval $(call app_image,<fooapp>,<foo1> <foo2>,<ext1> <ext2>))
 
-# Produce container images
+HCP_CODEBALLS := common enrollsvc attestsvc swtpmsvc tools kdc caboodle
+
+include $(HCP_APPS_SRC)/Makefile.code
 include $(HCP_APPS_SRC)/Makefile.images
-$(eval $(call app_image,enrollsvc,common enrollsvc,install safeboot))
-$(eval $(call app_image,attestsvc,common attestsvc,install safeboot))
-$(eval $(call app_image,swtpmsvc,common swtpmsvc,install safeboot))
-$(eval $(call app_image,tools,common tools,install safeboot))
-$(eval $(call app_image,kdc,common kdc tools,install safeboot))
-$(eval $(call app_image,caboodle,common enrollsvc attestsvc swtpmsvc kdc tools caboodle,install safeboot))
+
+include $(foreach i,$(HCP_CODEBALLS),$(HCP_APPS_SRC)/$i/Makefile)
 
 ALL += $(APPS)
 

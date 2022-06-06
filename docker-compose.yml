@@ -42,7 +42,7 @@ networks:
 services:
 
     common:
-        image: ${HCP_IMAGE_COMMON}
+        image: ${HCP_IMAGE_caboodle}
         command: /hcp/common/launcher.sh
         domainname: avoid-me-domain
         volumes:
@@ -51,7 +51,7 @@ services:
 
     emgmt:
         extends: common
-        image: ${HCP_IMAGE_ENROLLSVC}
+        image: ${HCP_IMAGE_enrollsvc}
         networks:
           - hcpnetwork
         volumes:
@@ -67,7 +67,7 @@ services:
 
     erepl:
         extends: common
-        image: ${HCP_IMAGE_ENROLLSVC}
+        image: ${HCP_IMAGE_enrollsvc}
         networks:
           - hcpnetwork
         volumes:
@@ -81,7 +81,7 @@ services:
 
     arepl:
         extends: common
-        image: ${HCP_IMAGE_ATTESTSVC}
+        image: ${HCP_IMAGE_attestsvc}
         networks:
           - hcpnetwork
         volumes:
@@ -95,7 +95,7 @@ services:
 
     ahcp:
         extends: common
-        image: ${HCP_IMAGE_ATTESTSVC}
+        image: ${HCP_IMAGE_attestsvc}
         networks:
           - hcpnetwork
         volumes:
@@ -109,7 +109,7 @@ services:
 
     orchestrator:
         extends: common
-        image: ${HCP_IMAGE_TOOLS}
+        image: ${HCP_IMAGE_tools}
         networks:
           - hcpnetwork
         volumes:
@@ -121,7 +121,7 @@ services:
 
     aclient:
         extends: common
-        image: ${HCP_IMAGE_TOOLS}
+        image: ${HCP_IMAGE_tools}
         networks:
           - hcpnetwork
         volumes:
@@ -131,7 +131,7 @@ services:
           - HCP_INSTANCE=/usecase/aclient.env
     aclient_tpm:
         extends: common
-        image: ${HCP_IMAGE_SWTPMSVC}
+        image: ${HCP_IMAGE_swtpmsvc}
         network_mode: "none"
         volumes:
           - tpm_aclient:${HCP_ACLIENTTPM_STATE}
@@ -145,7 +145,7 @@ services:
 
     caboodle_alone:
         extends: common
-        image: ${HCP_IMAGE_CABOODLE}
+        image: ${HCP_IMAGE_caboodle}
         networks:
           - hcpnetwork
         environment:
@@ -166,7 +166,7 @@ services:
 
     kdc1:
         extends: common
-        image: ${HCP_IMAGE_KDC}
+        image: ${HCP_IMAGE_kdc}
         volumes:
           - kdc1:${HCP_KDC1_STATE}
           - tpmsocket_kdc1:${HCP_KDC1_ATTEST_TCTI_SOCKDIR}
@@ -177,7 +177,7 @@ services:
           - HCP_INSTANCE=/usecase/kdc1.env
     kdc1_tpm:
         extends: common
-        image: ${HCP_IMAGE_SWTPMSVC}
+        image: ${HCP_IMAGE_swtpmsvc}
         network_mode: "none"
         volumes:
           - tpm_kdc1:${HCP_KDC1TPM_STATE}
