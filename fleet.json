@@ -5,7 +5,7 @@
 	},
 	"enroll_defaults": {
 		"api": "http://emgmt.hcphacking.xyz:5000",
-		"profile": "GENPROGS: gencert-pkinit-client, gencert-https-server",
+		"profile": "GENPROGS: gencert-pkinit-client, gencert-https-server, gencert-https-client",
 		"enroll": true,
 		"reenroll": false
 	},
@@ -21,12 +21,12 @@
 			}
 		},
 		{
-			"name": "kdc",
+			"name": "kdc1",
 			"tpm": {
 				"path": "/tpm_kdc1"
 			},
 			"enroll": {
-				"hostname": "kdc.hcphacking.xyz",
+				"hostname": "kdc1.hcphacking.xyz",
 				"profile": "GENPROGS: gencert-pkinit-kdc gencert-pkinit-client"
 			}
 		}
