@@ -9,6 +9,7 @@ $(eval myImgDepCmd := echo "$(HCP_APPS_OUT)/image.$1: | $(HCP_APPS_OUT)" > $(HCP
 $(eval myImgDepCmd += echo "$(HCP_APPS_OUT)/image.$1: $(HCP_OUT)/.deps.image.$1" > $(HCP_OUT)/.deps.image.$1.tmp ;)
 $(eval myDockerDepCmd := echo "$(HCP_APPS_OUT)/Dockerfile.$1: | $(HCP_APPS_OUT)" > $(HCP_OUT)/.deps.Dockerfile.$1.tmp ;)
 $(eval myDockerDepCmd += echo "$(HCP_APPS_OUT)/Dockerfile.$1: $(HCP_OUT)/.deps.Dockerfile.$1" > $(HCP_OUT)/.deps.Dockerfile.$1.tmp ;)
+$(eval myDockerInputs += $(foreach i,$2,$(HCP_APPS_OUT)/Dockerfile.stub.$i))
 $(if $(findstring safeboot,$3),
 	$(eval myImgDepCmd += echo "$(HCP_APPS_OUT)/image.$1: $(HCP_OUT)/safeboot/safeboot.tar.gz" >> $(HCP_OUT)/.deps.image.$1.tmp ;)
 	$(eval myDockerDepCmd += echo "$(HCP_APPS_OUT)/Dockerfile.$1: $(HCP_OUT)/Dockerfile.safeboot" >> $(HCP_OUT)/.deps.Dockerfile.$1.tmp ;)
@@ -20,7 +21,6 @@ $(if $(findstring install,$3),
 $(foreach i,$2,
 	$(eval myImgDepCmd += echo "$(HCP_APPS_OUT)/image.$1: $(HCP_APPS_OUT)/$i.tar.gz" >> $(HCP_OUT)/.deps.image.$1.tmp ;)
 	$(eval myDockerDepCmd += echo "$(HCP_APPS_OUT)/Dockerfile.$1: $(HCP_APPS_OUT)/Dockerfile.stub.$i" >> $(HCP_OUT)/.deps.Dockerfile.$1.tmp ;))
-$(eval myDockerInputs += $(foreach i,$2,$(HCP_APPS_OUT)/Dockerfile.stub.$i))
 $(eval myImgDepCmd += if test -f $(HCP_OUT)/.deps.image.$1 && \
 	cmp $(HCP_OUT)/.deps.image.$1 $(HCP_OUT)/.deps.image.$1.tmp > /dev/null 2>&1; \
 	then rm -f $(HCP_OUT)/.deps.image.$1.tmp; else \
