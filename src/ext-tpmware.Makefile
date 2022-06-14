@@ -166,6 +166,23 @@ $(eval $(call tpmware_add_codebase,swtpm,libtpms,autogen.sh,\
 	make clean,\
 	make uninstall))
 
+# Only compile-in heimdal if we're not using upstream packages
+ifdef HCP_TPMWARE_HEIMDAL
+
+###########
+# heimdal #
+###########
+
+$(eval $(call tpmware_add_codebase,heimdal,,autogen.sh,\
+	./autogen.sh,\
+	./configure --prefix=$(HCP_TPMWARE_INSTALL_DEST),\
+	make $(HCP_TPMWARE_MAKE_PARALLEL),\
+	make install,\
+	make clean,\
+	make uninstall))
+
+endif # HCP_TPMWARE_HEIMDAL
+
 ##################
 # install.tar.gz #
 ##################

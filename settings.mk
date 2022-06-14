@@ -50,8 +50,13 @@ HCP_3PLATFORM_XTRA ?= vim
 # will be configured, compiled, and installed by the ext-tpmware submodules.
 HCP_3PLATFORM_NO_TPM2 := 1
 
-# As per above. DO NOT MODIFY this unless you know what you're doing.
+# Based on the above setting. DO NOT MODIFY this unless you know what you're
+# doing.
 HCP_TPMWARE_TPM2 := $(HCP_3PLATFORM_NO_TPM2)
+
+# Same comments, though for "heimdal" rather than "tpm2-tools"
+#HCP_3PLATFORM_NO_HEIMDAL := 1
+HCP_TPMWARE_HEIMDAL := $(HCP_3PLATFORM_NO_HEIMDAL)
 
 # If defined, the "2apt-usable" layer in hcp/base will tweak the apt
 # configuration to use the given URL as a (caching) proxy for downloading deb
