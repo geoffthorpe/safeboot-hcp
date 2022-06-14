@@ -8,7 +8,7 @@ function need_safeboot {
 		return 1
 	fi
 	echo "Adding /safeboot/sbin to PATH" >&2
-	export PATH=$PATH:/safeboot/sbin
+	export PATH=/safeboot/sbin:$PATH
 	if [[ -z $1 ]]; then
 		return 0
 	fi
@@ -26,7 +26,7 @@ function need_safeboot {
 # paths. (That's why it's "add_*" rather than "need_*".)
 function add_install {
 	if [[ -d "/install/bin" ]]; then
-		export PATH=$PATH:/install/bin
+		export PATH=/install/bin:$PATH
 		echo "Adding /install/sbin to PATH" >&2
 	fi
 	if [[ ! -d "/install/lib" ]]; then
