@@ -104,7 +104,7 @@ endef
 
 
 # Only compile-in tpm2-tss and tpm2-tools if we're not using upstream packages
-ifdef HCP_TPMWARE_TPM2
+ifdef HCP_TPM2_SOURCE
 
 ############
 # tpm2-tss #
@@ -138,7 +138,7 @@ $(eval $(call tpmware_add_codebase,tpm2-tools,tpm2-tss,bootstrap,\
 	$(HACK_TPM2-TOOLS) make clean,\
 	$(HACK_TPM2-TOOLS) make uninstall))
 
-endif # HCP_TPMWARE_TPM2
+endif # HCP_TPM2_SOURCE
 
 ###########
 # libtpms #
@@ -167,7 +167,7 @@ $(eval $(call tpmware_add_codebase,swtpm,libtpms,autogen.sh,\
 	make uninstall))
 
 # Only compile-in heimdal if we're not using upstream packages
-ifdef HCP_TPMWARE_HEIMDAL
+ifdef HCP_HEIMDAL_SOURCE
 
 ###########
 # heimdal #
@@ -181,7 +181,7 @@ $(eval $(call tpmware_add_codebase,heimdal,,autogen.sh,\
 	make clean,\
 	make uninstall))
 
-endif # HCP_TPMWARE_HEIMDAL
+endif # HCP_HEIMDAL_SOURCE
 
 ##################
 # install.tar.gz #
