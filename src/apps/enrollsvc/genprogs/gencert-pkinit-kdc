@@ -1,0 +1,16 @@
+#!/bin/bash
+
+cd "$1"
+
+(
+
+hxtool issue-certificate \
+	--type="pkinit-kdc" \
+	--pk-init-principal="krbtgt/$ENROLL_REALM@$ENROLL_REALM" \
+	--ca-certificate=FILE:$GENCERT_CA_PRIV \
+	--generate-key=rsa \
+	--certificate="FILE:hostcert-pkinit-kdc.pem"
+
+) 2>&1
+
+echo "sensitive hostcert-pkinit-kdc.pem"

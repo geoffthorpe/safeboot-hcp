@@ -13,13 +13,9 @@ if [[ -z $HCP_ORCHESTRATOR_JSON || ! -f $HCP_ORCHESTRATOR_JSON ]]; then
 	exit 1
 fi
 
-# Extract defaults (TBD: can this all be done with a single jq call/pass?)
-def_tpm_create=$(jq -r '.tpm_defaults.create' $HCP_ORCHESTRATOR_JSON)
-def_tpm_recreate=$(jq -r '.tpm_defaults.recreate' $HCP_ORCHESTRATOR_JSON)
-def_enroll_api=$(jq -r '.enroll_defaults.api' $HCP_ORCHESTRATOR_JSON)
-def_enroll_profile=$(jq -r '.enroll_defaults.profile' $HCP_ORCHESTRATOR_JSON)
-def_enroll_enroll=$(jq -r '.enroll_defaults.enroll' $HCP_ORCHESTRATOR_JSON)
-def_enroll_reenroll=$(jq -r '.enroll_defaults.reenroll' $HCP_ORCHESTRATOR_JSON)
+# Extract defaults (and we'll need the profile sub-struct too)
+fleet_defaults=$(jq -r '.defaults' $HCP_ORCHESTRATOR_JSON)
+fleet_defaults_profile=$(echo "$fleet_defaults" | jq -r ".enroll_profile // {}")
 
 # Extract fleet entry names
 fleet_names=( $(jq -r '.fleet[].name' $HCP_ORCHESTRATOR_JSON) )
@@ -30,12 +26,7 @@ uniqueNum=$(printf '%s\n' "${fleet_names[@]}" | \
 	exit 1
 
 # Uncomment if you're debugging and getting desperate
-#echo "def_tpm_create=$def_tpm_create"
-#echo "def_tpm_recreate=$def_tpm_recreate"
-#echo "def_enroll_api=$def_enroll_api"
-#echo "def_enroll_profile=$def_enroll_profile"
-#echo "def_enroll_enroll=$def_enroll_enroll"
-#echo "def_enroll_reenroll=$def_enroll_reenroll"
+#echo "fleet_defaults=$fleet_defaults"
 #echo "fleet_names=${fleet_names[@]}"
 #echo "uniqueNum=$uniqueNum"
 
@@ -84,6 +75,9 @@ raw_create_tpm()
 
 do_item_tpm()
 {
+	if ! $tpm_create; then
+		return 0
+	fi
 	if [[ -d "$tpm_path/tpm" ]]; then
 		if [[ ! -f "$tpm_path/tpm/ek.pub" ]]; then
 			echo "Error, TPM '$name' is missing 'ek.pub'" >&2
@@ -101,14 +95,8 @@ do_item_tpm()
 				return 1
 			fi
 		fi
-		if ! mv "$tpm_path" "$tpm_path/old"; then
+		if ! mv "$tpm_path/tpm" "$tpm_path/old"; then
 			echo "Error, TPM '$name' recreation can't backup" >&2
-			return 1
-		fi
-	else
-		# It doesn't exist. If we're not ask to create, we're done
-		if ! $tpm_create; then
-			echo "Error, TPM '$name' doesn't exist" >&2
 			return 1
 		fi
 	fi
@@ -179,7 +167,7 @@ raw_enroll_tpm()
 	done
 	if echo "$myquery" | jq -e '.entries | length>0' >&2 ; then
 		# If we're not asked to reenroll, that's that
-		if ! $enroll_reenroll; then
+		if ! $enroll_always; then
 			echo "TPM '$name' already enrolled"
 			return 0
 		fi
@@ -227,34 +215,39 @@ do_item_enroll()
 do_item()
 {
 	name=$1
-	entry=$2
-	tpm_path=$(echo "$entry" | jq -r ".tpm.path // empty")
-	tpm_create=$(echo "$entry" | jq -r ".tpm.create // empty")
-	tpm_recreate=$(echo "$entry" | jq -r ".tpm.recreate // empty")
-	enroll_hostname=$(echo "$entry" | jq -r ".enroll.hostname // empty")
-	enroll_api=$(echo "$entry" | jq -r ".enroll.api // empty")
-	enroll_profile=$(echo "$entry" | jq -r ".enroll.profile // empty")
-	enroll_enroll=$(echo "$entry" | jq -r ".enroll.enroll // empty")
-	enroll_reenroll=$(echo "$entry" | jq -r ".enroll.reenroll // empty")
-	: "${tpm_path:=$def_tpm_path}"
-	: "${tpm_create:=$def_tpm_create}"
-	: "${tpm_recreate:=$def_tpm_recreate}"
-	: "${enroll_hostname:=$def_enroll_hostname}"
-	: "${enroll_api:=$def_enroll_api}"
-	: "${enroll_profile:=$def_enroll_profile}"
-	: "${enroll_enroll:=$def_enroll_enroll}"
-	: "${enroll_reenroll:=$def_enroll_reenroll}"
+	# We want to "merge" the entry in $2 with $fleet_defaults. The basic
+	# merge in jq unions the fields of the two structures at the top level
+	# only, preferring the right-parameter's version when both have fields
+	# of the same name.
+	entry=$(jq -cn "$fleet_defaults + $2")
+	# But we want the "enroll_profile" fields of the two structures, which
+	# are themselves sub-structures, to also be merged, rather than chosen
+	# between. And the above doesn't do that.
+	# Retrofit it here;
+	profile_from_entry=$(echo "$entry" | jq -r ".enroll_profile // {}")
+	profile_merge=$(jq -cn "$fleet_defaults_profile + $profile_from_entry")
+	entry=$(jq -cn "$entry + { enroll_profile: $profile_merge }")
+
+	# Now extract the fields from the merged JSON for use by the above functions
+	tpm_path=$(echo "$entry" | jq -r ".tpm_path // empty")
+	tpm_create=$(echo "$entry" | jq -r ".tpm_create // false")
+	tpm_recreate=$(echo "$entry" | jq -r ".tpm_recreate // false")
+	enroll_enroll=$(echo "$entry" | jq -r ".enroll // false")
+	enroll_always=$(echo "$entry" | jq -r ".enroll_always // false")
+	enroll_api=$(echo "$entry" | jq -r ".enroll_api // empty")
+	enroll_hostname=$(echo "$entry" | jq -r ".enroll_hostname // empty")
+	enroll_profile=$(echo "$entry" | jq -r ".enroll_profile // {}")
 	# Uncomment if you're debugging and getting desperate
 	#echo "name=$name"
 	#echo "entry=$entry"
 	#echo "tpm_path=$tpm_path"
 	#echo "tpm_create=$tpm_create"
 	#echo "tpm_recreate=$tpm_recreate"
-	#echo "enroll_hostname=$enroll_hostname"
-	#echo "enroll_api=$enroll_api"
-	#echo "enroll_profile=$enroll_profile"
 	#echo "enroll_enroll=$enroll_enroll"
-	#echo "enroll_reenroll=$enroll_reenroll"
+	#echo "enroll_always=$enroll_always"
+	#echo "enroll_api=$enroll_api"
+	#echo "enroll_hostname=$enroll_hostname"
+	#echo "enroll_profile=$enroll_profile"
 	do_item_tpm || return 1
 	do_item_enroll || return 1
 }

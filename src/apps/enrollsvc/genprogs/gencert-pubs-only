@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# Scan for any "hostcert-*.pem" files (certificate+key pairs) - these will all
+# have been marked "sensitive" by their generators and so they will be sealed
+# to the TPM. For each of them, we extract the public certificate and put it in
+# a corresponding "hostcert-*-pub.pem" file that won't get sealed to the TPM.
+
+cd "$1"
+
+CERTS=$(ls hostcert-*.pem 2> /dev/null || true)
+PUBS=
+for i in $CERTS; do
+	pub=$(echo "$i" | sed -e "s/\.pem$/-pub.pem/")
+	(
+	openssl x509 \
+		-in "$i" \
+		-outform PEM \
+		-out "$pub"
+	) >&2
+	PUBS+=" $pub"
+done
+
+if [[ -f $GENCERT_CA_CERT ]]; then
+	# Include the issuer certificate (list), as this is a good way of
+	# keeping hosts up to date when issuer certs get updated (i.e. for
+	# cert-chain verification when establishing inter-host trust).
+	cp $GENCERT_CA_CERT certissuer.pem
+	PUBS+=" certissuer.pem"
+fi
+
+if [[ -n $PUBS ]]; then
+	echo "public $PUBS"
+else
+	echo "skip"
+fi

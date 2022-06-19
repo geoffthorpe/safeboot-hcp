@@ -1,0 +1,30 @@
+#!/bin/bash
+
+cd "$1"
+
+(
+
+# If $3=bob.foo.mydomain.xyz, we want;
+# --subject="UID=bob,DC=foo,DC=mydomain,DC=xyz"
+# We ignore ENROLL_DOMAIN for https client certs and focus only on the hostname.
+next=$(echo "$3" | sed -e "s/\..*$//")
+mysubject="CN=$next"
+domain=$(echo "$3" | sed -e "s/^[^\.]*\.*//")
+while [[ -n $domain ]]; do
+	next=$(echo "$domain" | sed -e "s/\..*$//")
+	domain=$(echo "$domain" | sed -e "s/^[^\.]*\.*//")
+	mysubject="$mysubject,DC=$next"
+done
+
+hxtool issue-certificate \
+	--type="https-client" \
+	--subject="$mysubject" \
+	--hostname="$3" \
+	--ca-certificate=FILE:$GENCERT_CA_PRIV \
+	--generate-key=rsa \
+	--certificate="FILE:hostcert-https-client.pem" >&2
+
+) >&2
+
+echo "sensitive hostcert-https-client.pem"
+

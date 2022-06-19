@@ -1,0 +1,16 @@
+#!/bin/bash
+
+cd "$1"
+
+(
+
+hxtool issue-certificate \
+	--type="https-server" \
+	--hostname="$3" \
+	--ca-certificate=FILE:$GENCERT_CA_PRIV \
+	--generate-key=rsa \
+	--certificate="FILE:hostcert-https-server.pem" >&2
+
+) >&2
+
+echo "sensitive hostcert-https-server.pem"

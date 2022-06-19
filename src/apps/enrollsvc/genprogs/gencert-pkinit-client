@@ -1,0 +1,29 @@
+#!/bin/bash
+
+cd "$1"
+
+(
+
+# If $3=bob.foo.mydomain.xyz and $ENROLL_REALM="FOO.MYDOMAIN.XYZ", we want;
+# --subject="CN=host,DC=bob,DC=foo,DC=mydomain,DC=xyz" and
+# --pk-init-principal="host/bob.foo.mydomain.xyz@FOO.MYDOMAIN.XYZ"
+# We ignore ENROLL_DOMAIN for https client certs and focus only on the hostname.
+mysubject="CN=host"
+domain=$3
+while [[ -n $domain ]]; do
+	next=$(echo "$domain" | sed -e "s/\..*$//")
+	domain=$(echo "$domain" | sed -e "s/^[^\.]*\.*//")
+	mysubject="$mysubject,DC=$next"
+done
+
+hxtool issue-certificate \
+	--type="pkinit-client" \
+	--pk-init-principal="host/$3@$ENROLL_REALM" \
+	--subject="$mysubject" \
+	--ca-certificate=FILE:$GENCERT_CA_PRIV \
+	--generate-key=rsa \
+	--certificate="FILE:hostcert-pkinit-client.pem"
+
+) 2>&1
+
+echo "sensitive hostcert-pkinit-client.pem"

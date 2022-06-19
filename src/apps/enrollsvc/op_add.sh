@@ -19,7 +19,7 @@ echo "  - Param3=$3 (profile)" >&2
 echo "  - Param4=$4 (path to paramfile)" >&2
 
 MYEKPUB=$1
-MYHOSTNAME=$2
+export MYHOSTNAME=$2
 MYPROFILE=$3
 MYPARAMFILE=$4
 
@@ -28,6 +28,14 @@ if [[ -z $MYEKPUB || -z $MYHOSTNAME ]]; then
 	echo "Error, missing at least one argument" >&2
 	exit 1
 fi
+
+# Now, make sure attest-enroll prefers the HCP genprogs over any
+# identically-named reference examples in /safeboot/sbin (or anywhere else).
+if [[ ! -d /hcp/enrollsvc/genprogs ]]; then
+	echo "Error, '/hcp/enrollsvc/genprogs' is missing" >&2
+	exit 1
+fi
+export PATH=/hcp/enrollsvc/genprogs:$PATH
 
 check_hostname "$MYHOSTNAME"
 HNREV=`echo "$MYHOSTNAME" | rev`
@@ -57,15 +65,29 @@ trap 'rm -rf $EPHEMERAL_ENROLL' EXIT
 # Otherwise, 'profile' and 'paramfile' arguments are set as exported
 # environment variables for consumption somewhere (else) in safeboot code.
 cp /safeboot/enroll.conf $EPHEMERAL_ENROLL/enroll.conf
-genprog_regex='^GENPROGS:(.*)'
-if [[ $MYPROFILE =~ $genprog_regex ]]; then
-	genprogs="${BASH_REMATCH[1]}"
-else
-	genprogs="gencert-pkinit-client gencert-https-server"
-	export ENROLL_PROFILE=$MYPROFILE
-	export ENROLL_PARAMFILE=$MYPARAMFILE
+if [[ -n $MYPROFILE ]]; then
+	if ! profilejson=$(echo "$MYPROFILE" | jq) > /dev/null 2>&1; then
+		my_tee "Error, profile is not valid JSON"
+		exit 1
+	fi
+	genprogs=$(echo "$profilejson" | jq -r '.GENPROGS')
+	if [[ "$genprogs" = "null" ]]; then
+		genprogs="gencert-pkinit-client gencert-https-server"
+	fi
+	genrealm=$(echo "$profilejson" | jq -r '.REALM')
+	gendomain=$(echo "$profilejson" | jq -r '.DOMAIN')
+
 fi
+genprogs+=" gencert-pubs-only"
+export ENROLL_PROFILE="$MYPROFILE"
+export ENROLL_PARAMFILE=$MYPARAMFILE
 echo "export GENPROGS+=($genprogs)" >> $EPHEMERAL_ENROLL/enroll.conf
+if [[ "$genrealm" != "null" ]]; then
+echo "export ENROLL_REALM=$genrealm" >> $EPHEMERAL_ENROLL/enroll.conf
+fi
+if [[ "$gendomain" != "null" ]]; then
+echo "export ENROLL_DOMAIN=$gendomain" >> $EPHEMERAL_ENROLL/enroll.conf
+fi
 
 ./sbin/attest-enroll -C $EPHEMERAL_ENROLL/enroll.conf \
 		-V CHECKOUT=/hcp/enrollsvc/cb_checkout.sh \
