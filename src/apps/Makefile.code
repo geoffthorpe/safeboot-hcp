@@ -40,8 +40,8 @@ endef
 # This should be called _AFTER_ the app_add() calls that construct the app.
 define app_finalize
 $(eval myAllFiles :=)
-$(eval myDepCmd := echo "$(HCP_APPS_OUT)/$1.tar.gz: | $(HCP_APPS_OUT)" > $(HCP_OUT)/.deps.app.$1.tmp ;)
-$(eval myDepCmd += echo "$(HCP_APPS_OUT)/$1.tar.gz: $(HCP_OUT)/.deps.apps.$1" > $(HCP_OUT)/.deps.app.$1.tmp ;)
+$(eval myDepCmd := echo "$(HCP_APPS_OUT)/$1.tar.gz: | $(HCP_APPS_OUT)" > $(HCP_OUT)/.deps.apps.$1.tmp ;)
+$(eval myDepCmd += echo "$(HCP_APPS_OUT)/$1.tar.gz: $(HCP_OUT)/.deps.apps.$1" > $(HCP_OUT)/.deps.apps.$1.tmp ;)
 $(eval myBuildCmd := mkdir -p $(HCP_APPS_INSTALL_DEST)/$1 ;)
 $(foreach i,$(HCP_APPS_BATCHES_$1),
 	$(eval myAllFiles += $(HCP_APPS_BATCH_FILES_$1_$i))
