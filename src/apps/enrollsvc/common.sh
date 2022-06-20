@@ -1,10 +1,5 @@
 . /hcp/common/hcp.sh
 
-set -e
-
-add_install
-need_safeboot
-
 function expect_root {
 	if [[ `whoami` != "root" ]]; then
 		echo "Error, running as \"`whoami`\" rather than \"root\"" >&2
@@ -111,7 +106,7 @@ if [[ ! -f $ENROLLSVC_ENV ]]; then
 	export SIGNING_KEY_PRIV=$SIGNING_KEY_DIR/key.priv
 	export GENCERT_CA_DIR=/home/$HCP_ENROLLSVC_USER_DB/enrollcertissuer
 	export GENCERT_CA_CERT=$GENCERT_CA_DIR/CA.cert
-	export GENCERT_CA_PRIV=$GENCERT_CA_DIR/CA.priv
+	export GENCERT_CA_PRIV=$GENCERT_CA_DIR/CA.pem
 	cat >> $ENROLLSVC_ENV <<EOF
 export SIGNING_KEY_DIR=$SIGNING_KEY_DIR
 export SIGNING_KEY_PUB=$SIGNING_KEY_PUB

@@ -1,17 +1,16 @@
 #!/bin/bash
 
-# Adds safeboot's "sbin" to the PATH. If optional argument $1 is non-empty, we
-# also source safeboot's "functions.sh"
-function need_safeboot {
-	if [[ ! -d "/safeboot/sbin" ]]; then
-		echo "Error, /safeboot/sbin is not present" >&2
-		return 1
-	fi
-	echo "Adding /safeboot/sbin to PATH" >&2
-	export PATH=/safeboot/sbin:$PATH
-	if [[ -z $1 ]]; then
-		return 0
-	fi
+set -e
+
+# Adds safeboot's "sbin" to the PATH.
+if [[ ! -d "/safeboot/sbin" ]]; then
+	echo "Error, /safeboot/sbin is not present" >&2
+	return 1
+fi
+echo "Adding /safeboot/sbin to PATH" >&2
+export PATH=/safeboot/sbin:$PATH
+
+function source_safeboot_functions {
 	if [[ ! -f /safeboot/functions.sh ]]; then
 		echo "Error, Safeboot 'functions.sh' isn't installed"
 		return 1
@@ -21,32 +20,29 @@ function need_safeboot {
 }
 
 # Add's /install/{bin,lib[/python3/dist-packages]} to the relevant environment
-# variables. Note, unlike need_safeboot, there is no error case, because the
+# variables. Note, unlike for safeboot, there is no error case, because the
 # depended-upon software may be installed via OS-native packages in other
-# paths. (That's why it's "add_*" rather than "need_*".)
-function add_install {
-	if [[ -d "/install/bin" ]]; then
-		export PATH=/install/bin:$PATH
-		echo "Adding /install/sbin to PATH" >&2
-	fi
-	if [[ ! -d "/install/lib" ]]; then
-		return 0
-	fi
+# paths.
+if [[ -d "/install/bin" ]]; then
+	export PATH=/install/bin:$PATH
+	echo "Adding /install/sbin to PATH" >&2
+fi
+if [[ -d "/install/lib" ]]; then
 	export LD_LIBRARY_PATH=/install/lib:$LD_LIBRARY_PATH
 	echo "Adding /install/lib to LD_LIBRARY_PATH" >&2
-	if [[ ! -d /install/lib/python3/dist-packages ]]; then
-		return 0
+	if [[ -d /install/lib/python3/dist-packages ]]; then
+		export PYTHONPATH=/install/lib/python3/dist-packages:$PYTHONPATH
+		echo "Adding /install/lib/python3/dist-packages to PYTHONPATH" >&2
 	fi
-	export PYTHONPATH=/install/lib/python3/dist-packages:$PYTHONPATH
-	echo "Adding /install/lib/python3/dist-packages to PYTHONPATH" >&2
-}
+fi
 
 function show_hcp_env {
 	printenv | egrep -e "^HCP_" | sort
 }
 
 function export_hcp_env {
-	printenv | egrep -e "^HCP_" | sort | sed -e "s/^HCP_/export HCP_/"
+	printenv | egrep -e "^HCP_" | sort | sed -e "s/^HCP_/export HCP_/" |
+		sed -e "s/\"/\\\"/" | sed -e "s/=/=\"/" | sed -e "s/$/\"/"
 }
 
 function hcp_pre_launch {
@@ -107,12 +103,16 @@ function role_account_uid_file {
 function internal_role_account_uid_file {
 	if [[ ! -f $2 ]]; then
 		if ! egrep "^$1:" /etc/passwd; then
+			err_adduser=$(mktemp)
 			echo "Creating '$1' role account" >&2
 			if ! adduser --disabled-password --quiet \
-					--gecos "$3" $1 > /dev/null 2>&1 ; then
+					--gecos "$3" $1 > $err_adduser 2>&1 ; then
 				echo "Error, couldn't create '$1'" >&2
+				cat $err_adduser >&2
+				rm $err_adduser
 				exit 1
 			fi
+			rm $err_adduser
 		fi
 		echo "Generating '$1' UID file ($2)"
 		touch $2
@@ -128,5 +128,37 @@ function internal_role_account_uid_file {
 				exit 1
 			fi
 		fi
+	fi
+}
+
+# Utility for adding a PEM file to the set of trust roots for the system. This
+# can be called multiple times to update (if changed) the same trust roots, eg.
+# when used inside an attestation-completion callback. As such, $2 and $3
+# specify a CA-store subdirectory and filename (respectively) to use for the
+# PEM file being added. If the same $2 and $3 arguments are provided later on,
+# it is assumed to be an update to the same trust roots.
+# $1 = file containing the trust roots
+# $2 = CA-store subdirectory (can be multiple layers deep)
+# $3 = CA-store filename
+function add_trust_root {
+	if [[ ! -f $1 ]]; then
+		echo "Error, no 'certissuer.pem' found" >&2
+		return 1
+	fi
+	echo "Adding '$1' as a trust root"
+	if [[ -f "/usr/share/ca-certificates/$2/$3" ]]; then
+		if cmp "$1" "/usr/share/ca-certificates/$2/$3"; then
+			echo "  - already exists and hasn't changed, skipping"
+			return 0
+		fi
+		echo "  - exists but has changd, overriding"
+		cp "$1" "/usr/share/ca-certificates/$2/$3"
+		update-ca-certificates
+	else
+		echo "  - no prior trust root, installing"
+		mkdir -p "/usr/share/ca-certificates/$2"
+		cp "$1" "/usr/share/ca-certificates/$2/$3"
+		echo "$2/$3" >> /etc/ca-certificates.conf
+		update-ca-certificates
 	fi
 }

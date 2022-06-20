@@ -29,15 +29,11 @@ HCP_RELAX := 1
 # See hcp/base/Makefile for details.
 #HCP_1APT_ENABLE := 1
 
-# If defined, the "4add-cacerts" layer in hcp/base will be injected, allow
-# host-side trust roots (CA certificates) to be installed. If _PATH is defined,
-# all the certs in that path will be injected and trusted. If _TESTCRED is
-# defined, the "certissuer" cred generated for dev/debug purposes will be
-# injected and trusted.
+# If defined, the "4add-cacerts" layer in hcp/base will be injected, allowing
+# host-side trust roots (CA certificates) to be installed. All the certs in the
+# given path will be injected and trusted.
 # See hcp/base/Makefile for details.
-HCP_4ADD_CACERTS_ENABLE := 1
 #HCP_4ADD_CACERTS_PATH := /opt/my-company-ca-certificates
-HCP_4ADD_CACERTS_TESTCRED := 1
 
 # If defined, the "3platform" layer will add a "RUN apt-get install -y [...]"
 # line to its Dockerfile using these arguments. This provides for "make

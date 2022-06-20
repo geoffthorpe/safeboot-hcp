@@ -2,9 +2,4 @@
 
 . /hcp/common/hcp.sh
 
-set -e
-
-add_install
-need_safeboot
-
 cd $HCP_SWTPMSVC_STATE

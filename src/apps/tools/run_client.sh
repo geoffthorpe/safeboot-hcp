@@ -2,8 +2,6 @@
 
 . /hcp/common/hcp.sh
 
-set -e
-
 mkdir -p $HCP_ATTESTCLIENT_VERIFIER
 
 if [[ -z "$HCP_ATTESTCLIENT_ATTEST_URL" ]]; then
@@ -25,8 +23,7 @@ if [[ ! -f "$ENROLL_SIGN_ANCHOR" ]]; then
 	exit 1
 fi
 
-add_install
-need_safeboot 1
+source_safeboot_functions
 
 # The following helps to convince the safeboot scripts to find safeboot.conf
 # and functions.sh
@@ -106,7 +103,7 @@ echo "Info: attestation succeeded after retrying" >&2
 
 if (
 	echo "Extracting the attestation result"
-	tar xvf $tmp_secrets -C $tmp_extract
+	tar xvf $tmp_secrets -C $tmp_extract | sort
 	echo "Signature-checking the received assets"
 	./sbin/tpm2-attest verify-unsealed $tmp_extract > /dev/null
 	cd $tmp_extract
@@ -122,9 +119,11 @@ if (
 			tpm2 policypcr '--pcr-list=sha256:11' > /dev/null 2>&1
 		aead_decrypt "$i.enc" $tmp_key "$i"
 	done
-	if [[ -n $HCP_ATTESTCLIENT_CALLBACK ]]; then
-		echo "Running callback '$HCP_ATTESTCLIENT_CALLBACK'"
-		(exec $HCP_ATTESTCLIENT_CALLBACK)
+	if [[ -n $HCP_ATTESTCLIENT_CALLBACKS ]]; then
+		for i in $HCP_ATTESTCLIENT_CALLBACKS; do
+			echo "Running callback '$i'"
+			(exec $i)
+		done
 	fi
 ); then
 	echo "Success!"

@@ -2,11 +2,6 @@
 
 . /hcp/common/hcp.sh
 
-set -e
-
-add_install
-need_safeboot
-
 cd /
 if [[ -z $HCP_ORCHESTRATOR_JSON || ! -f $HCP_ORCHESTRATOR_JSON ]]; then
 	echo "Error, JSON input not found at '$HCP_ORCHESTRATOR_JSON'" >&2

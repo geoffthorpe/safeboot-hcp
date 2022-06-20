@@ -2,11 +2,6 @@
 
 . /hcp/common/hcp.sh
 
-add_install
-need_safeboot
-
-set -e
-
 if [[ -x /install/libexec/kdc ]]; then
 	KDC_BIN=/install/libexec/kdc
 elif [[ -x /usr/lib/heimdal-servers/kdc ]]; then
@@ -51,8 +46,8 @@ if [[ ! -f $HCP_KDC_STATE/initialized ]]; then
 		admin_server = $HCP_KDC_SERVER
 	}
 [kdc]
-	pkinit_identity = FILE:$MYETC/kdc-cert.pem,$MYETC/kdc-cert-key.pem
-	pkinit_anchors = FILE:/usr/share/ca-certificates/HCP/HCP_TESTCRED.cert
+	pkinit_identity = FILE:$MYETC/kdc-cert.pem
+	pkinit_anchors = FILE:/usr/share/ca-certificates/HCP/certissuer.pem
 	#pkinit_pool = PKCS12:/path/to/useful-intermediate-certs.pfx
 	#pkinit_pool = FILE:/path/to/other-useful-intermediate-certs.pem
 	pkinit_allow_proxy_certificate = no
@@ -98,7 +93,23 @@ if [[ ! -f $HCP_KDC_STATE/initialized ]]; then
 fi
 
 # Run the attestation and get our assets
-/hcp/tools/run_client.sh
+# Note, run_client is not a service, it's a utility, so it doesn't retry
+# forever waiting for things to be ready to succeed. We, on the other hand,
+# _are_ a service, so we need to be more forgiving.
+attestlog=$(mktemp)
+if ! /hcp/tools/run_client.sh 2> $attestlog; then
+	echo "Warning: the attestation client lost patience, error output follows;" >&2
+	cat $attestlog >&2
+	rm $attestlog
+	echo "Warning: suppressing error output from future attestation attempts" >&2
+	attestation_done=
+	until [[ -n $attestation_done ]]; do
+		echo "Warning: waiting 10 seconds before retring attestation" >&2
+		sleep 10
+		echo "Retrying attestation" >&2
+		/hcp/tools/run_client.sh 2> /dev/null && attestation_done=yes
+	done
+fi
 
 # Start the service and handle signals
 echo "Starting the KDC"

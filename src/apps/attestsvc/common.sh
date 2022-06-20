@@ -1,10 +1,5 @@
 . /hcp/common/hcp.sh
 
-set -e
-
-add_install
-need_safeboot
-
 function expect_root {
 	if [[ `whoami` != "root" ]]; then
 		echo "Error, running as \"`whoami`\" rather than \"root\"" >&2

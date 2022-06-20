@@ -45,7 +45,7 @@ MDIRS += $(HCP_BASE_OUT)
 # For downstream (builds, apps, ...) usage;
 # - Depend on $(HCP_BASE_TOUCHFILE) to ensure it is (re)built as required.
 # - Use "FROM $(HCP_BASE_DNAME)" to derive images.
-ifdef HCP_4ADD_CACERTS_ENABLE
+ifdef HCP_4ADD_CACERTS_PATH
 HCP_BASE_TOUCHFILE := $(HCP_BASE4_TOUCHFILE)
 HCP_BASE_DNAME := $(HCP_BASE4_DNAME)
 else
@@ -199,13 +199,12 @@ $(eval $(call pp_rule_docker_image_rm,\
 
 # LAYER: 4add-cacerts
 
-ifdef HCP_4ADD_CACERTS_ENABLE
+ifdef HCP_4ADD_CACERTS_PATH
 
 HCP_BASE_4CA_OUT := $(HCP_BASE_OUT)/4add-cacerts-context
 $(HCP_BASE_4CA_OUT): | $(HCP_BASE_OUT)
 MDIRS += $(HCP_BASE_4CA_OUT)
 
-ifdef HCP_4ADD_CACERTS_PATH
 define hcp_base_4ca_src
 	$(eval b := $(shell basename $1))
 $(HCP_BASE_4CA_OUT)/$b: | $(HCP_BASE_4CA_OUT)
@@ -215,15 +214,11 @@ $(HCP_BASE_4CA_OUT)/$b:
 $(eval HCP_BASE_4CA_CERTS += $(HCP_BASE_4CA_OUT)/$b)
 endef
 HCP_BASE_4CA_CERT_SRC := $(shell cd $(HCP_4ADD_CACERTS_PATH) && find . -type f)
+$(if $(strip,$(HCP_BASE_4CA_CERT_SRC)),,
+	$(error "HCP_4ADD_CACERTS_PATH ($(HCP_4ADD_CACERTS_PATH)) contains no CA certs"))
 $(foreach i,$(HCP_BASE_4CA_CERT_SRC),$(eval $(call hcp_base_4ca_src,$i)))
-endif
 
-# The TESTCRED handling is completed in src/testcreds.Makefile
-ifdef HCP_4ADD_CACERTS_TESTCRED
-$(eval HCP_BASE_4CA_CERTS +=$(HCP_BASE_4CA_OUT)/HCP_TESTCRED.cert)
-endif
-
-$(HCP_BASE_OUT)/4add-cacerts.Dockerfile: | $(HCP_BASE_OUT)
+$(HCP_BASE_OUT)/4add-cacerts.Dockerfile: | $(HCP_BASE_4CA_OUT)
 $(HCP_BASE_OUT)/4add-cacerts.Dockerfile: $(HCP_BASE_DEPS_COMMON)
 $(HCP_BASE_OUT)/4add-cacerts.Dockerfile: $(HCP_BASE_SRC)/4add-cacerts.Dockerfile
 $(HCP_BASE_OUT)/4add-cacerts.Dockerfile:
@@ -244,7 +239,7 @@ $(eval $(call pp_rule_docker_image_rm,\
 	base_4add-cacerts,\
 	clean_base))
 
-endif # HCP_4ADD_CACERTS_ENABLE
+endif # HCP_4ADD_CACERTS_PATH
 
 # Cleanup
 ifneq (,$(wildcard $(HCP_BASE_OUT)))

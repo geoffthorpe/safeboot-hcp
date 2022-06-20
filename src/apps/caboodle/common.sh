@@ -2,6 +2,20 @@ source /hcp/common/hcp.sh
 
 if [[ -n $HCP_CABOODLE_ALONE ]]; then
 
+# Normal service containers have mounts for persistent storage and
+# inter-container comms, which implicitly creates those paths as they're
+# mounted. For caboodle though, we need to create them directly.
+mkdir -p $(show_hcp_env | egrep "_STATE=\/" | sed -e "s/^.*_STATE=//" | uniq)
+mkdir -p $(show_hcp_env | egrep "_SOCKDIR=\/" | sed -e "s/^.*_SOCKDIR=//" | uniq)
+
+# As we're about to reproduce the testcred-creation logic (from
+# src/testcreds.Makefile), we also need to reproduce the role-account-creation
+# logic from src/apps/enrollsvc/common.sh).
+role_account_uid_file \
+	$HCP_EUSER_DB \
+	$HCP_EMGMT_STATE/uid_db_user \
+	"EnrollDB User,,,,"
+
 # We don't consume testcreds created by the host and mounted in, we spin up
 # our own.
 mkdir -p $HCP_EMGMT_CREDS_SIGNER
@@ -12,26 +26,25 @@ if [[ ! -f $HCP_EMGMT_CREDS_SIGNER/key.priv ]]; then
 	openssl genrsa -out $HCP_EMGMT_CREDS_SIGNER/key.priv
 	openssl rsa -pubout -in $HCP_EMGMT_CREDS_SIGNER/key.priv \
 		-out $HCP_EMGMT_CREDS_SIGNER/key.pem
-	chown db_user:db_user $HCP_EMGMT_CREDS_SIGNER/key.priv
+	chown $HCP_EUSER_DB:$HCP_EUSER_DB $HCP_EMGMT_CREDS_SIGNER/key.priv
 fi
 if [[ ! -f $HCP_ACLIENT_CREDS_VERIFIER/key.pem ]]; then
 	echo "Generating: Enrollment verification key"
 	cp $HCP_EMGMT_CREDS_SIGNER/key.pem $HCP_ACLIENT_CREDS_VERIFIER/
 fi
-if [[ ! -f $HCP_EMGMT_CREDS_CERTISSUER/CA.priv ]]; then
+if [[ ! -f $HCP_EMGMT_CREDS_CERTISSUER/CA.pem ]]; then
 	echo "Generating: Enrollment certificate issuer (CA)"
-	openssl genrsa -out $HCP_EMGMT_CREDS_CERTISSUER/CA.priv
-	openssl req -new -key $HCP_EMGMT_CREDS_CERTISSUER/CA.priv \
-		-subj /CN=localhost -x509 \
+	hxtool issue-certificate \
+		--self-signed --issue-ca --generate-key=rsa \
+		--subject="CN=CA,DC=hcphacking,DC=xyz" \
+		--lifetime=10years \
+		--certificate="FILE:$HCP_EMGMT_CREDS_CERTISSUER/CA.pem"
+	openssl x509 \
+		-in $HCP_EMGMT_CREDS_CERTISSUER/CA.pem -outform PEM \
 		-out $HCP_EMGMT_CREDS_CERTISSUER/CA.cert
-	chown db_user:db_user $HCP_EMGMT_CREDS_CERTISSUER/CA.priv
+	chown $HCP_EUSER_DB:$HCP_EUSER_DB $HCP_EMGMT_CREDS_CERTISSUER/CA.pem
+	chown $HCP_EUSER_DB:$HCP_EUSER_DB $HCP_EMGMT_CREDS_CERTISSUER/CA.cert
 fi
-
-# Normal service containers have mounts for persistent storage and
-# inter-container comms, which implicitly creates those paths as they're
-# mounted. For caboodle though, we need to create them directly.
-mkdir -p $(show_hcp_env | egrep "_STATE=\/" | sed -e "s/^.*_STATE=//" | uniq)
-mkdir -p $(show_hcp_env | egrep "_SOCKDIR=\/" | sed -e "s/^.*_SOCKDIR=//" | uniq)
 
 # Managing services within a caboodle container
 
