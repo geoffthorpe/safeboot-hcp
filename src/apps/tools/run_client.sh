@@ -122,7 +122,10 @@ if (
 	if [[ -n $HCP_ATTESTCLIENT_CALLBACKS ]]; then
 		for i in $HCP_ATTESTCLIENT_CALLBACKS; do
 			echo "Running callback '$i'"
-			(exec $i)
+			if ! $i; then
+				echo "Failure in callback '$i'" >&2
+				exit 1
+			fi
 		done
 	fi
 ); then
@@ -132,5 +135,6 @@ else
 	echo "Leaving tarball: $tmp_secrets"
 	echo "Leaving extraction: $tmp_extract"
 	tmp_secrets=""
-	tpm_extract=""
+	tmp_extract=""
+	exit 1
 fi
