@@ -5,6 +5,8 @@
 TOP := $(shell pwd)
 Q := $(if $(strip $V),,@)
 
+default: all
+
 include settings.mk
 
 HCP_OUT ?= $(TOP)/output
