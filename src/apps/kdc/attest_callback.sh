@@ -1,10 +1,5 @@
 #!/bin/bash
 
-if [[ ! -d $HCP_KDC_STATE/etc ]]; then
-	echo "Error, '$HCP_KDC_STATE/etc' doesn't exist" >&2
-	exit 1
-fi
-
 if [[ ! -f hostcert-pkinit-kdc.pem ]]; then
 	echo "Error, 'hostcert-pkinit-kdc.pem' missing" >&2
 	exit 1
