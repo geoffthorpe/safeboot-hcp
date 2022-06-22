@@ -94,7 +94,7 @@ role_account_uid_file \
 
 # Generate env file if it doesn't exist yet
 if [[ ! -f $ENROLLSVC_ENV ]]; then
-	echo " - generating '$ENROLLSVC_ENV'"
+	echo "Generating '$ENROLLSVC_ENV'"
 	touch $ENROLLSVC_ENV
 	chmod 644 $ENROLLSVC_ENV
 	echo "# HCP enrollsvc settings" > $ENROLLSVC_ENV

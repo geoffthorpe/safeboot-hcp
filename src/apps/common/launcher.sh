@@ -2,8 +2,6 @@
 
 source /hcp/common/hcp.sh
 
-set -e
-
 hcp_pre_launch
 
 if [[ $# -gt 0 ]]; then
