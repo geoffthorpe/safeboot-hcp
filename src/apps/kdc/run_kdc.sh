@@ -12,7 +12,6 @@ if [[ ! -d $HCP_KDC_STATE ]]; then
 	echo "Error, '$HCP_KDC_STATE' (HCP_KDC_STATE) doesn't exist" >&2
 	exit 1
 fi
-mkdir -p $HCP_KDC_STATE/etc
 
 # Run the attestation and get our assets
 # Note, run_client is not a service, it's a utility, so it doesn't retry
@@ -69,7 +68,7 @@ if [[ ! -f $HCP_KDC_STATE/initialized ]]; then
 		echo "Error, HCP_KDC_REALM isn't set" >&2
 		exit 1
 	fi
-	# mkdir $MYETC  # We do this pre-attestation
+	mkdir $MYETC
 	mkdir $MYVAR
 
 	# Produce script.kadmin
