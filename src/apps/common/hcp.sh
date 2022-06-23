@@ -7,7 +7,7 @@ if [[ ! -d "/safeboot/sbin" ]]; then
 	echo "Error, /safeboot/sbin is not present" >&2
 	return 1
 fi
-echo "Adding /safeboot/sbin to PATH" >&2
+#echo "Adding /safeboot/sbin to PATH" >&2
 export PATH=/safeboot/sbin:$PATH
 
 function source_safeboot_functions {
@@ -15,7 +15,7 @@ function source_safeboot_functions {
 		echo "Error, Safeboot 'functions.sh' isn't installed"
 		return 1
 	fi
-	echo "Sourcing /safeboot/functions.sh"
+	#echo "Sourcing /safeboot/functions.sh"
 	source "/safeboot/functions.sh"
 }
 
@@ -25,14 +25,14 @@ function source_safeboot_functions {
 # paths.
 if [[ -d "/install/bin" ]]; then
 	export PATH=/install/bin:$PATH
-	echo "Adding /install/sbin to PATH" >&2
+	#echo "Adding /install/sbin to PATH" >&2
 fi
 if [[ -d "/install/lib" ]]; then
 	export LD_LIBRARY_PATH=/install/lib:$LD_LIBRARY_PATH
-	echo "Adding /install/lib to LD_LIBRARY_PATH" >&2
+	#echo "Adding /install/lib to LD_LIBRARY_PATH" >&2
 	if [[ -d /install/lib/python3/dist-packages ]]; then
 		export PYTHONPATH=/install/lib/python3/dist-packages:$PYTHONPATH
-		echo "Adding /install/lib/python3/dist-packages to PYTHONPATH" >&2
+		#echo "Adding /install/lib/python3/dist-packages to PYTHONPATH" >&2
 	fi
 fi
 
@@ -142,7 +142,7 @@ function internal_role_account_uid_file {
 # $3 = CA-store filename
 function add_trust_root {
 	if [[ ! -f $1 ]]; then
-		echo "Error, no 'certissuer.pem' found" >&2
+		echo "Error, no '$1' found" >&2
 		return 1
 	fi
 	echo "Adding '$1' as a trust root"
