@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. /hcp/swtpmsvc/common.sh
+cd $HCP_SWTPMSVC_STATE
 
 # Handle initialization ordering issues by retrying.
 waitcount=0
