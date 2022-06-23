@@ -1,6 +1,9 @@
 #!/bin/bash
 
-set -e
+# For interactive shells, don't "set -e", it can be (more than) mildly
+# inconvenient to have the shell exit every time you run a command that exits
+# with a non-zero status code. It's good discipline for scripts though.
+[[ -z $PS1 ]] && set -e
 
 # Adds safeboot's "sbin" to the PATH.
 if [[ ! -d "/safeboot/sbin" ]]; then

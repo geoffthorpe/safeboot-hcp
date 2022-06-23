@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. /hcp/common/hcp.sh
+source /hcp/common/hcp.sh
 
 set -e
 

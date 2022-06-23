@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. /hcp/common/hcp.sh
+source /hcp/common/hcp.sh
 
 mkdir -p $HCP_ATTESTCLIENT_VERIFIER
 

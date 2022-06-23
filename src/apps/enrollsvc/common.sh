@@ -1,4 +1,4 @@
-. /hcp/common/hcp.sh
+source /hcp/common/hcp.sh
 
 function expect_root {
 	if [[ `whoami` != "root" ]]; then

@@ -1,7 +1,5 @@
 #!/bin/bash
 
-. /hcp/common/hcp.sh
-
 # As a general rule, we do attestation before all the initialization flow.
 # However, our attestation callback relies on the existence of
 # $HCP_KDC_STATE/etc because it deposits our credential there, so take care of
