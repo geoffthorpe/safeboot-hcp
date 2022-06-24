@@ -44,7 +44,6 @@ services:
     common:
         image: ${HCP_IMAGE_caboodle}
         command: /hcp/common/launcher.sh
-        domainname: avoid-me-domain
         volumes:
           - fqdn:${HCP_FQDN_PATH}:rw
           - ${HCP_TOP}/usecase:/usecase:ro
