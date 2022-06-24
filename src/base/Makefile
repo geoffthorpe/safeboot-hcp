@@ -214,7 +214,7 @@ $(HCP_BASE_4CA_OUT)/$b:
 $(eval HCP_BASE_4CA_CERTS += $(HCP_BASE_4CA_OUT)/$b)
 endef
 HCP_BASE_4CA_CERT_SRC := $(shell cd $(HCP_4ADD_CACERTS_PATH) && find . -type f)
-$(if $(strip,$(HCP_BASE_4CA_CERT_SRC)),,
+$(if $(strip $(HCP_BASE_4CA_CERT_SRC)),,\
 	$(error "HCP_4ADD_CACERTS_PATH ($(HCP_4ADD_CACERTS_PATH)) contains no CA certs"))
 $(foreach i,$(HCP_BASE_4CA_CERT_SRC),$(eval $(call hcp_base_4ca_src,$i)))
 
