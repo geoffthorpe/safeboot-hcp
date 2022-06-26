@@ -7,8 +7,9 @@
 		"enroll_api": "http://emgmt.hcphacking.xyz:5000",
 		"enroll_profile": {
 			"GENPROGS": "genconf-krb5 gencert-pkinit-client gencert-https-client",
-			"REALM": "HCPHACKING.XYZ",
-			"DOMAIN": "hcphacking.xyz"
+			"ENV": {
+				"REALM": "HCPHACKING.XYZ"
+			}
 		}
 	},
 	"fleet": [

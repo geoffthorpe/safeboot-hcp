@@ -16,12 +16,10 @@ echo "Starting $0" >&2
 echo "  - Param1=$1 (path to ek.pub/ek.pem)" >&2
 echo "  - Param2=$2 (hostname)" >&2
 echo "  - Param3=$3 (profile)" >&2
-echo "  - Param4=$4 (path to paramfile)" >&2
 
 MYEKPUB=$1
 export MYHOSTNAME=$2
 MYPROFILE=$3
-MYPARAMFILE=$4
 
 # args must be non-empty
 if [[ -z $MYEKPUB || -z $MYHOSTNAME ]]; then
@@ -74,20 +72,19 @@ if [[ -n $MYPROFILE ]]; then
 	if [[ "$genprogs" = "null" ]]; then
 		genprogs="gencert-pkinit-client gencert-https-server"
 	fi
-	genrealm=$(echo "$profilejson" | jq -r '.REALM')
-	gendomain=$(echo "$profilejson" | jq -r '.DOMAIN')
+	envjson=$(echo "$profilejson" | jq -r '.ENV // {}')
+else
+	genprogs=""
+	envjson="{}"
 
 fi
 genprogs+=" gencert-pubs-only"
-export ENROLL_PROFILE="$MYPROFILE"
-export ENROLL_PARAMFILE=$MYPARAMFILE
 echo "export GENPROGS+=($genprogs)" >> $EPHEMERAL_ENROLL/enroll.conf
-if [[ "$genrealm" != "null" ]]; then
-echo "export ENROLL_REALM=$genrealm" >> $EPHEMERAL_ENROLL/enroll.conf
-fi
-if [[ "$gendomain" != "null" ]]; then
-echo "export ENROLL_DOMAIN=$gendomain" >> $EPHEMERAL_ENROLL/enroll.conf
-fi
+envitems=( $(echo "$envjson" | jq -r 'keys[]') )
+for i in ${envitems[@]}; do
+	val=$(echo "$envjson" | jq -r ".$i // empty")
+	export ENROLL_$i="$val"
+done
 
 ./sbin/attest-enroll -C $EPHEMERAL_ENROLL/enroll.conf \
 		-V CHECKOUT=/hcp/enrollsvc/cb_checkout.sh \

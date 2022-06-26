@@ -5,7 +5,6 @@
 # add:     curl -v -F ekpub=@</path/to/ek.pub> \
 #               -F hostname=<hostname> \
 #               -F profile=<profile> \
-#               -F paramfile=@</path/to/paramfile> \
 #               <enrollsvc-URL>/v1/add
 # - form elements 'profile' and 'paramfile' are not compulsory
 #
@@ -57,8 +56,6 @@ def enroll_add(args):
     }
     if args.profile is not None:
         form_data['profile'] = (None, args.profile)
-    if args.paramfile is not None:
-        form_data['paramfile'] = ('paramfile', open(args.paramfile, 'rb'))
     response = requests.post(args.api + '/v1/add', files=form_data, auth=auth)
     if response.status_code != 200:
         print(f"Error, response status code was {response.status_code}")
@@ -152,17 +149,16 @@ if __name__ == '__main__':
     (binary). The provided hostname is registered in the TPM enrollment in order to
     create a binding between the TPM and its corresponding host - this should not be
     confused with the '--api' argument, which provides a URL to the Enrollment
-    Service!
+    Service! Control over the enrollment, including the set of assets desired and
+    configuration for it, is passed as a JSON string via the --profile argument.
     """
     add_help_ekpub = 'path to the public key file for the TPM\'s Endorsement Key'
     add_help_hostname = 'hostname to be enrolled with (and bound to) the TPM'
     add_help_profile = 'enrollment profile to use (optional)'
-    add_help_paramfile = 'path to profile-specific enrollment file (optional)'
     parser_a = subparsers.add_parser('add', help=add_help, epilog=add_epilog)
     parser_a.add_argument('ekpub', help=add_help_ekpub)
     parser_a.add_argument('hostname', help=add_help_hostname)
     parser_a.add_argument('--profile', help=add_help_profile, required=False)
-    parser_a.add_argument('--paramfile', help=add_help_paramfile, required=False)
     parser_a.set_defaults(func=enroll_add)
 
     query_help = 'Query (and list) enrollments based on prefix-search of hash(EKpub)'
