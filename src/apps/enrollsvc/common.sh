@@ -152,10 +152,7 @@ EOF
 export GENCERT_CA_PRIV=$GENCERT_CA_PRIV
 export GENCERT_CA_CERT=$GENCERT_CA_CERT
 export DIAGNOSTICS=$DIAGNOSTICS
-POLICIES[cert-https-client]=pcr11
-POLICIES[cert-https-server]=pcr11
-POLICIES[cert-pkinit-client]=pcr11
-POLICIES[cert-pkinit-kdc]=pcr11
+POLICIES[cert-hxtool]=pcr11
 POLICIES[rootfskey]=pcr11
 EOF
 

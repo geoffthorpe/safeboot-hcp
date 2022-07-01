@@ -1,6 +1,7 @@
 #!/bin/bash
 
-. /hcp/enrollsvc/common.sh
+
+source /hcp/enrollsvc/common.sh
 
 expect_db_user
 
@@ -40,6 +41,84 @@ HNREV=`echo "$MYHOSTNAME" | rev`
 
 cd /safeboot
 
+export EPHEMERAL_ENROLL=`mktemp -d`
+trap 'rm -rf $EPHEMERAL_ENROLL' EXIT
+
+# Process the server's "enrollsvc.json" JSON config;
+# - make sure it's valid JSON
+if [[ -f $HCP_ENROLLSVC_JSON ]]; then
+	if ! serverprofile=$(cat "$HCP_ENROLLSVC_JSON" | jq) > /dev/null 2>&1; then
+		my_tee "Error, enrollsvc.json is not valid JSON"
+		exit 1
+	fi
+else
+	serverprofile="{}"
+fi
+# - extract the pre/post profiles
+serverprofilepre=$(echo "$serverprofile" | jq -r '.preclient // empty')
+serverprofilepost=$(echo "$serverprofile" | jq -r '.postclient // empty')
+
+# Process the client's "profile"
+# - make sure it's valid JSON
+if [[ -n $MYPROFILE ]]; then
+	if ! clientprofile=$(echo "$MYPROFILE" | jq) > /dev/null 2>&1; then
+		my_tee "Error, profile is not valid JSON"
+		exit 1
+	fi
+else
+	clientprofile="{}"
+fi
+
+# Merge the server and client settings, getting a "result profile"
+preresultprofile=$(jq -cn "$serverprofilepre * $clientprofile")
+resultprofile=$(jq -cn "$preresultprofile * $serverprofilepost")
+
+# The "env" inputs can be parked in the environment and will be available to
+# the routines that get run. For each key-value pair in the "env" section of
+# the JSON object;
+# - verify that the key contains only [A-Za-z0-9_] characters
+# - export an environment variable named "ENROLL_<key>" of the same value.
+resultenv=$(echo "$resultprofile" | jq -r '.env // {}')
+envitems=( $(echo "$resultenv" | jq -r 'keys[] // empty') )
+for i in ${envitems[@]}; do
+	# Make sure 'i' only consists of suitable characters!
+	if ! echo "$i" | grep -v "[^A-Za-z0-9_]" > /dev/null 2>&1; then
+		my_tee "Error, env key '$i' is not valid"
+		exit 1
+	fi
+	val=$(echo "$resultenv" | jq -r ".$i // empty")
+	export ENROLL_$i="$val"
+done
+
+# Then;
+# - force the ENROLL_HOSTNAME variable from our inputs
+export ENROLL_HOSTNAME="$MYHOSTNAME"
+# - calculate some derivative environment variables "ENROLL_*" that we make
+#   available for parameter-expansion.
+source /hcp/enrollsvc/derive_enroll_vars.sh
+derive_enroll_vars
+
+# And;
+# - run "param_expand" over the JSON profile to expand any occurances of
+#   "${ENROLL_[A-Za-z0-9_]*}", then put the resulting profile in the
+#   environment as "ENROLL_JSON". Also include GENCERT_CA_PRIV.
+enroll_vars=$(printenv | egrep -e "^ENROLL_[A-Za-z0-9_]*=" | sed -e "s/=.*\$//")
+expand_vars=( GENCERT_CA_PRIV )
+for i in $enroll_vars; do
+	expand_vars+=($i)
+done
+enroll_profile=$(echo "$resultprofile" | param_expand ${expand_vars[@]})
+export ENROLL_JSON="$enroll_profile"
+
+# Specialize the enroll.conf that is installed with enrollsvc. Specifically, we
+# feed in the "genprogs" setting via enroll.conf (attest-enroll will clobber it
+# if we only define it in the environment ahead of time).
+cp /safeboot/enroll.conf $EPHEMERAL_ENROLL/enroll.conf
+genprogs=$(echo "$resultprofile" | jq -r '.genprogs_pre')
+genprogs+=" $(echo "$resultprofile" | jq -r '.genprogs')"
+genprogs+=" $(echo "$resultprofile" | jq -r '.genprogs_post')"
+echo "export GENPROGS=($genprogs)" >> $EPHEMERAL_ENROLL/enroll.conf
+
 # Invoke attest-enroll, which creates a directory full of goodies for the host.
 # attest-enroll uses CHECKOUT and COMMIT hooks to determine the directory and
 # post-process it, respectively. What we do is;
@@ -48,43 +127,11 @@ cd /safeboot
 #   - our CHECKOUT hook reads $EPHEMERAL_ENROLL and returns it to attest-enroll
 #     (via stdout),
 #   - our COMMIT hook does nothing (flexibility later)
+#   - our genprogs get triggered from
 # - add all the goodies to git
 #   - use the ek.pub goodie (which won't necessarily match $MYEKPUB, if the
 #     latter is in PEM format!) to determine the EKPUBHASH
 # - delete the temp output directory.
-
-export EPHEMERAL_ENROLL=`mktemp -d`
-trap 'rm -rf $EPHEMERAL_ENROLL' EXIT
-
-# If 'profile' begins with 'GENPROGS:', the rest of the string is assumed to be
-# a space-separated list of entries to be added to the bash array of the same
-# name in the enroll.conf file, which is then consumed by attest-enroll.
-#
-# Otherwise, 'profile' and 'paramfile' arguments are set as exported
-# environment variables for consumption somewhere (else) in safeboot code.
-cp /safeboot/enroll.conf $EPHEMERAL_ENROLL/enroll.conf
-if [[ -n $MYPROFILE ]]; then
-	if ! profilejson=$(echo "$MYPROFILE" | jq) > /dev/null 2>&1; then
-		my_tee "Error, profile is not valid JSON"
-		exit 1
-	fi
-	genprogs=$(echo "$profilejson" | jq -r '.GENPROGS')
-	if [[ "$genprogs" = "null" ]]; then
-		genprogs="gencert-pkinit-client gencert-https-server"
-	fi
-	envjson=$(echo "$profilejson" | jq -r '.ENV // {}')
-else
-	genprogs=""
-	envjson="{}"
-
-fi
-genprogs+=" gencert-pubs-only"
-echo "export GENPROGS+=($genprogs)" >> $EPHEMERAL_ENROLL/enroll.conf
-envitems=( $(echo "$envjson" | jq -r 'keys[]') )
-for i in ${envitems[@]}; do
-	val=$(echo "$envjson" | jq -r ".$i // empty")
-	export ENROLL_$i="$val"
-done
 
 ./sbin/attest-enroll -C $EPHEMERAL_ENROLL/enroll.conf \
 		-V CHECKOUT=/hcp/enrollsvc/cb_checkout.sh \

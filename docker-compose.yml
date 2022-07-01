@@ -58,6 +58,7 @@ services:
           - enrolldb:${HCP_EMGMT_STATE}:rw
           - ${HCP_TESTCREDS_ENROLLSIGNER}:${HCP_EMGMT_CREDS_SIGNER}:ro
           - ${HCP_TESTCREDS_ENROLLCERTISSUER}:${HCP_EMGMT_CREDS_CERTISSUER}:ro
+          - ${HCP_ENROLLSVC_JSON}:/enrollsvc.json:ro
         environment:
           - HCP_INSTANCE=/usecase/emgmt.env
         healthcheck:
@@ -152,6 +153,7 @@ services:
           - HCP_INSTANCE=/usecase/caboodle_alone.env
         volumes:
           - ${HCP_ORCHESTRATOR_JSON}:/fleet.json:ro
+          - ${HCP_ENROLLSVC_JSON}:/enrollsvc.json:ro
     caboodle_test:
         extends: caboodle_alone
         environment:

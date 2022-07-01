@@ -1,0 +1,67 @@
+#!/bin/bash
+
+source /hcp/common/hcp.sh
+
+cd "$1"
+
+hxtooljson=$(echo "$ENROLL_JSON" | jq -r '.["gencert-hxtool"] // {}')
+certlist=( $(echo "$hxtooljson" | jq -r '.["list"] // empty') )
+certprefix=$(echo "$hxtooljson" | jq -r '.["prefix"] // "cert-"')
+commonjson=$(echo "$hxtooljson" | jq -r '.["<common>"] // {}')
+
+ASSETS=""
+
+for asset in ${certlist[@]}; do
+	if [[ $asset == "<common>" ]]; then
+		continue
+	fi
+	assetjson=$(echo "$hxtooljson" | jq -r ".[\"$asset\"] // {}")
+	assetjson=$(jq -cn "$commonjson * $assetjson")
+	assetcmd=( hxtool issue-certificate )
+	# Special handling:
+	# - 'name' allows the output file to be renamed
+	# - 'type' is required, must only be specified once, and we'll pass it
+	#   to "hxtool issue-certificate" as the first arg.
+	# - 'certificate' is ignored, we set it as the last arg using
+	#   $assetname.
+	assetname=$(echo "$assetjson" | jq -r '.["name"] // empty')
+	if [[ -z $assetname ]]; then
+		assetname="$asset"
+	fi
+	assetpath="${certprefix}$assetname.pem"
+	assetcmd+=( --certificate="$assetpath" )
+	assetdir=$(dirname "${assetpath}")
+	if [[ $assetdir != "." ]]; then
+		mkdir -p "$assetdir"
+	fi
+	proptype=$(echo "$assetjson" | jq -r '.["type"] // empty')
+	if [[ -z $proptype ]]; then
+		echo "ERROR: gencert-hxtool '$asset' has no 'type'" >&2
+		exit 1
+	fi
+	assetcmd+=( --type=$proptype )
+	props=( $(echo "$assetjson" | jq -r 'keys[] // empty') )
+	for prop in ${props[@]}; do
+		if [[ $prop == "name" || $prop == "type" ||
+				$prop == "certificate" ]]; then
+			continue
+		fi
+		propval=$(echo "$assetjson" | jq -r ".[\"$prop\"] // empty")
+		if [[ -z $propval ]]; then
+			assetcmd+=( --$prop )
+		else
+			assetcmd+=( --$prop="$propval" )
+		fi
+	done
+	assetcmd+=( --certificate="FILE:$assetpath" )
+
+	# Execute the hxtool command
+	if ! ${assetcmd[@]}; then
+		echo "ERROR: gencert-hxtool '$asset' failed" >&2
+		echo "ERROR: cmd was: ${assetcmd[@]}" >&2
+		exit 1
+	fi
+	ASSETS="$ASSETS $assetpath"
+done
+
+echo "sensitive $ASSETS"

@@ -1,16 +1,25 @@
 #!/bin/bash
 
-# Scan for any "hostcert-*.pem" files (certificate+key pairs) - these will all
-# have been marked "sensitive" by their generators and so they will be sealed
-# to the TPM. For each of them, we extract the public certificate and put it in
-# a corresponding "hostcert-*-pub.pem" file that won't get sealed to the TPM.
+# Scan for any cert files (certificate+key pairs) - these will all have been
+# marked "sensitive" by their generators and so they will be sealed to the TPM.
+# For each "<name>.pem", we extract the public certificate and put it in a
+# corresponding "<name>-pub.pem" file that won't get sealed to the TPM.
+
+source /hcp/common/hcp.sh
 
 cd "$1"
 
-CERTS=$(ls hostcert-*.pem 2> /dev/null || true)
+myjson=$(echo "$ENROLL_JSON" | jq -r '.["gencert-pubs-only"] // {}')
+mymatch=$(echo "$myjson" | jq -r '.["match"] // "*.pem" ')
+
+CERTS=$(ls $mymatch 2> /dev/null || true)
 PUBS=
 for i in $CERTS; do
-	pub=$(echo "$i" | sed -e "s/\.pem$/-pub.pem/")
+	if (echo "$i" | egrep -e "\.pem$" > /dev/null 2>&1); then
+		pub=$(echo "$i" | sed -e "s/\.pem$/-pub.pem/")
+	else
+		pub=$(echo "$i" | sed -e "s/$/-pub/")
+	fi
 	(
 	openssl x509 \
 		-in "$i" \

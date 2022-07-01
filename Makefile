@@ -45,6 +45,7 @@ include tests/Makefile
 # Environment for docker-compose.yml #
 ######################################
 
+HCP_ENROLLSVC_JSON := $(TOP)/enrollsvc.json
 HCP_ORCHESTRATOR_JSON := $(TOP)/fleet.json
 $(HCP_OUT)/docker-compose.env: | $(HCP_OUT)
 $(HCP_OUT)/docker-compose.env: $(TOP)/settings.mk
@@ -62,6 +63,7 @@ $(HCP_OUT)/docker-compose.env:
 	$Qecho "HCP_TESTCREDS_ENROLLSIGNER=$(HCP_TESTCREDS_ENROLLSIGNER)" >> $@
 	$Qecho "HCP_TESTCREDS_ENROLLVERIFIER=$(HCP_TESTCREDS_ENROLLVERIFIER)" >> $@
 	$Qecho "HCP_TESTCREDS_ENROLLCERTISSUER=$(HCP_TESTCREDS_ENROLLCERTISSUER)" >> $@
+	$Qecho "HCP_ENROLLSVC_JSON=$(HCP_ENROLLSVC_JSON)" >> $@
 	$Qecho "HCP_ORCHESTRATOR_JSON=$(HCP_ORCHESTRATOR_JSON)" >> $@
 	$Qecho "HCP_TOP=$(TOP)" >> $@
 	$Qecho "" >> $@
