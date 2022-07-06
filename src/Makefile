@@ -28,6 +28,9 @@ include $(HCP_SRC)/ext-tpmware.Makefile
 # Produce a tarball of tools installed from safeboot
 include $(HCP_SRC)/ext-safeboot.Makefile
 
+# Produce a tarball of xtras, like our parameter-expansion tool
+include $(HCP_SRC)/xtra.Makefile
+
 # Produce HCP applications (code tarballs and container images)
 include $(HCP_SRC)/apps/Makefile
 
