@@ -212,14 +212,7 @@ do_item()
 	# merge in jq unions the fields of the two structures at the top level
 	# only, preferring the right-parameter's version when both have fields
 	# of the same name.
-	entry=$(jq -cn "$fleet_defaults + $2")
-	# But we want the "enroll_profile" fields of the two structures, which
-	# are themselves sub-structures, to also be merged, rather than chosen
-	# between. And the above doesn't do that.
-	# Retrofit it here;
-	profile_from_entry=$(echo "$entry" | jq -r ".enroll_profile // {}")
-	profile_merge=$(jq -cn "$fleet_defaults_profile + $profile_from_entry")
-	entry=$(jq -cn "$entry + { enroll_profile: $profile_merge }")
+	entry=$(jq -cn "$fleet_defaults * $2")
 
 	# Now extract the fields from the merged JSON for use by the above functions
 	tpm_path=$(echo "$entry" | jq -r ".tpm_path // empty")
