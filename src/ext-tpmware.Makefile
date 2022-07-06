@@ -99,9 +99,9 @@ $(eval $(call source_builder_add,\
 	$(HCP_TPMWARE_SRC)/heimdal,\
 	autogen.sh,\
 	./autogen.sh,\
-	./configure --prefix=$(HCP_TPMWARE_INSTALL_DEST),\
-	make $(HCP_TPMWARE_MAKE_PARALLEL),\
-	make install))
+	MAKEINFO=true ./configure --prefix=$(HCP_TPMWARE_INSTALL_DEST) --disable-texinfo,\
+	MAKEINFO=true make $(HCP_TPMWARE_MAKE_PARALLEL),\
+	MAKEINFO=true make install))
 
 endif # HCP_HEIMDAL_SOURCE
 
