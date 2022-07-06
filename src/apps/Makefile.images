@@ -2,7 +2,8 @@
 # $1 = name, produces "hcp_<name>" (or whatever HCP_PREFIX is changed to)
 # $2 = ancestor, used as "hcp_<ancestor>" (or HCP_BASE_DNAME if empty)
 # $3 = list of apps tarballs and corresponding Dockerfiles to consume
-# $4 = list of non-apps tarballs to consume
+# $4 = list of non-apps tarballs to consume (without the ".tar.gz" suffix,
+#      because we expect both that _and_ the ".Dockerfile" suffixes to exist)
 # TODO: processing of $3 should be like $2, rather than the manual matching.
 define app_image
 $(eval myDockerInputs :=)
@@ -18,14 +19,10 @@ $(eval myImgDepCmd += echo "$(HCP_APPS_OUT)/image.$1: $(HCP_OUT)/.deps.image.$1"
 $(eval myDockerDepCmd := echo "$(HCP_APPS_OUT)/Dockerfile.$1: | $(HCP_APPS_OUT)" > $(HCP_OUT)/.deps.Dockerfile.$1.tmp ;)
 $(eval myDockerDepCmd += echo "$(HCP_APPS_OUT)/Dockerfile.$1: $(HCP_OUT)/.deps.Dockerfile.$1" > $(HCP_OUT)/.deps.Dockerfile.$1.tmp ;)
 $(eval myDockerInputs += $(foreach i,$3,$(HCP_APPS_OUT)/Dockerfile.stub.$i))
-$(if $(findstring safeboot,$4),
-	$(eval myImgDepCmd += echo "$(HCP_APPS_OUT)/image.$1: $(HCP_OUT)/safeboot/safeboot.tar.gz" >> $(HCP_OUT)/.deps.image.$1.tmp ;)
-	$(eval myDockerDepCmd += echo "$(HCP_APPS_OUT)/Dockerfile.$1: $(HCP_OUT)/Dockerfile.safeboot" >> $(HCP_OUT)/.deps.Dockerfile.$1.tmp ;)
-	$(eval myDockerInputs += $(HCP_OUT)/Dockerfile.safeboot))
-$(if $(findstring install,$4),
-	$(eval myImgDepCmd += echo "$(HCP_APPS_OUT)/image.$1: $(HCP_OUT)/tpmware/install.tar.gz" >> $(HCP_OUT)/.deps.image.$1.tmp ;)
-	$(eval myDockerDepCmd += echo "$(HCP_APPS_OUT)/Dockerfile.$1: $(HCP_OUT)/Dockerfile.install" >> $(HCP_OUT)/.deps.Dockerfile.$1.tmp ;)
-	$(eval myDockerInputs += $(HCP_OUT)/Dockerfile.install))
+$(foreach i,$(strip $4),
+	$(eval myImgDepCmd += echo "$(HCP_APPS_OUT)/image.$1: $i.tar.gz" >> $(HCP_OUT)/.deps.image.$1.tmp ;)
+	$(eval myDockerDepCmd += echo "$(HCP_APPS_OUT)/Dockerfile.$1: $i.Dockerfile" >> $(HCP_OUT)/.deps.Dockerfile.$1.tmp ;)
+	$(eval myDockerInputs += $i.Dockerfile))
 $(foreach i,$3,
 	$(eval myImgDepCmd += echo "$(HCP_APPS_OUT)/image.$1: $(HCP_APPS_OUT)/$i.tar.gz" >> $(HCP_OUT)/.deps.image.$1.tmp ;)
 	$(eval myDockerDepCmd += echo "$(HCP_APPS_OUT)/Dockerfile.$1: $(HCP_APPS_OUT)/Dockerfile.stub.$i" >> $(HCP_OUT)/.deps.Dockerfile.$1.tmp ;))
@@ -70,19 +67,3 @@ endif
 clean_apps: clean_image_$1
 endif
 endef
-
-# We need special rules for the non-apps Dockerfiles
-$(HCP_OUT)/Dockerfile.safeboot: | $(HCP_OUT)
-$(HCP_OUT)/Dockerfile.safeboot:
-	$Qecho "COPY safeboot/safeboot.tar.gz /" > $@
-	$Qecho "RUN tar zxf safeboot.tar.gz && rm safeboot.tar.gz" >> $@
-$(HCP_OUT)/Dockerfile.install: | $(HCP_OUT)
-$(HCP_OUT)/Dockerfile.install:
-	$Qecho "COPY tpmware/install.tar.gz /" > $@
-	$Qecho "RUN tar zxf install.tar.gz && rm install.tar.gz" >> $@
-ifneq (,$(wildcard $(HCP_OUT)/Dockerfile.safeboot $(HCP_OUT)/Dockerfile.install))
-clean_xtra_Dockerfiles:
-	$Qrm -f $(HCP_OUT)/Dockerfile.safeboot
-	$Qrm -f $(HCP_OUT)/Dockerfile.install
-clean_apps: clean_xtra_Dockerfiles
-endif

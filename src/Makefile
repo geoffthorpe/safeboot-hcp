@@ -14,6 +14,12 @@ include $(HCP_SRC)/base/Makefile
 # undesirable, unreliable, or impossible for many reasons).
 include $(HCP_SRC)/builder/Makefile
 
+# Define some template Makefile-generation tooling, so thaat you can implement
+# "configure", "build", "install" rules for a source tree, and have all the
+# Makefile and docker hooks set up for it. ext-tpmware uses this, and
+# ext-safeboot probably should too.
+include $(HCP_SRC)/source-building.Makefile
+
 # Compile external tpm tools from source (using "builder"), resulting in
 # install.tar.gz, literally a tarball of a root-level installation ("/install")
 # of the tools.

@@ -77,6 +77,11 @@ $(HCP_SAFEBOOT_OUT)/safeboot.tar.gz: $(foreach i,$(HCP_SAFEBOOT_SUBSETS),$(HCP_S
 $(HCP_SAFEBOOT_OUT)/safeboot.tar.gz:
 	$Q$(HCP_SAFEBOOT_INSTALL_RUN) "$(HCP_SAFEBOOT_INSTALL_CMD)"
 
+$(HCP_SAFEBOOT_OUT)/safeboot.Dockerfile: $(HCP_SAFEBOOT_OUT)/safeboot.tar.gz
+$(HCP_SAFEBOOT_OUT)/safeboot.Dockerfile:
+	$Qecho "COPY safeboot/safeboot.tar.gz /" > $@
+	$Qecho "RUN tar zxf safeboot.tar.gz && rm safeboot.tar.gz" >> $@
+
 # A wrapper target to package safeboot
 safeboot: $(HCP_SAFEBOOT_OUT)/safeboot.tar.gz
 ALL += $(HCP_SAFEBOOT_OUT)/safeboot.tar.gz
@@ -85,6 +90,7 @@ ALL += $(HCP_SAFEBOOT_OUT)/safeboot.tar.gz
 ifneq (,$(wildcard $(HCP_SAFEBOOT_OUT)))
 clean_safeboot:
 	$Qrm -f $(HCP_SAFEBOOT_OUT)/safeboot.tar.gz
+	$Qrm -f $(HCP_SAFEBOOT_OUT)/safeboot.Dockerfile
 ifneq (,$(wildcard $(HCP_SAFEBOOT_INSTALL_TOUCH)))
 	$Qdocker volume rm $(HCP_SAFEBOOT_INSTALL)
 	$Qrm $(HCP_SAFEBOOT_INSTALL_TOUCH)
