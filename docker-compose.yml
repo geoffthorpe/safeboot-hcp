@@ -43,6 +43,7 @@ services:
 
     common:
         image: ${HCP_IMAGE_caboodle}
+        init: true
         command: /hcp/common/launcher.sh
         volumes:
           - fqdn:${HCP_FQDN_PATH}:rw
