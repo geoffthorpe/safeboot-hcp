@@ -56,6 +56,11 @@ def home():
 <h2>To retrieve the asset-signing trust anchor;</h2>
 <a href="/v1/get-asset-signer">Click here</a>
 '''
+@app.route('/healthcheck', methods=['GET'])
+def healthcheck():
+    return '''
+<h1>Healthcheck</h1>
+'''
 
 # We enforce privilege separation by running this flask app as the flask_user
 # account, which has no direct access to any enrollment state. Specific sudo

@@ -2,7 +2,7 @@
 
 cd /hcp/enrollsvc
 
-. common.sh
+source common.sh
 
 expect_flask_user
 
@@ -24,6 +24,9 @@ expect_flask_user
 #    If not set, default options will be used instead;
 #            --processes 2 --threads 2
 #    Set to "none" if you want the cmd to use no options at all.
+#
+# BTW, to avoid noise in the logs, we also add;
+#    --route "^/healthcheck donotlog:"
 
 UWSGI=${HCP_ENROLLSVC_UWSGI:=uwsgi_python3}
 PORT=${HCP_ENROLLSVC_UWSGI_PORT:=5000}
@@ -45,6 +48,6 @@ echo "Setting SIGTERM->SIGQUIT trap handler"
 trap 'echo "Converting SIGTERM->SIGQUIT"; kill -QUIT $UPID' TERM
 
 echo "Running: $TO_RUN"
-$TO_RUN &
+$TO_RUN --route-if "equal:\${PATH_INFO};/healthcheck donotlog:" &
 UPID=$!
 wait $UPID

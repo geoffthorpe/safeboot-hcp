@@ -61,7 +61,7 @@ services:
         environment:
           - HCP_INSTANCE=/usecase/emgmt.env
         healthcheck:
-            test: curl -f -G http://localhost:5000/ || exit 1
+            test: curl -f -G http://localhost:5000/healthcheck || exit 1
             timeout: 1s
             interval: 2s
 
