@@ -57,8 +57,8 @@ declare -A hcp_entity=( \
 	[arepl]=./arepl.env \
 	[ahcp]=./ahcp.env \
 	[orchestrator]=./orchestrator.env \
-	[kdc]=./kdc.env \
-	[kdc_tpm]=./kdc_tpm.env \
+	[kdc1]=./kdc1.env \
+	[kdc1_tpm]=./kdc1_tpm.env \
 	[aclient]=./aclient.env \
 	[aclient_tpm]=./aclient_tpm.env \
         )
@@ -69,8 +69,8 @@ declare -A hcp_entity_type=( \
 	[arepl]=service \
 	[ahcp]=service \
 	[orchestrator]=setup \
-	[kdc]=service \
-	[kdc_tpm]=service \
+	[kdc1]=service \
+	[kdc1_tpm]=service \
 	[aclient]=util \
 	[aclient_tpm]=service \
 	)
