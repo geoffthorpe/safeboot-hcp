@@ -25,6 +25,28 @@
 
 expect_root
 
+if [[ ! -f $HCP_ATTESTSVC_UWSGI_INI ]]; then
+	echo "Error, HCP_ATTESTSVC_UWSGI_INI ($HCP_ATTESTSVC_UWSGI_INI) isn't available" >&2
+fi
+
 echo "Running 'attestsvc-hcp' service"
 
-drop_privs_hcp /hcp/attestsvc/flask_wrapper.sh
+# Convince the safeboot scripts to find safeboot.conf and functions.sh and
+# the sbin stuff
+export DIR=/safeboot
+export BINDIR=$DIR
+
+# Steer attest-server (and attest-verify) towards our source of truth
+export SAFEBOOT_DB_DIR="$HCP_USER_DIR/current"
+
+# uwsgi takes SIGTERM as an indication to ... reload! So we need to translate
+# SIGTERM to SIGQUIT to have the desired effect.
+echo "Setting SIGTERM->SIGQUIT trap handler"
+UPID=0
+trap 'echo "Converting SIGTERM->SIGQUIT"; kill -QUIT $UPID' TERM
+
+TO_RUN="uwsgi_python3 --ini $HCP_ATTESTSVC_UWSGI_INI"
+echo "Running: $TO_RUN"
+$TO_RUN &
+UPID=$!
+wait $UPID

@@ -103,7 +103,7 @@ services:
         environment:
           - HCP_INSTANCE=/usecase/ahcp.env
         healthcheck:
-            test: curl -f -G http://localhost:8080/ || exit 1
+            test: curl -f -G http://localhost:8080/healthcheck || exit 1
             timeout: 1s
             interval: 2s
 
