@@ -70,6 +70,11 @@ if [[ `whoami` != "root" ]]; then
 
 else
 
+if [[ -z $HCP_ENVIRONMENT_SET && -f $ENROLLSVC_ENV ]]; then
+	echo "Running in root environment and sourcing existing config" >&2
+	source $ENROLLSVC_ENV
+fi
+
 # If we're root, this environment should already be known
 if [[ ! -d $HCP_ENROLLSVC_STATE ]]; then
 	echo "Error, HCP_ENROLLSVC_STATE ($HCP_ENROLLSVC_STATE) doesn't exist" >&2
@@ -186,9 +191,6 @@ function drop_privs_db {
 	# run_mgmt.sh uses it when making the same check and when subsequently
 	# initializing the database.
 	exec su --whitelist-environment ENROLLSVC_IN_SETUP -c "$*" - $HCP_ENROLLSVC_USER_DB
-}
-function drop_privs_flask {
-	exec su -c "$*" - $HCP_ENROLLSVC_USER_FLASK
 }
 
 # Handle first-time initialization, part B
