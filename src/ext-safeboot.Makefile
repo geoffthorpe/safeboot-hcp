@@ -69,7 +69,12 @@ HCP_SAFEBOOT_INSTALL_RUN := \
 	$(HCP_BASE_DNAME) \
 	bash -c
 
-HCP_SAFEBOOT_INSTALL_CMD := cd /put_it_here ;
+# Note the "attest_server"->"attest-server" hack. This is because we want to
+# load attest-server from a python wrapper that adds hooks, but python
+# module-loading doesn't like paths with hyphens or without a ".py" suffix.
+HCP_SAFEBOOT_INSTALL_CMD := cd $(HCP_SAFEBOOT_INSTALL_DEST)/sbin ;
+HCP_SAFEBOOT_INSTALL_CMD += rm -f attest_server.py && ln -s attest-server attest_server.py ;
+HCP_SAFEBOOT_INSTALL_CMD += cd /put_it_here ;
 HCP_SAFEBOOT_INSTALL_CMD += tar zcf safeboot.tar.gz $(HCP_SAFEBOOT_INSTALL_DEST) ;
 HCP_SAFEBOOT_INSTALL_CMD += /hcp/base/chowner.sh sb.root safeboot.tar.gz
 
