@@ -1,53 +1,44 @@
-HCP_SAFEBOOT_OUT := $(HCP_OUT)/safeboot
 HCP_SAFEBOOT_SRC := $(TOP)/ext-safeboot
-
-$(HCP_SAFEBOOT_OUT): | $(HCP_OUT)
-MDIRS += $(HCP_SAFEBOOT_OUT)
-
-HCP_SAFEBOOT_INSTALL := $(HCP_IMAGE_PREFIX)safeboot
-HCP_SAFEBOOT_INSTALL_TOUCH := $(HCP_SAFEBOOT_OUT)/vol.created
-$(HCP_SAFEBOOT_INSTALL_TOUCH): | $(HCP_SAFEBOOT_OUT)
-	$Qdocker volume create $(HCP_SAFEBOOT_INSTALL)
-	$Qtouch $@
-
 HCP_SAFEBOOT_INSTALL_DEST := /safeboot
 
-HCP_SAFEBOOT_DOCKER_RUN := \
-	docker run -i --rm --label $(HCP_IMAGE_PREFIX)all=1 \
-	--mount type=volume,source=$(HCP_SAFEBOOT_INSTALL),destination=$(HCP_SAFEBOOT_INSTALL_DEST) \
-	--mount type=bind,source=$(HCP_SAFEBOOT_SRC),destination=/source,ro=true \
-	$(HCP_BASE_DNAME) \
-	bash -c
+# We steal the TPMWARE settings as to whether or not enable the
+# SUBMODULE_{RESET,TARGETS} options
+$(eval $(call source_builder_initialize,\
+	safeboot,\
+	safeboot,\
+	$(HCP_SAFEBOOT_INSTALL_DEST),\
+	$(HCP_TPMWARE_SUBMODULE_RESET),\
+	$(HCP_TPMWARE_SUBMODULE_TARGETS)))
 
-###################
-# generic routine #
-###################
-
-HCP_SAFEBOOT_SUBSETS :=
-
-# function safeboot_subset()
-# $1 = name
-# $2 = path relative to /safeboot, include leading and trailing "/"
+# Before adding the build/install rules for safeboot, build up the command-line
+# that will add the missing symlink and install the files.
+$(eval SAFEBOOT_INSTALL_CMD := mkdir -p $(HCP_SAFEBOOT_INSTALL_DEST)/sbin ;)
+$(eval SAFEBOOT_INSTALL_CMD += (cd $(HCP_SAFEBOOT_INSTALL_DEST)/sbin && rm -f attest_server.py && ln -s attest-server attest_server.py) ;)
+# $1 = destination path relative to /safeboot, no leading nor trailing "/"
+# $2 = source path, relative to codebase top-level, no leading "/"
 # $3 = attributes (first arg to "chmod")
-# $4 = source filenames
-define safeboot_subset
-$(eval tmp_CMD := mkdir -p $(HCP_SAFEBOOT_INSTALL_DEST)$2 ;)
-$(eval tmp_CMD += cd $(HCP_SAFEBOOT_INSTALL_DEST)$2 ;)
-$(eval tmp_CMD += $(foreach i,$4,cp /source$2$i ./ ; chmod $3 $i ;))
-
-$(HCP_SAFEBOOT_OUT)/$1: | $(HCP_SAFEBOOT_INSTALL_TOUCH)
-$(HCP_SAFEBOOT_OUT)/$1: $(HCP_BASE_TOUCHFILE)
-$(HCP_SAFEBOOT_OUT)/$1: $(foreach i,$4,$(HCP_SAFEBOOT_SRC)$2$i)
-	$Q$(HCP_SAFEBOOT_DOCKER_RUN) "$(tmp_CMD)"
-	$Qtouch $$@
-
-$(eval HCP_SAFEBOOT_SUBSETS += $1)
+# $4 = file names
+define add_safeboot_install
+$(eval LOCAL_INSTPATH := $(strip $1))
+$(eval LOCAL_SRCPATH := $(strip $2))
+$(eval LOCAL_ATTRS := $(strip $3))
+$(eval LOCAL_FILES := $(strip $4))
+$(eval SAFEBOOT_INSTALL_CMD += mkdir -p $(HCP_SAFEBOOT_INSTALL_DEST)/$(LOCAL_INSTPATH) ;)
+$(eval SAFEBOOT_INSTALL_CMD += (cd $(LOCAL_SRCPATH) ; cp $(LOCAL_FILES) $(HCP_SAFEBOOT_INSTALL_DEST)/$(LOCAL_INSTPATH)/) ;)
+$(eval SAFEBOOT_INSTALL_CMD += (cd $(HCP_SAFEBOOT_INSTALL_DEST)/$(LOCAL_INSTPATH) ; chmod $(LOCAL_ATTRS) $(LOCAL_FILES)) ;)
 endef
-
-$(eval $(call safeboot_subset,sb.root,/,644,functions.sh safeboot.conf))
-$(eval $(call safeboot_subset,sb.sbin,/sbin/,755,$(shell ls -1 $(HCP_SAFEBOOT_SRC)/sbin)))
-$(eval $(call safeboot_subset,sb.tests,/tests/,755,$(shell ls -1 $(HCP_SAFEBOOT_SRC)/tests)))
-$(eval $(call safeboot_subset,sb.initramfs,/initramfs/,755,\
+$(eval $(call add_safeboot_install,\
+		.,.,644,\
+		functions.sh safeboot.conf))
+$(eval $(call add_safeboot_install,\
+		sbin,sbin,755,\
+		$(shell ls -1 $(HCP_SAFEBOOT_SRC)/sbin)))
+$(eval $(call add_safeboot_install,\
+		tests,tests,755,\
+		$(shell ls -1 $(HCP_SAFEBOOT_SRC)/tests)))
+# TODO: remove these?
+$(eval $(call add_safeboot_install,\
+		initramfs,initramfs,755,\
 		bootscript \
 		busybox.config \
 		cmdline.txt \
@@ -58,50 +49,19 @@ $(eval $(call safeboot_subset,sb.initramfs,/initramfs/,755,\
 		linux.config \
 		udhcpc.sh))
 
-###################
-# safeboot.tar.gz #
-###################
+# Now add the 'safeboot' codebase to the package. We only implement the
+# "install" hook, to patch in the necessary "attest_server.py"->"attest-server"
+# symlink and put the relevant files into their installation destination.
+$(eval $(call source_builder_add,\
+	safeboot,\
+	safeboot,\
+	,\
+	$(HCP_SAFEBOOT_SRC),\
+	functions.sh,\
+	true,\
+	true,\
+	true,\
+	$(SAFEBOOT_INSTALL_CMD)))
 
-HCP_SAFEBOOT_INSTALL_RUN := \
-	docker run -i --rm --label $(HCP_IMAGE_PREFIX)all=1 \
-	--mount type=volume,source=$(HCP_SAFEBOOT_INSTALL),destination=$(HCP_SAFEBOOT_INSTALL_DEST) \
-	--mount type=bind,source=$(HCP_SAFEBOOT_OUT),destination=/put_it_here \
-	$(HCP_BASE_DNAME) \
-	bash -c
-
-# Note the "attest_server"->"attest-server" hack. This is because we want to
-# load attest-server from a python wrapper that adds hooks, but python
-# module-loading doesn't like paths with hyphens or without a ".py" suffix.
-HCP_SAFEBOOT_INSTALL_CMD := cd $(HCP_SAFEBOOT_INSTALL_DEST)/sbin ;
-HCP_SAFEBOOT_INSTALL_CMD += rm -f attest_server.py && ln -s attest-server attest_server.py ;
-HCP_SAFEBOOT_INSTALL_CMD += cd /put_it_here ;
-HCP_SAFEBOOT_INSTALL_CMD += tar zcf safeboot.tar.gz $(HCP_SAFEBOOT_INSTALL_DEST) ;
-HCP_SAFEBOOT_INSTALL_CMD += /hcp/base/chowner.sh sb.root safeboot.tar.gz
-
-$(HCP_SAFEBOOT_OUT)/safeboot.tar.gz: $(foreach i,$(HCP_SAFEBOOT_SUBSETS),$(HCP_SAFEBOOT_OUT)/$i)
-$(HCP_SAFEBOOT_OUT)/safeboot.tar.gz:
-	$Q$(HCP_SAFEBOOT_INSTALL_RUN) "$(HCP_SAFEBOOT_INSTALL_CMD)"
-
-$(HCP_SAFEBOOT_OUT)/safeboot.Dockerfile: $(HCP_SAFEBOOT_OUT)/safeboot.tar.gz
-$(HCP_SAFEBOOT_OUT)/safeboot.Dockerfile:
-	$Qecho "COPY safeboot/safeboot.tar.gz /" > $@
-	$Qecho "RUN tar zxf safeboot.tar.gz && rm safeboot.tar.gz" >> $@
-
-# A wrapper target to package safeboot
-safeboot: $(HCP_SAFEBOOT_OUT)/safeboot.tar.gz
-ALL += $(HCP_SAFEBOOT_OUT)/safeboot.tar.gz
-
-# Cleanup
-ifneq (,$(wildcard $(HCP_SAFEBOOT_OUT)))
-clean_safeboot:
-	$Qrm -f $(HCP_SAFEBOOT_OUT)/safeboot.tar.gz
-	$Qrm -f $(HCP_SAFEBOOT_OUT)/safeboot.Dockerfile
-ifneq (,$(wildcard $(HCP_SAFEBOOT_INSTALL_TOUCH)))
-	$Qdocker volume rm $(HCP_SAFEBOOT_INSTALL)
-	$Qrm $(HCP_SAFEBOOT_INSTALL_TOUCH)
-endif
-	$Qrm -rf $(HCP_SAFEBOOT_OUT)/sb.*
-	$Qrmdir $(HCP_SAFEBOOT_OUT)
-# Cleanup ordering
-clean: clean_safeboot
-endif
+# Thus concludes the "safeboot" package
+$(eval $(call source_builder_finalize,safeboot))
