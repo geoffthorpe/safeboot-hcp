@@ -19,6 +19,6 @@
 	url = https://github.com/stefanberger/swtpm.git
 	branch = master
 [submodule "ext-tpmware/heimdal"]
-	path = ext-tpmware/heimdal
+	path = ext-heimdal
 	url = https://github.com/heimdal/heimdal.git
 	branch = master

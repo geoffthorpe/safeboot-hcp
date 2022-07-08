@@ -1,7 +1,9 @@
 HCP_TPMWARE_SRC := $(TOP)/ext-tpmware
 HCP_TPMWARE_INSTALL_DEST := /install
 
-# one ring to rule them (tpm-related codebases) ...
+HCP_TPMWARE_MAKE_PARALLEL ?= $(HCP_BUILDER_MAKE_PARALLEL)
+
+# "tpmware" is the package of codebases, "install" is the tarball it creates
 $(eval $(call source_builder_initialize,\
 	tpmware,\
 	install,\
@@ -85,25 +87,5 @@ $(eval $(call source_builder_add,\
 	make $(HCP_TPMWARE_MAKE_PARALLEL),\
 	make install))
 
-# Only compile-in heimdal if we're not using upstream packages
-ifdef HCP_HEIMDAL_SOURCE
-
-###########
-# heimdal #
-###########
-
-$(eval $(call source_builder_add,\
-	tpmware,\
-	heimdal,\
-	,\
-	$(HCP_TPMWARE_SRC)/heimdal,\
-	autogen.sh,\
-	./autogen.sh,\
-	MAKEINFO=true ./configure --prefix=$(HCP_TPMWARE_INSTALL_DEST) --disable-texinfo,\
-	MAKEINFO=true make $(HCP_TPMWARE_MAKE_PARALLEL),\
-	MAKEINFO=true make install))
-
-endif # HCP_HEIMDAL_SOURCE
-
-# ... and in the darkness, bind them
+# Thus concludes the "tpmware" package
 $(eval $(call source_builder_finalize,tpmware))

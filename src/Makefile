@@ -25,6 +25,9 @@ include $(HCP_SRC)/source-building.Makefile
 # of the tools.
 include $(HCP_SRC)/ext-tpmware.Makefile
 
+# Similarly, build heimdal from source into an installable tarball
+include $(HCP_SRC)/ext-heimdal.Makefile
+
 # Produce a tarball of tools installed from safeboot
 include $(HCP_SRC)/ext-safeboot.Makefile
 
