@@ -6,14 +6,14 @@ ifdef HCP_HEIMDAL_SOURCE
 
 # We steal the TPMWARE settings as to whether or not enable the
 # SUBMODULE_{RESET,TARGETS} options
-$(eval $(call source_builder_initialize,\
+$(eval $(call ext_builder_initialize,\
 	heimdal,\
 	heimdal,\
 	$(HCP_HEIMDAL_INSTALL_DEST),\
 	$(HCP_TPMWARE_SUBMODULE_RESET),\
 	$(HCP_TPMWARE_SUBMODULE_TARGETS)))
 
-$(eval $(call source_builder_add,\
+$(eval $(call ext_builder_add_codebase,\
 	heimdal,\
 	heimdal,\
 	,\
@@ -25,6 +25,6 @@ $(eval $(call source_builder_add,\
 	MAKEINFO=true make install))
 
 # Thus concludes the "heimdal" package
-$(eval $(call source_builder_finalize,heimdal))
+$(eval $(call ext_builder_finalize,heimdal))
 
 endif # HCP_HEIMDAL_SOURCE

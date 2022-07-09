@@ -14,22 +14,13 @@ include $(HCP_SRC)/base/Makefile
 # undesirable, unreliable, or impossible for many reasons).
 include $(HCP_SRC)/builder/Makefile
 
-# Define some template Makefile-generation tooling, so thaat you can implement
+# Define an API for "ext_builder" packages, which let you implement
 # "configure", "build", "install" rules for a source tree, and have all the
-# Makefile and docker hooks set up for it. ext-tpmware uses this, and
-# ext-safeboot probably should too.
-include $(HCP_SRC)/source-building.Makefile
-
-# Compile external tpm tools from source (using "builder"), resulting in
-# install.tar.gz, literally a tarball of a root-level installation ("/install")
-# of the tools.
-include $(HCP_SRC)/ext-tpmware.Makefile
-
-# Similarly, build heimdal from source into an installable tarball
-include $(HCP_SRC)/ext-heimdal.Makefile
-
-# Produce a tarball of tools installed from safeboot
-include $(HCP_SRC)/ext-safeboot.Makefile
+# Makefile and docker hooks set up for it. ext-{tpmware,heimdal,safeboot,xtra}
+# all use this. One restriction is that they must install/run in distinct,
+# non-overlapping paths, due to how their assets are installed into mounted
+# volumes and the resulting "packages" are basically tarballs of that volume.
+include $(HCP_SRC)/ext/Makefile
 
 # Produce a tarball of xtras, like our parameter-expansion tool
 include $(HCP_SRC)/xtra.Makefile

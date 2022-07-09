@@ -1,12 +1,12 @@
 HCP_XTRA_SRC := $(TOP)/src/xtra
 HCP_XTRA_INSTALL_DEST := /install
 
-$(eval $(call source_builder_initialize,\
+$(eval $(call ext_builder_initialize,\
 	xtra,\
 	xtra,\
 	$(HCP_XTRA_INSTALL_DEST),,))
 
-$(eval $(call source_builder_add,\
+$(eval $(call ext_builder_add_codebase,\
 	xtra,\
 	param_expand,\
 	,\
@@ -18,5 +18,5 @@ $(eval $(call source_builder_add,\
 	mkdir -p $(HCP_XTRA_INSTALL_DEST)/bin && cp param_expand $(HCP_XTRA_INSTALL_DEST)/bin,\
 	))
 
-$(eval $(call source_builder_finalize,xtra))
+$(eval $(call ext_builder_finalize,xtra))
 

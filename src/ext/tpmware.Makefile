@@ -4,7 +4,7 @@ HCP_TPMWARE_INSTALL_DEST := /install
 HCP_TPMWARE_MAKE_PARALLEL ?= $(HCP_BUILDER_MAKE_PARALLEL)
 
 # "tpmware" is the package of codebases, "install" is the tarball it creates
-$(eval $(call source_builder_initialize,\
+$(eval $(call ext_builder_initialize,\
 	tpmware,\
 	install,\
 	$(HCP_TPMWARE_INSTALL_DEST),\
@@ -18,7 +18,7 @@ ifdef HCP_TPM2_SOURCE
 # tpm2-tss #
 ############
 
-$(eval $(call source_builder_add,\
+$(eval $(call ext_builder_add_codebase,\
 	tpmware,\
 	tpm2-tss,\
 	,\
@@ -41,7 +41,7 @@ $(eval $(call source_builder_add,\
 HACK_TPM2-TOOLS += PKG_CONFIG_PATH=$(HCP_TPMWARE_INSTALL_DEST)/lib/pkgconfig
 HACK_TPM2-TOOLS += TSS2_ESYS_2_3_CFLAGS=\"-I$(HCP_TPMWARE_INSTALL_DEST) -I$(HCP_TPMWARE_INSTALL_DEST)/tss2\"
 HACK_TPM2-TOOLS += TSS2_ESYS_2_3_LIBS=\"-L$(HCP_TPMWARE_INSTALL_DEST)/lib -ltss2-esys\"
-$(eval $(call source_builder_add,\
+$(eval $(call ext_builder_add_codebase,\
 	tpmware,\
 	tpm2-tools,\
 	tpm2-tss,\
@@ -58,7 +58,7 @@ endif # HCP_TPM2_SOURCE
 # libtpms #
 ###########
 
-$(eval $(call source_builder_add,\
+$(eval $(call ext_builder_add_codebase,\
 	tpmware,\
 	libtpms,\
 	,\
@@ -73,7 +73,7 @@ $(eval $(call source_builder_add,\
 # swtpm #
 #########
 
-$(eval $(call source_builder_add,\
+$(eval $(call ext_builder_add_codebase,\
 	tpmware,\
 	swtpm,\
 	libtpms,\
@@ -88,4 +88,4 @@ $(eval $(call source_builder_add,\
 	make install))
 
 # Thus concludes the "tpmware" package
-$(eval $(call source_builder_finalize,tpmware))
+$(eval $(call ext_builder_finalize,tpmware))
