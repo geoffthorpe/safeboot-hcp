@@ -17,7 +17,7 @@ $(if $2,
 $(eval myImgDepCmd := echo "$(HCP_APPS_OUT)/image.$1: | $(HCP_APPS_OUT)" > $(HCP_OUT)/.deps.image.$1.tmp ;)
 $(eval myImgDepCmd += echo "$(HCP_APPS_OUT)/image.$1: $(HCP_OUT)/.deps.image.$1" > $(HCP_OUT)/.deps.image.$1.tmp ;)
 $(eval myDockerDepCmd := echo "$(HCP_APPS_OUT)/Dockerfile.$1: | $(HCP_APPS_OUT)" > $(HCP_OUT)/.deps.Dockerfile.$1.tmp ;)
-$(eval myDockerDepCmd += echo "$(HCP_APPS_OUT)/Dockerfile.$1: $(HCP_OUT)/.deps.Dockerfile.$1" > $(HCP_OUT)/.deps.Dockerfile.$1.tmp ;)
+$(eval myDockerDepCmd += echo "$(HCP_APPS_OUT)/Dockerfile.$1: $(HCP_OUT)/.deps.Dockerfile.$1" >> $(HCP_OUT)/.deps.Dockerfile.$1.tmp ;)
 $(eval myDockerInputs += $(foreach i,$3,$(HCP_APPS_OUT)/Dockerfile.stub.$i))
 $(foreach i,$(strip $4),
 	$(eval myImgDepCmd += echo "$(HCP_APPS_OUT)/image.$1: $i.tar.gz" >> $(HCP_OUT)/.deps.image.$1.tmp ;)
