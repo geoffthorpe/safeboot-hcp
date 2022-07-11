@@ -23,7 +23,7 @@ include $(HCP_SRC)/builder/Makefile
 include $(HCP_SRC)/ext/Makefile
 
 # Produce a tarball of xtras, like our parameter-expansion tool
-include $(HCP_SRC)/xtra.Makefile
+include $(HCP_SRC)/xtra/Makefile
 
 # Produce HCP applications (code tarballs and container images)
 include $(HCP_SRC)/apps/Makefile
