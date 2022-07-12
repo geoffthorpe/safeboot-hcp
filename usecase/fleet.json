@@ -4,7 +4,7 @@
 		"tpm_recreate": false,
 		"enroll": true,
 		"enroll_always": false,
-		"enroll_api": "http://emgmt.hcphacking.xyz:5000",
+		"enroll_api": "https://emgmt.hcphacking.xyz",
 		"enroll_profile": {
 			"env": {
 				"PKINIT_CLIENT_USER": "nobody",
