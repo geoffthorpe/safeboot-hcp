@@ -56,7 +56,11 @@ def enroll_add(args):
     }
     if args.profile is not None:
         form_data['profile'] = (None, args.profile)
-    response = requests.post(args.api + '/v1/add', files=form_data, auth=auth)
+    response = requests.post(args.api + '/v1/add',
+                             files=form_data,
+                             auth=auth,
+                             verify=args.requests_verify,
+                             cert=args.requests_cert)
     if response.status_code != 200:
         print(f"Error, response status code was {response.status_code}")
         rcode = -1
@@ -74,10 +78,18 @@ def enroll_add(args):
 def do_query_or_delete(args, is_delete):
     if is_delete:
         form_data = { 'ekpubhash': (None, args.ekpubhash) }
-        response = requests.post(args.api + '/v1/delete', files=form_data, auth=auth)
+        response = requests.post(args.api + '/v1/delete',
+                                 files=form_data,
+                                 auth=auth,
+                                 verify=args.requests_verify,
+                                 cert=args.requests_cert)
     else:
         form_data = { 'ekpubhash': args.ekpubhash }
-        response = requests.get(args.api + '/v1/query', params=form_data, auth=auth)
+        response = requests.get(args.api + '/v1/query',
+                                params=form_data,
+                                auth=auth,
+                                verify=args.requests_verify,
+                                cert=args.requests_cert)
     if response.status_code != 200:
         print(f"Error, response status code was {response.status_code}")
         return False, None
@@ -96,7 +108,11 @@ def enroll_delete(args):
 
 def enroll_find(args):
     form_data = { 'hostname_suffix': args.hostname_suffix }
-    response = requests.get(args.api + '/v1/find', params=form_data, auth=auth)
+    response = requests.get(args.api + '/v1/find',
+                            params=form_data,
+                            auth=auth,
+                            verify=args.requests_verify,
+                            cert=args.requests_cert)
     if response.status_code != 200:
         print(f"Error, response status code was {response.status_code}")
         return False, None
@@ -108,7 +124,10 @@ def enroll_find(args):
     return True, jr
 
 def enroll_getAssetSigner(args):
-    response = requests.get(args.api + '/v1/get-asset-signer', auth=auth)
+    response = requests.get(args.api + '/v1/get-asset-signer',
+                            auth=auth,
+                            verify=args.requests_verify,
+                            cert=args.requests_cert)
     if response.status_code != 200:
         print(f"Error, response status code was {response.status_code}")
         return False, None
@@ -126,16 +145,37 @@ if __name__ == '__main__':
     enroll_epilog = """
     If the URL for the Enrollment Service's management API is not supplied on the
     command line (via '--api'), it will fallback to using the 'ENROLLSVC_API_URL'
-    environment variable.
+    environment variable. If the API is using HTTPS and the server certificate is
+    not signed by a CA that is already trusted by the system, '--cacert' should
+    be used to specify a CA certificate (or bundle) that should be considered
+    trusted. (Otherwise, specify '--noverify' to inhibit certificate validation.)
+    To use a client certificate to authenticate to the server, specify
+    '--clientcert'. If that file doesn't include the private key, specify it with
+    '--clientkey'.
 
     To see subcommand-specific help, pass '-h' to the subcommand.
     """
     enroll_help_api = 'base URL for management interface'
+    enroll_help_cacert = 'path to CA cert (or bundle) for validating server certificate'
+    enroll_help_noverify = 'disable validation of server certificate'
+    enroll_help_clientcert = 'path to client cert to authenticate with'
+    enroll_help_clientkey = 'path to client key (if not included with --clientcert)'
     parser = argparse.ArgumentParser(description=enroll_desc,
                                      epilog=enroll_epilog)
     parser.add_argument('--api', metavar='<URL>',
                         default=os.environ.get('ENROLLSVC_API_URL'),
                         help=enroll_help_api)
+    parser.add_argument('--cacert', metavar='<PATH>',
+                        default=os.environ.get('ENROLLSVC_API_CACERT'),
+                        help=enroll_help_cacert)
+    parser.add_argument('--noverify', action='store_true',
+                        help=enroll_help_noverify)
+    parser.add_argument('--clientcert', metavar='<PATH>',
+                        default=os.environ.get('ENROLLSVC_API_CLIENTCERT'),
+                        help=enroll_help_clientcert)
+    parser.add_argument('--clientkey', metavar='<PATH>',
+                        default=os.environ.get('ENROLLSVC_API_CLIENTKEY'),
+                        help=enroll_help_clientkey)
 
     subparsers = parser.add_subparsers()
 
@@ -235,6 +275,19 @@ if __name__ == '__main__':
     if not args.api:
         print("Error, no API URL was provided.")
         sys.exit(-1)
+    if args.noverify:
+        args.requests_verify = False
+    elif args.cacert:
+        args.requests_verify = args.cacert
+    else:
+        args.requests_verify = True
+    if args.clientcert:
+        if args.clientkey:
+            args.requests_cert = (args.clientcert,args.clientkey)
+        else:
+            args.requests_cert = args.clientcert
+    else:
+        args.requests_cert = False
 
     # Dispatch. Note that 'json' is not necessarily JSON. :-) E.g. the getAssetSigner
     # function will None
