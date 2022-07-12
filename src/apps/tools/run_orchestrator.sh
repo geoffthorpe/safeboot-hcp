@@ -7,7 +7,7 @@ if [[ -z $HCP_ORCHESTRATOR_JSON || ! -f $HCP_ORCHESTRATOR_JSON ]]; then
 fi
 
 # Extract defaults (and we'll need the profile sub-struct too)
-fleet_defaults=$(jq -r '.defaults' $HCP_ORCHESTRATOR_JSON)
+fleet_defaults=$(jq -r '.defaults // {}' $HCP_ORCHESTRATOR_JSON)
 fleet_defaults_profile=$(echo "$fleet_defaults" | jq -r ".enroll_profile // {}")
 
 # Extract fleet entry names
