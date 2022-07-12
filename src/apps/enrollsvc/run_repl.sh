@@ -10,10 +10,10 @@
 	until [[ -f $HCP_ENROLLSVC_STATE/initialized ]]; do
 		waitcount=$((waitcount+1))
 		if [[ $waitcount -eq 1 ]]; then
-			echo "Warning: waiting for enrollsvc state to initialize" >&2
+			echo "Warning: enrollsvc 'run_repl' waiting for enrollsvc state to initialize" >&2
 		fi
 		if [[ $waitcount -eq 11 ]]; then
-			echo "Warning: waited for another 10 seconds" >&2
+			echo "Warning: enrollsvc 'run_repl' waited for another 10 seconds" >&2
 			waitcount=1
 		fi
 		sleep 1

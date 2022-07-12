@@ -138,9 +138,9 @@ def my_query():
                                    form_ekpubhash],
                        stdout=subprocess.PIPE, stderr = subprocess.PIPE,
                        text=True)
-    print(c.stdout)
     if c.returncode != 0:
-        print("Failed operation, dumping stderr")
+        print("Failed operation, dumping stdout+stderr")
+        print(c.stdout, file = sys.stderr)
         print(c.stderr, file = sys.stderr)
         abort(500)
     j = json.loads(c.stdout)
@@ -153,9 +153,9 @@ def my_delete():
                                    form_ekpubhash],
                        stdout=subprocess.PIPE, stderr = subprocess.PIPE,
                        text=True)
-    print(c.stdout)
     if (c.returncode != 0):
-        print("Failed operation, dumping stderr")
+        print("Failed operation, dumping stdout+stderr")
+        print(c.stdout, file = sys.stderr)
         print(c.stderr, file = sys.stderr)
         abort(500)
     j = json.loads(c.stdout)
@@ -168,9 +168,9 @@ def my_find():
                                    form_hostname_suffix],
                        stdout=subprocess.PIPE, stderr = subprocess.PIPE,
                        text=True)
-    print(c.stdout)
     if (c.returncode != 0):
-        print("Failed operation, dumping stderr")
+        print("Failed operation, dumping stdout+stderr")
+        print(c.stdout, file = sys.stderr)
         print(c.stderr, file = sys.stderr)
         abort(500)
     j = json.loads(c.stdout)

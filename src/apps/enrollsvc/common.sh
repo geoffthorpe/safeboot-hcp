@@ -194,10 +194,10 @@ function drop_privs_db {
 }
 
 # Handle first-time initialization, part B
-if [[ ! -f $HCP_ENROLLSVC_STATE/initialized ]]; then
+if [[ ! -f "$HCP_ENROLLSVC_STATE/initialized" ]]; then
 	echo "   - initializing repo"
 	(ENROLLSVC_IN_SETUP=1 drop_privs_db /hcp/enrollsvc/init_repo.sh)
-	touch $HCP_ENROLLSVC_STATE/initialized
+	touch "$HCP_ENROLLSVC_STATE/initialized"
 	echo "State now initialized"
 fi
 

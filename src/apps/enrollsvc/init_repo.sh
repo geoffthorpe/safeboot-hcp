@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. /hcp/enrollsvc/common.sh
+source /hcp/enrollsvc/common.sh
 
 expect_db_user
 

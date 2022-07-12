@@ -16,10 +16,10 @@ waitcount=0
 until git clone -o origin $HCP_ATTESTSVC_REMOTE_REPO A; do
 	waitcount=$((waitcount+1))
 	if [[ $waitcount -eq 1 ]]; then
-		echo "Warning: can't clone from enrollsvc, waiting" >&2
+		echo "Warning: attestsvc 'init_clones' can't clone from enrollsvc, waiting" >&2
 	fi
 	if [[ $waitcount -eq 11 ]]; then
-		echo "Warning: waited for another 10 seconds" >&2
+		echo "Warning: attestsvc 'init_clones' waited for another 10 seconds" >&2
 		waitcount=1
 	fi
 	sleep 1

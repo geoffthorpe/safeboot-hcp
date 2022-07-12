@@ -11,10 +11,9 @@
 	until [[ -f $HCP_ATTESTSVC_STATE/initialized ]]; do
 		waitcount=$((waitcount+1))
 		if [[ $waitcount -eq 1 ]]; then
-			echo "Warning: waiting for attestsvc state to initialize" >&2
-		fi
-		if [[ $waitcount -eq 11 ]]; then
-			echo "Warning: waited for another 10 seconds" >&2
+			echo "Warning: attest_svc 'run_hcp' waiting for attestsvc state to initialize" >&2
+		elif [[ $waitcount -eq 11 ]]; then
+			echo "Warning: attest_svc 'run_hcp' waited for another 10 seconds" >&2
 			waitcount=1
 		fi
 		sleep 1

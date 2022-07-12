@@ -7,10 +7,10 @@ waitcount=0
 until [[ -d $HCP_SWTPMSVC_STATE/tpm ]]; do
 	waitcount=$((waitcount+1))
 	if [[ $waitcount -eq 1 ]]; then
-		echo "Warning: waiting for swtpmsvc state to initialize" >&2
+		echo "Warning: swtpmsvc waiting for swtpmsvc state to initialize" >&2
 	fi
 	if [[ $waitcount -eq 11 ]]; then
-		echo "Warning: waited for another 10 seconds" >&2
+		echo "Warning: swtpmsvc waited for another 10 seconds" >&2
 		waitcount=1
 	fi
 	sleep 1
