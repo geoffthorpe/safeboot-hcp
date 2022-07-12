@@ -140,14 +140,23 @@ raw_enroll_tpm()
 		echo "Error, no API endpoint to enroll TPM '$name'" >&2
 		return 1
 	fi
+	api_cmd="python3 /hcp/tools/enroll_api.py --api $enroll_api"
+	if [[ -n HCP_CERTCHECKER ]]; then
+		if [[ $HCP_CERTCHECKER == "none" ]]; then
+			api_cmd="$api_cmd --noverify"
+		else
+			api_cmd="$api_cmd --cacert $HCP_CERTCHECKER"
+		fi
+	fi
+	if [[ -n HCP_CLIENTCERT ]]; then
+		api_cmd="$api_cmd --clientcert $HCP_CLIENTCERT"
+	fi
 	# Calculate the ekpubhash
 	ekpubhash=$(openssl sha256 "$tpm_path/tpm/ek.pub" | \
 		sed -e "s/^.*= //" | cut -c 1-32)
 	# Query to see if this TPM is already enrolled
 	waitcount=0
-	until myquery=$(python3 /hcp/tools/enroll_api.py \
-				--api "$enroll_api" \
-				query $ekpubhash); do
+	until myquery=$($api_cmd query $ekpubhash); do
 		waitcount=$((waitcount+1))
 		if [[ $waitcount -eq 1 ]]; then
 			echo "Warning: retrying query API '$enroll_api' $ekpubhash" >&2
@@ -169,10 +178,7 @@ raw_enroll_tpm()
 	# Enroll
 	echo "Enrolling TPM '$name'" >&2
 	waitcount=0
-	until myquery=$(python3 /hcp/tools/enroll_api.py \
-				--api "$enroll_api" \
-				add \
-				--profile "$enroll_profile" \
+	until myquery=$($api_cmd add --profile "$enroll_profile" \
 				$tpm_path/tpm/ek.pub $enroll_hostname); do
 		waitcount=$((waitcount+1))
 		if [[ $waitcount -eq 1 ]]; then
