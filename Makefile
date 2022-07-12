@@ -58,9 +58,11 @@ $(HCP_OUT)/docker-compose.env:
 	$Qecho "" >> $@
 	$Qecho "# Variables produced by the build environment;" >> $@
 	$Q$(IMAGE_LIST_CMD)
+	$Qecho "HCP_TESTCREDS_ENROLLCERTISSUER=$(HCP_TESTCREDS_ENROLLCERTISSUER)" >> $@
+	$Qecho "HCP_TESTCREDS_ENROLLCERTCHECKER=$(HCP_TESTCREDS_ENROLLCERTCHECKER)" >> $@
 	$Qecho "HCP_TESTCREDS_ENROLLSIGNER=$(HCP_TESTCREDS_ENROLLSIGNER)" >> $@
 	$Qecho "HCP_TESTCREDS_ENROLLVERIFIER=$(HCP_TESTCREDS_ENROLLVERIFIER)" >> $@
-	$Qecho "HCP_TESTCREDS_ENROLLCERTISSUER=$(HCP_TESTCREDS_ENROLLCERTISSUER)" >> $@
+	$Qecho "HCP_TESTCREDS_ENROLLCLIENT=$(HCP_TESTCREDS_ENROLLCLIENT)" >> $@
 	$Qecho "HCP_TOP=$(TOP)" >> $@
 	$Qecho "" >> $@
 	$Qecho "# Variables copied from (HCP_APPS_SRC)/usecase/common.env;" >> $@

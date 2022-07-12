@@ -16,11 +16,14 @@ role_account_uid_file \
 	$HCP_EMGMT_STATE/uid_db_user \
 	"EnrollDB User,,,,"
 
-# We don't consume testcreds created by the host and mounted in, we spin up
-# our own.
+# We don't consume testcreds created by the host and mounted in, we spin up our
+# own. NB: KEEP THESE RULES CONSISTENT WITH src/testcreds.Makefile, OR
+# CONSOLIDATE THEM SOMEHOW!
 mkdir -p $HCP_EMGMT_CREDS_SIGNER
 mkdir -p $HCP_EMGMT_CREDS_CERTISSUER
 mkdir -p $HCP_ACLIENT_CREDS_VERIFIER
+mkdir -p $HCP_ORCH_CERTCHECKER
+mkdir -p $HCP_ORCH_CLIENTCERT
 if [[ ! -f $HCP_EMGMT_CREDS_SIGNER/key.priv ]]; then
 	echo "Generating: Enrollment signing key"
 	openssl genrsa -out $HCP_EMGMT_CREDS_SIGNER/key.priv
@@ -44,6 +47,21 @@ if [[ ! -f $HCP_EMGMT_CREDS_CERTISSUER/CA.pem ]]; then
 		-out $HCP_EMGMT_CREDS_CERTISSUER/CA.cert
 	chown $HCP_EUSER_DB:$HCP_EUSER_DB $HCP_EMGMT_CREDS_CERTISSUER/CA.pem
 	chown $HCP_EUSER_DB:$HCP_EUSER_DB $HCP_EMGMT_CREDS_CERTISSUER/CA.cert
+fi
+if [[ ! -f $HCP_ORCH_CERTCHECKER/CA.pem ]]; then
+	echo "Generating: Enrollment certificate verifier (CA)"
+	cp "$HCP_EMGMT_CREDS_CERTISSUER/CA.cert" "$HCP_ORCH_CERTCHECKER/"
+fi
+if [[ ! -f $HCP_ORCH_CLIENTCERT/client.pem ]]; then
+	echo "Generating: Enrollment client certificate"
+	hxtool issue-certificate \
+		--ca-certificate="FILE:$HCP_EMGMT_CREDS_CERTISSUER/CA.pem" \
+		--type=https-client \
+		--hostname=orchestrator.hcphacking.xyz \
+		--subject="UID=orchestrator,DC=hcphacking,DC=xyz" \
+		--email="orchestrator@hcphacking.xyz" \
+		--generate-key=rsa --key-bits=2048 \
+		--certificate="FILE:$HCP_ORCH_CLIENTCERT/client.pem"
 fi
 
 # Managing services within a caboodle container
