@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# By cd'ing to /, we make sure we're not influenced by the directory we were
+# launched from.
+cd /
+
 source /hcp/enrollsvc/common.sh
 
 expect_root
@@ -61,6 +65,15 @@ if [[ -n $HCP_ENROLLSVC_ENABLE_ATTEST ]]; then
 	fi
 fi
 
+if [[ -n $HCP_ENROLLSVC_ENABLE_NGINX ]]; then
+	# Copy the nginx config into place and start the service.
+	cp "$HCP_ENROLLSVC_NGINX_CONF" /etc/nginx/sites-enabled/
+	nginx
+	NGPID=$(cat /run/nginx.pid)
+else
+	NGPID=0
+fi
+
 # Do common.sh-style things that are specific to the management sub-service.
 if [[ ! -f $SIGNING_KEY_PUB || ! -f $SIGNING_KEY_PRIV ]]; then
 	echo "Error, SIGNING_KEY_{PUB,PRIV} ($SIGNING_KEY_PUB,$SIGNING_KEY_PRIV) do not contain valid creds" >&2
@@ -80,10 +93,11 @@ fi
 echo "Running 'enrollsvc-mgmt' service"
 
 # uwsgi takes SIGTERM as an indication to ... reload! So we need to translate
-# SIGTERM to SIGQUIT to have the desired effect.
-echo "Setting SIGTERM->SIGQUIT trap handler"
+# SIGTERM to SIGQUIT to have the desired effect. Also kill nginx if it's
+# running.
+echo "Setting SIGTERM->SIGQUIT trap handler for uwsgi"
 UPID=0
-trap 'echo "Converting SIGTERM->SIGQUIT"; kill -QUIT $UPID' TERM
+trap 'echo "Converting SIGTERM->SIGQUIT"; kill -QUIT $UPID; kill -TERM $NGPID' TERM
 
 TO_RUN="uwsgi_python3 --ini $HCP_ENROLLSVC_UWSGI_INI"
 echo "Running: $TO_RUN"

@@ -9,11 +9,85 @@ from werkzeug.utils import secure_filename
 import tempfile
 
 app = flask.Flask(__name__)
-app.config["DEBUG"] = True
+app.config["DEBUG"] = False
 
+# We want to work with environment in such a way that an empty env-var is
+# treated like an absent env-var. Why? Here's what happens. A low level config
+# file either sets LOWLEVEL_FOO to a value or comments it out to leave it
+# undefined. In this way we can switch between alternative low-level configs. A
+# uniform high level config then sets "HIGHLEVEL_FOO=$LOWLEVEL_FOO", inheriting
+# whichever lower-level choices were made. However, this means HIGHLEVEL_FOO is
+# always "set", though the value is empty when LOWLEVEL_FOO is undefined. This
+# function takes an environment dict (e.g. 'os.environ' or 'request.environ')
+# and returns a modified dict containing only the key-value pairs which had
+# non-empty values.
+def env_purity(env):
+    result = {}
+    for k in env:
+        v = env[k]
+        if len(v) > 0:
+            result[k] = v
+    return result
+
+# If $HCP_USER_POLICY.py exists (either in the current directory, in the python
+# module path, or in /hcp because we add it to the search path), and if
+# $HCP_USER_POLICY_FN is defined by it, then we try to use that for
+# access-control policy hook, implemented by the administrator. We expect their
+# policy hook to be of the following form;
+#
+# def enrollsvc_mgmt_client_check(uri)
+#
+# where 'uri' is "/v1/add", "/healthcheck", etc and the function should return
+# True or False, representing whether the policy allows or disallows the
+# operation, respectively. If that policy hook imports flask::request, then it
+# can consult the client cert details via request.environ['SSL_CLIENT_<attr>'],
+# where <attr> can be 'CERT', 'S_DN', etc.
+#
+# Each of the URI handlers for the flask app should call client_check(uri) for
+# the uri they want a policy decision for. If this function returns, the
+# calling code can go ahead with its operation. If there is no policy hook
+# loaded, then this is always the case, client_check() always returns. If a
+# hook is loaded, then this function returns if and only if the policy hook
+# approves the operation. It disapproves of operations by aborting with a HTTP
+# 403 response ("access denied").
+
+hookname = 'enrollsvc::mgmt::client_check'
+pure_env = env_purity(os.environ)
+
+def reject_all(uri):
+    print(f'BLOCK {hookname}, misconfiguration!')
+    return False
+
+ext_client_check = reject_all
+
+if 'HCP_ENROLLSVC_POLICY' in pure_env and 'HCP_ENROLLSVC_POLICY_FN' in pure_env:
+    policy_file = pure_env['HCP_ENROLLSVC_POLICY']
+    policy_fn = pure_env['HCP_ENROLLSVC_POLICY_FN']
+    if 'HCP_ENROLLSVC_POLICY_DIRPATH' in pure_env:
+        policy_dirpath = pure_env['HCP_ENROLLSVC_POLICY_DIRPATH']
+        if not os.path.exists(policy_dirpath):
+            print(f"Error: {hookname}, DIRPATH={policy_dirpath} doesn't exist")
+        else:
+            sys.path.insert(1, policy_dirpath)
+    try:
+        ext_client_check = getattr(__import__(policy_file, fromlist=[policy_fn]), policy_fn)
+        print(f"{hookname}, loaded {policy_file}::{policy_fn} for access control")
+    except ModuleNotFoundError:
+        print(f"Error: {hookname}, no {policy_file}.py found!")
+    except AttributeError:
+        print(f"Error: {hookname}, no {policy_fn} hook found in {policy_file}.py!")
+else:
+    print(f"{hookname}, no policy hook configured, access control wide open")
+    ext_client_check=None
+
+def client_check(uri):
+    if ext_client_check:
+        if not ext_client_check(uri):
+            abort(403)
 
 @app.route('/', methods=['GET'])
 def home():
+    client_check('/')
     return '''
 <h1>Enrollment Service Management API</h1>
 <hr>
@@ -58,6 +132,7 @@ def home():
 '''
 @app.route('/healthcheck', methods=['GET'])
 def healthcheck():
+    client_check('/healthcheck')
     return '''
 <h1>Healthcheck</h1>
 '''
@@ -80,6 +155,7 @@ sudoargs=['sudo','-u',db_user]
 
 @app.route('/v1/add', methods=['POST'])
 def my_add():
+    client_check('/v1/add')
     if 'ekpub' not in request.files:
         return { "error": "ekpub not in request" }
     if 'hostname' not in request.form:
@@ -131,6 +207,7 @@ def my_add():
 
 @app.route('/v1/query', methods=['GET'])
 def my_query():
+    client_check('/v1/query')
     if 'ekpubhash' not in request.args:
         return { "error": "ekpubhash not in request" }
     form_ekpubhash = request.args['ekpubhash']
@@ -148,6 +225,7 @@ def my_query():
 
 @app.route('/v1/delete', methods=['POST'])
 def my_delete():
+    client_check('/v1/delete')
     form_ekpubhash = request.form['ekpubhash']
     c = subprocess.run(sudoargs + ['/hcp/enrollsvc/op_delete.sh',
                                    form_ekpubhash],
@@ -163,6 +241,7 @@ def my_delete():
 
 @app.route('/v1/find', methods=['GET'])
 def my_find():
+    client_check('/v1/find')
     form_hostname_suffix = request.args['hostname_suffix']
     c = subprocess.run(sudoargs + ['/hcp/enrollsvc/op_find.sh',
                                    form_hostname_suffix],
@@ -178,9 +257,10 @@ def my_find():
 
 @app.route('/v1/get-asset-signer', methods=['GET'])
 def assetSigner():
-        return send_file('/signer/key.pem',
-                         as_attachment = True,
-                         attachment_filename = 'asset-signer.pem')
+    client_check('/v1/get-asset-signer')
+    return send_file('/signer/key.pem',
+                     as_attachment = True,
+                     attachment_filename = 'asset-signer.pem')
 
 if __name__ == "__main__":
     app.run()
