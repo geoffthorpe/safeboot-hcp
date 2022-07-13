@@ -1,7 +1,7 @@
 HCP_APPS_INSTALL_DEST := /hcp
 
 HCP_APPS_BUILD_RUN := \
-	docker run --rm --label $(HCP_IMAGE_PREFIX)all=1 \
+	docker run --rm --init --label $(HCP_IMAGE_PREFIX)all=1 \
 	--mount type=bind,source=$(HCP_APPS_SRC),destination=/source,ro=true \
 	--mount type=bind,source=$(HCP_APPS_OUT),destination=/put_it_here \
 	$(HCP_BASE_DNAME) \

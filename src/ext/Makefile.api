@@ -29,7 +29,7 @@ $(HCP_EXT_INSTALL_TOUCH_$N): | $(HCP_EXT_OUT_$N)
 	$Qdocker volume create $(HCP_EXT_INSTALL_VOLUME_$N)
 	$Qtouch $$@
 $(eval HCP_EXT_DOCKER_RUN_$N := \
-	docker run -i --rm --label $(HCP_IMAGE_PREFIX)all=1 \
+	docker run -i --rm --init --label $(HCP_IMAGE_PREFIX)all=1 \
 	--mount type=volume,source=$(HCP_EXT_INSTALL_VOLUME_$N),destination=$(HCP_EXT_INSTALL_DEST_$N))
 ifneq (,$(LAZY))
 HCP_EXT_BUILDER_DEP_$N := | $(HCP_BUILDER_OUT)/built

@@ -118,19 +118,13 @@ EOF
 	touch $HCP_KDC_STATE/initialized
 fi
 
-# Start the service and handle signals
+# Start the services. Note, we background all tasks except kdc, which we exec
+# to as a last step. We're relying on there being an "--init"-style PID1 to
+# reparent orphaned processes and forward signals.
 echo "Starting the KDC suite of services"
-CHILDPID_KDC=0
-CHILDPID_KPASSWDD=0
-CHILDPID_KADMIND=0
-trap 'kill $CHILDPID_KDC ; kill $CHILDPID_KPASSWDD ; kill $CHILDPID_KADMIND' TERM QUIT
-$KDC_BIN --config-file=$MYETC/kdc.conf &
-CHILDPID_KDC=$!
-echo "- kdc ($CHILDPID_KDC)"
+echo "- $KPASSWDD_BIN --config-file=$MYETC/kdc.conf"
 $KPASSWDD_BIN --config-file=$MYETC/kdc.conf &
-CHILDPID_KPASSWDD=$!
-echo "- kpasswdd ($CHILDPID_KPASSWDD)"
+echo "- $KADMIND_BIN --config-file=$MYETC/kdc.conf --keytab=$MYVAR/kadmin.keytab --realm=$HCP_KDC_REALM"
 $KADMIND_BIN --config-file=$MYETC/kdc.conf --keytab=$MYVAR/kadmin.keytab --realm=$HCP_KDC_REALM &
-CHILDPID_KADMIND=$!
-echo "- kadmind ($CHILDPID_KADMIND)"
-wait $CHILDPID_KDC $CHILDPID_KPASSWDD $CHILDPID_KADMIND
+echo "- $KDC_BIN --config-file=$MYETC/kdc.conf"
+exec $KDC_BIN --config-file=$MYETC/kdc.conf
