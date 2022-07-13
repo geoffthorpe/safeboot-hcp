@@ -21,6 +21,7 @@ $(eval bashcmd := export DCOMPOSE=$(DCOMPOSE) && \
 	"$(HCP_TESTS_SRC)/wrapper.sh")
 test_$(name): $(foreach i,$(deps),$(CREATED_$i))
 test_$(name): $(HCP_OUT)/docker-compose.env
+test_$(name): $(HCP_OUT)/usecase
 test_$(name):
 	$Qecho "Starting '$$@'"
 	$Qbash -c '$(bashcmd)'

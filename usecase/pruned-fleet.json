@@ -1,0 +1,56 @@
+{
+	"defaults": {
+		"tpm_create": true,
+		"tpm_recreate": false,
+		"enroll": true,
+		"enroll_always": false,
+		"enroll_api": "http://emgmt.hcphacking.xyz",
+		"enroll_profile": {
+			"env": {
+				"PKINIT_CLIENT_USER": "nobody",
+				"HTTPS_CLIENT_USER": "nobody"
+			},
+			"genprogs": "genconf-krb5 gencert-hxtool",
+			"gencert-hxtool": {
+				"list": "default-pkinit-client default-https-client",
+				"pkinit-client-user": {
+					"type": "pkinit-client",
+					"pk-init-principal": "${ENROLL_PKINIT_CLIENT_USER}/admin@${ENROLL_REALM}",
+					"subject": "CN=${ENROLL_PKINIT_CLIENT_USER},${ENROLL_HOSTNAME2DC}"
+				},
+				"https-client-user": {
+					"type": "https-client",
+					"name": "https-client-${ENROLL_HTTPS_CLIENT_USER}",
+					"subject": "UID=${ENROLL_HTTPS_CLIENT_USER},${ENROLL_DOMAIN2DC}",
+					"email": "${ENROLL_HTTPS_CLIENT_USER}@${ENROLL_DOMAIN}"
+				}
+			}
+		}
+	},
+	"fleet": [
+		{
+			"name": "aclient",
+			"tpm_path": "/tpm_aclient",
+			"enroll_hostname": "aclient.hcphacking.xyz",
+			"enroll_profile": {
+				"env": {
+					"PKINIT_CLIENT_USER": "alicia",
+					"HTTPS_CLIENT_USER": "robert"
+				},
+				"gencert-hxtool": {
+					"list": "default-pkinit-client default-https-client pkinit-client-user https-client-user"
+				}
+			}
+		},
+		{
+			"name": "kdc1",
+			"tpm_path": "/tpm_kdc1",
+			"enroll_hostname": "kdc1.hcphacking.xyz",
+			"enroll_profile": {
+				"gencert-hxtool": {
+					"list": "default-pkinit-kdc default-https-server"
+				}
+			}
+		}
+	]
+}
