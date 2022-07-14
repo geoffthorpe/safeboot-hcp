@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# This script supports the case where enrollsvc::mgmt is creating and running
+# an integrated swtpm (not a side-car), and enrolling itself directly with
+# op_add.sh (not going via the web API). It's not a general purpose enrollment.
 source /hcp/enrollsvc/common.sh
 
 expect_db_user
