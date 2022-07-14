@@ -2,8 +2,6 @@
 
 source /hcp/common/hcp.sh
 
-mkdir -p $HCP_ATTESTCLIENT_VERIFIER
-
 if [[ -z "$HCP_ATTESTCLIENT_ATTEST_URL" ]]; then
 	echo "Error, HCP_ATTESTCLIENT_ATTEST_URL (\"$HCP_ATTESTCLIENT_ATTEST_URL\") is not set"
 	exit 1
