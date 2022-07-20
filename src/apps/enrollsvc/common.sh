@@ -165,6 +165,15 @@ EOF
 	mkdir $HCP_DB_DIR
 	chown $HCP_ENROLLSVC_USER_DB $HCP_DB_DIR
 
+	echo " - generating '$HCP_ENROLLSVC_STATE/tpm_vendors'"
+	mkdir $HCP_ENROLLSVC_STATE/tpm_vendors
+	if [[ -d $HCP_ENROLLSVC_VENDORS ]]; then
+		TRUST_OUT="$HCP_ENROLLSVC_STATE/tpm_vendors" \
+		TRUST_IN="$HCP_ENROLLSVC_VENDORS" \
+		/hcp/enrollsvc/vendors_install.sh
+	else
+		echo "   - No vendors founds ($HCP_ENROLLSVC_VENDORS)"
+	fi
 fi
 
 # Steps that may need running on each container launch (not just first-time

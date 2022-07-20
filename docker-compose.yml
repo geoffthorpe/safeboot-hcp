@@ -61,6 +61,7 @@ services:
           - ${HCP_TESTCREDS_ENROLLCERTISSUER}:${HCP_EMGMT_CREDS_CERTISSUER}:ro
           - ${HCP_TESTCREDS_ENROLLVERIFIER}:${HCP_EMGMT_ATTEST_CREDS_VERIFIER}:ro
           - tpm_emgmt:${HCP_EMGMT_TPM_STATE}
+          - ${HCP_TOP}/vendors:/vendors:ro
         environment:
           - HCP_INSTANCE=/usecase/emgmt.env
         healthcheck:
@@ -155,6 +156,8 @@ services:
           - hcpnetwork
         environment:
           - HCP_INSTANCE=/usecase/caboodle_alone.env
+        volumes:
+          - ${HCP_TOP}/vendors:/vendors:ro
     caboodle_test:
         extends: caboodle_alone
         environment:

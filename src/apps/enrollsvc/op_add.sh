@@ -119,6 +119,9 @@ genprogs+=" $(echo "$resultprofile" | jq -r '.genprogs')"
 genprogs+=" $(echo "$resultprofile" | jq -r '.genprogs_post')"
 echo "export GENPROGS=($genprogs)" >> $EPHEMERAL_ENROLL/enroll.conf
 
+# Give attest-enroll trust-roots for validating EKcerts
+export TPM_VENDORS=$HCP_ENROLLSVC_STATE/tpm_vendors
+
 # Invoke attest-enroll, which creates a directory full of goodies for the host.
 # attest-enroll uses CHECKOUT and COMMIT hooks to determine the directory and
 # post-process it, respectively. What we do is;
