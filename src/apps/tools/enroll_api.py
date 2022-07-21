@@ -6,7 +6,6 @@
 #               -F hostname=<hostname> \
 #               -F profile=<profile> \
 #               <enrollsvc-URL>/v1/add
-# - form elements 'profile' and 'paramfile' are not compulsory
 #
 # query:   curl -v -G -d ekpubhash=<hexstring> \
 #               <enrollsvc-URL>/v1/query
