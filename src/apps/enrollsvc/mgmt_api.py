@@ -1,3 +1,4 @@
+# vim: set expandtab shiftwidth=4 softtabstop=4:
 import flask
 from flask import request, abort, send_file
 import subprocess
@@ -7,6 +8,7 @@ from stat import *
 from markupsafe import escape
 from werkzeug.utils import secure_filename
 import tempfile
+import requests
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = False
@@ -25,64 +27,84 @@ def env_purity(env):
     result = {}
     for k in env:
         v = env[k]
+        if type(v) is not str:
+            continue
         if len(v) > 0:
             result[k] = v
     return result
-
-# If $HCP_USER_POLICY.py exists (either in the current directory, in the python
-# module path, or in /hcp because we add it to the search path), and if
-# $HCP_USER_POLICY_FN is defined by it, then we try to use that for
-# access-control policy hook, implemented by the administrator. We expect their
-# policy hook to be of the following form;
-#
-# def enrollsvc_mgmt_client_check(uri)
-#
-# where 'uri' is "/v1/add", "/healthcheck", etc and the function should return
-# True or False, representing whether the policy allows or disallows the
-# operation, respectively. If that policy hook imports flask::request, then it
-# can consult the client cert details via request.environ['SSL_CLIENT_<attr>'],
-# where <attr> can be 'CERT', 'S_DN', etc.
-#
-# Each of the URI handlers for the flask app should call client_check(uri) for
-# the uri they want a policy decision for. If this function returns, the
-# calling code can go ahead with its operation. If there is no policy hook
-# loaded, then this is always the case, client_check() always returns. If a
-# hook is loaded, then this function returns if and only if the policy hook
-# approves the operation. It disapproves of operations by aborting with a HTTP
-# 403 response ("access denied").
-
-hookname = 'enrollsvc::mgmt::client_check'
 pure_env = env_purity(os.environ)
 
-def reject_all(uri):
-    print(f'BLOCK {hookname}, misconfiguration!')
-    return False
+# If $HCP_USER_POLICY is defined, we use it as the base URL of an access-control
+# policy hook. The specific URI ("/v1/add", "/healthcheck", etc) is appended to
+# that URL, to which we send a POST request containing the following elements;
+#   - 'hookname', this will be "enrollsvc::mgmt::client_check"
+#   - 'params', if present, this is a JSON object representing the parameters
+#       for the request;
+#         - /v1/add: the JSON to be passed to op_add.sh for enrollment.
+#         - /v1/{query,delete}: it will contain a 'ekpubhash' field set to the
+#             hexstring for the corresponding operation.
+#         - /v1/find: it will contain a 'hostname_suffix' field set to the
+#             suffix substring to search for among enrolled hostnames.
+#   - 'auth', if present, contains authentication details about the originating
+#       request to enrollsvc, possibly including;
+#         - 'client_cert': if present, contains the PEM-encoded client cert.
+#             Notes;
+#               - chain-validation by the HTTPS endpoint has to succeed before
+#                   this policy lookup can occur. The cert is provided to allow
+#                   the policy to examine its fields for identity, not to
+#                   validate the cert or the chain back to a trust-root.
+#               - this has nothing to do with the policy request from
+#                   enrollsvc. Any authn/authz controls there are intentionally
+#                   decoupled from the API - that is entirely determined by how
+#                   the policy endpoint is configured and how enrollsvc is
+#                   configured to reach it.
+#         - TBD: handle SPNEGO and fill in 'client_princ'
+#
+# Eg. to post a policy check for "/v1/query" directly from curl;
+#     curl -v -F hookname="enrollsvc::mgmt::client_check" \
+#             -F params="{ \"ekpubhash\": \"0d3fe1\" }" \
+#         http://policy.url.wherever.com/some/handler/v1/query
 
-ext_client_check = reject_all
+hookname = 'enrollsvc::mgmt::client_check'
 
-if 'HCP_ENROLLSVC_POLICY' in pure_env and 'HCP_ENROLLSVC_POLICY_FN' in pure_env:
-    policy_file = pure_env['HCP_ENROLLSVC_POLICY']
-    policy_fn = pure_env['HCP_ENROLLSVC_POLICY_FN']
-    if 'HCP_ENROLLSVC_POLICY_DIRPATH' in pure_env:
-        policy_dirpath = pure_env['HCP_ENROLLSVC_POLICY_DIRPATH']
-        if not os.path.exists(policy_dirpath):
-            print(f"Error: {hookname}, DIRPATH={policy_dirpath} doesn't exist")
-        else:
-            sys.path.insert(1, policy_dirpath)
-    try:
-        ext_client_check = getattr(__import__(policy_file, fromlist=[policy_fn]), policy_fn)
-        print(f"{hookname}, loaded {policy_file}::{policy_fn} for access control")
-    except ModuleNotFoundError:
-        print(f"Error: {hookname}, no {policy_file}.py found!")
-    except AttributeError:
-        print(f"Error: {hookname}, no {policy_fn} hook found in {policy_file}.py!")
-else:
-    print(f"{hookname}, no policy hook configured, access control wide open")
-    ext_client_check=None
+ext_client_check = None
+ext_client_auth = None
+if 'HCP_ENROLLSVC_POLICY' in pure_env:
+    ext_client_check = pure_env['HCP_ENROLLSVC_POLICY']
+    if os.environ.get('HCP_GSSAPI'):
+        print('Enabling GSSAPI authentication')
+        try:
+            from requests_gssapi import HTTPSPNEGOAuth, DISABLED
+            ext_client_auth = HTTPSPNEGOAuth(mutual_authentication=DISABLED,
+                                             opportunistic_auth=True)
+        except ModuleNotFoundError:
+            print("'requests-gssapi' unavailable, falling back to 'requests-kerberos'")
+            try:
+                from requests_kerberos import HTTPKerberosAuth, DISABLED
+                ext_client_auth = HTTPKerberosAuth(mutual_authentication=DISABLED,
+                                                   force_preemptive=True)
+            except ModuleNotFoundError:
+                print("'requests-kerberos' unavailable, falling back to no authentication")
 
-def client_check(uri):
+def client_check(uri, params=None):
     if ext_client_check:
-        if not ext_client_check(uri):
+        form_data = {
+            'hookname': (None, hookname)
+        }
+        if params:
+            form_data['params'] = (None, json.dumps(params))
+        e = env_purity(request.environ)
+        if 'SSL_CLIENT_CERT' in e:
+            auth = {
+                'client_cert': e['SSL_CLIENT_CERT']
+            }
+            form_data['auth'] = (None, json.dumps(auth))
+        response = requests.post(f"{ext_client_check}{uri}",
+                                 files=form_data,
+                                 auth=ext_client_auth,
+                                 verify=True)
+        if response.status_code != 200:
+            print(f"Failed policy check: {uri}")
             abort(403)
 
 @app.route('/', methods=['GET'])

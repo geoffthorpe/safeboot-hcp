@@ -70,6 +70,7 @@ mkdir -p /pids /logs
 
 # Declare service existence and corresponding .env file
 declare -A hcp_entity=( \
+	[pol]=./pol.env \
 	[emgmt]=./emgmt.env \
 	[erepl]=./erepl.env \
 	[arepl]=./arepl.env \
@@ -82,6 +83,7 @@ declare -A hcp_entity=( \
         )
 # Declare what type of service it is (lifetime)
 declare -A hcp_entity_type=( \
+	[pol]=service \
 	[emgmt]=service \
 	[erepl]=service \
 	[arepl]=service \

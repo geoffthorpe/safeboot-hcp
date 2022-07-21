@@ -1,3 +1,4 @@
+# vim: set expandtab shiftwidth=4 softtabstop=4:
 # Using this version string helps with some older docker-compose versions that
 # we regularly encounter. It also ensures the 'extend' feature works.
 version: "2.4"
@@ -49,6 +50,18 @@ services:
         volumes:
           - fqdn:${HCP_FQDN_PATH}:rw
           - ${HCP_TOP}/usecase:/usecase:ro
+
+    pol:
+        extends: common
+        image: ${HCP_IMAGE_policysvc}
+        networks:
+          - hcpnetwork
+        environment:
+          - HCP_INSTANCE=/usecase/pol.env
+        healthcheck:
+            test: /hcp/policysvc/healthcheck.sh
+            timeout: 1s
+            interval: 2s
 
     emgmt:
         extends: common

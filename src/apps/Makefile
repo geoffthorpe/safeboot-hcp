@@ -19,7 +19,7 @@ MDIRS += $(HCP_APPS_OUT)
 # as required)
 #    $(eval $(call app_image,<fooapp>,<foo1> <foo2>,<ext1> <ext2>))
 
-HCP_CODEBALLS := common enrollsvc attestsvc swtpmsvc tools kdc caboodle
+HCP_CODEBALLS := common enrollsvc attestsvc swtpmsvc tools kdc policysvc caboodle
 
 include $(HCP_APPS_SRC)/Makefile.code
 include $(HCP_APPS_SRC)/Makefile.images
