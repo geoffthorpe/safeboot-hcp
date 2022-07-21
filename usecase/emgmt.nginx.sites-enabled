@@ -1,5 +1,5 @@
 server {
-	listen                 443 ssl;
+	listen                 8443 ssl;
 	server_name	       emgmt.hcphacking.xyz;
 	ssl_certificate        /etc/ssl/hostcerts/hostcert-default-https-server.pem;
 	ssl_certificate_key    /etc/ssl/hostcerts/hostcert-default-https-server.pem;

@@ -65,7 +65,7 @@ services:
         environment:
           - HCP_INSTANCE=/usecase/emgmt.env
         healthcheck:
-            test: curl -f -G --cert /etc/ssl/hostcerts/hostcert-default-https-client.pem https://${HCP_EMGMT_HOSTNAME}.${HCP_FQDN_DEFAULT_DOMAIN}/healthcheck || exit 1
+            test: /hcp/enrollsvc/healthcheck.sh
             timeout: 1s
             interval: 2s
 
