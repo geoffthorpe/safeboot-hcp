@@ -97,6 +97,22 @@ role_account_uid_file \
 	$HCP_ENROLLSVC_STATE/uid_db_user \
 	"EnrollDB User,,,,"
 
+if [[ -n $HCP_ENROLLSVC_JSON ]]; then
+	if [[ ! -f $HCP_ENROLLSVC_JSON ]]; then
+		echo "Error, HCP_ENROLLSVC_JSON ($HCP_ENROLLSVC_JSON) must be a file" >&2
+		exit 1
+	fi
+	# The JSON file needs to be readable by emgmtdb! So we copy and chmod
+	# it, then repoint the env-var to the new location _before_
+	# $ENROLLSVC_ENV gets written.
+	if [[ $HCP_ENROLLSVC_JSON != "/home/$HCP_ENROLLSVC_USER_DB/enrollsvc.json" ]]; then
+		echo "Generating ~emgmtdb/enrollsvc.json"
+		cp "$HCP_ENROLLSVC_JSON" /home/$HCP_ENROLLSVC_USER_DB/enrollsvc.json
+		chown $HCP_ENROLLSVC_USER_DB /home/$HCP_ENROLLSVC_USER_DB/enrollsvc.json
+		export HCP_ENROLLSVC_JSON="/home/$HCP_ENROLLSVC_USER_DB/enrollsvc.json"
+	fi
+fi
+
 # Generate env file if it doesn't exist yet
 if [[ ! -f $ENROLLSVC_ENV ]]; then
 	echo "Generating '$ENROLLSVC_ENV'"
