@@ -58,6 +58,14 @@ set -e
 #    process list looking to see if it is literally running.
 
 [[ -d $HCP_FQDN_PATH ]] || exit 0
+# If running a CABOODLE_ALONE-style environment, you explicitly do NOT want to
+# interact with other hosts on the volume mounted at HCP_FQDN_PATH! Rather than
+# teaching docker-compose how to override inherited values (known problem,
+# won't be fixed, meh), we simply divert our routines to look somewhere else.
+if [[ -n $HCP_CABOODLE_ALONE ]]; then
+	export HCP_FQDN_PATH=/caboodle-fqdn-bus
+	mkdir -p $HCP_FQDN_PATH
+fi
 ps ax | grep fqdn-updater.sh | grep bash | grep -v grep > /dev/null 2>&1 && exit 0
 test -x /hcp/common/fqdn-updater.sh &&
 	nohup /hcp/common/fqdn-updater.sh > /.hcp-fqdn-updater.output 2>&1 &
