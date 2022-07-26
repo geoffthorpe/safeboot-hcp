@@ -7,7 +7,15 @@ expect_db_user
 echo "Starting $0" >&2
 echo "  - Param1=$1 (hostname_suffix)" >&2
 
-check_hostname_suffix "$1"
+# Make sure the client's request is valid JSON
+if ! request_json=$(echo "$1" | jq -c) > /dev/null 2>&1; then
+	my_tee "Error, request is not valid JSON"
+	exit 1
+fi
+export HCP_REQUEST_JSON="$request_json"
+hostname_suffix=$(echo "$HCP_REQUEST_JSON" | jq -r '.params.hostname_suffix // empty')
+
+check_hostname_suffix "$hostname_suffix"
 
 cd $REPO_PATH
 
@@ -24,12 +32,12 @@ cd $REPO_PATH
 #    }
 
 echo "{"
-echo "  \"hostname_suffix\": \"$1\","
+echo "  \"hostname_suffix\": \"$hostname_suffix\","
 echo "  \"ekpubhashes\": ["
 
 # The table is indexed by _reversed_ hostname, so that our hostname_suffix
 # search becomes a prefix search on the table.
-revsuffix=`echo $1 | rev`
+revsuffix=`echo "$hostname_suffix" | rev`
 
 # The reverse lookup table file is replaced atomically by the add/delete logic,
 # so when we pipe it into our filter loop below, it will remain unmodified

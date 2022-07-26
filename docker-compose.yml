@@ -182,6 +182,12 @@ services:
         volumes:
           - tpmsocket_aclient:${HCP_ACLIENT_TCTI_SOCKDIR}
           - ${HCP_TESTCREDS_ENROLLVERIFIER}:${HCP_ACLIENT_CREDS_VERIFIER}:ro
+    caboodle_unit:
+        extends: caboodle_alone
+        environment:
+          - HCP_INSTANCE=/unit/test.env
+        volumes:
+          - ${HCP_TOP}/tests/unit:/unit
 
     kdc1:
         extends: common

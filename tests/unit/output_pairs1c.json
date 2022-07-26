@@ -1,0 +1,9 @@
+{
+	"name": "someserver",
+	"domain": "hcphacking.xyz",
+	"transport": "https",
+	"request_uri": "/healthcheck",
+	"fqdn": "someserver.hcphacking.xyz",
+	"server_url": "https://someserver.hcphacking.xyz",
+	"healthcheck": "https://someserver.{domain}/healthcheck"
+}

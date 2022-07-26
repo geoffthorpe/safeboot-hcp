@@ -3,18 +3,26 @@
 # NB: this query logic is transformed into delete logic by the presence of
 # QUERY_PLEASE_ALSO_DELETE.
 
-. /hcp/enrollsvc/common.sh
+source /hcp/enrollsvc/common.sh
 
 expect_db_user
 
 echo "Starting $0" >&2
-echo "  - Param1=$1 (ekpubhash)" >&2
+echo "  - Param1=$1 (request_json)" >&2
 
-check_ekpubhash_prefix "$1"
+# Make sure the client's request is valid JSON
+if ! request_json=$(echo "$1" | jq -c) > /dev/null 2>&1; then
+	my_tee "Error, request is not valid JSON"
+	exit 1
+fi
+export HCP_REQUEST_JSON="$request_json"
+req_ekpubhash=$(echo "$HCP_REQUEST_JSON" | jq -r '.params.ekpubhash // empty')
+
+check_ekpubhash_prefix "$req_ekpubhash"
 
 cd $REPO_PATH
 
-ply_path_get "$1"
+ply_path_get "$req_ekpubhash"
 
 # The JSON output should look like;
 #    {
@@ -97,7 +105,7 @@ fi
 # commit and make the commit
 if [[ -z $itfailed ]] && [[ -n $QUERY_PLEASE_ALSO_DELETE ]] && [[ -n $ATLEAST1 ]]; then
 	git add $HN2EK_PATH >&2 &&
-	git commit -m "delete $1" >&2 ||
+	git commit -m "delete $req_ekpubhash" >&2 ||
 	(echo "Error, commiting failed" >&2 && exit 1) || itfailed=1
 fi
 

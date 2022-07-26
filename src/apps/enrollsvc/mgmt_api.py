@@ -34,82 +34,27 @@ def env_purity(env):
     return result
 pure_env = env_purity(os.environ)
 
-# If $HCP_USER_POLICY is defined, we use it as the base URL of an access-control
-# policy hook. The specific URI ("/v1/add", "/healthcheck", etc) is appended to
-# that URL, to which we send a POST request containing the following elements;
-#   - 'hookname', this will be "enrollsvc::mgmt::client_check"
-#   - 'params', if present, this is a JSON object representing the parameters
-#       for the request;
-#         - /v1/add: the JSON to be passed to op_add.sh for enrollment.
-#         - /v1/{query,delete}: it will contain a 'ekpubhash' field set to the
-#             hexstring for the corresponding operation.
-#         - /v1/find: it will contain a 'hostname_suffix' field set to the
-#             suffix substring to search for among enrolled hostnames.
-#   - 'auth', if present, contains authentication details about the originating
-#       request to enrollsvc, possibly including;
-#         - 'client_cert': if present, contains the PEM-encoded client cert.
-#             Notes;
-#               - chain-validation by the HTTPS endpoint has to succeed before
-#                   this policy lookup can occur. The cert is provided to allow
-#                   the policy to examine its fields for identity, not to
-#                   validate the cert or the chain back to a trust-root.
-#               - this has nothing to do with the policy request from
-#                   enrollsvc. Any authn/authz controls there are intentionally
-#                   decoupled from the API - that is entirely determined by how
-#                   the policy endpoint is configured and how enrollsvc is
-#                   configured to reach it.
-#         - TBD: handle SPNEGO and fill in 'client_princ'
-#
-# Eg. to post a policy check for "/v1/query" directly from curl;
-#     curl -v -F hookname="enrollsvc::mgmt::client_check" \
-#             -F params="{ \"ekpubhash\": \"0d3fe1\" }" \
-#         http://policy.url.wherever.com/some/handler/v1/query
-
-hookname = 'enrollsvc::mgmt::client_check'
-
-ext_client_check = None
-ext_client_auth = None
-if 'HCP_ENROLLSVC_POLICY' in pure_env:
-    ext_client_check = pure_env['HCP_ENROLLSVC_POLICY']
-    if os.environ.get('HCP_GSSAPI'):
-        print('Enabling GSSAPI authentication')
-        try:
-            from requests_gssapi import HTTPSPNEGOAuth, DISABLED
-            ext_client_auth = HTTPSPNEGOAuth(mutual_authentication=DISABLED,
-                                             opportunistic_auth=True)
-        except ModuleNotFoundError:
-            print("'requests-gssapi' unavailable, falling back to 'requests-kerberos'")
-            try:
-                from requests_kerberos import HTTPKerberosAuth, DISABLED
-                ext_client_auth = HTTPKerberosAuth(mutual_authentication=DISABLED,
-                                                   force_preemptive=True)
-            except ModuleNotFoundError:
-                print("'requests-kerberos' unavailable, falling back to no authentication")
-
-def client_check(uri, params=None):
-    if ext_client_check:
-        form_data = {
-            'hookname': (None, hookname)
-        }
-        if params:
-            form_data['params'] = (None, json.dumps(params))
-        e = env_purity(request.environ)
-        if 'SSL_CLIENT_CERT' in e:
-            auth = {
-                'client_cert': e['SSL_CLIENT_CERT']
-            }
-            form_data['auth'] = (None, json.dumps(auth))
-        response = requests.post(f"{ext_client_check}{uri}",
-                                 files=form_data,
-                                 auth=ext_client_auth,
-                                 verify=True)
-        if response.status_code != 200:
-            print(f"Failed policy check: {uri}")
-            abort(403)
+# Prepare the "request" object that lower-level calls (running behind the sudo
+# curtain) can use when making policy lookups. The caller of this function will
+# take the structure as the return value, add a 'params' of its own to the
+# structure, convert it to a JSON string, and then pass it as an argument to
+# the sudo'd command.
+# The structure includes;
+#  - the uri of the originating request
+#  - any details from the HTTPS request (client authentication) that we can
+#    pass through.
+def get_request_data(uri):
+    request_data = {
+        'uri': uri,
+        'auth': {}
+    }
+    e = env_purity(request.environ)
+    if 'SSL_CLIENT_CERT' in e:
+        request_data['auth']['client_cert'] = e['SSL_CLIENT_CERT']
+    return request_data
 
 @app.route('/', methods=['GET'])
 def home():
-    client_check('/')
     return '''
 <h1>Enrollment Service Management API</h1>
 <hr>
@@ -154,7 +99,6 @@ def home():
 '''
 @app.route('/healthcheck', methods=['GET'])
 def healthcheck():
-    client_check('/healthcheck')
     return '''
 <h1>Healthcheck</h1>
 '''
@@ -177,7 +121,6 @@ sudoargs=['sudo','-u',db_user]
 
 @app.route('/v1/add', methods=['POST'])
 def my_add():
-    client_check('/v1/add')
     if 'ekpub' not in request.files:
         return { "error": "ekpub not in request" }
     if 'hostname' not in request.form:
@@ -185,13 +128,12 @@ def my_add():
     form_ekpub = request.files['ekpub']
     form_hostname = request.form['hostname']
     if 'profile' not in request.form:
-        form_profile = "default"
+        form_profile = "{}"
     else:
         form_profile = request.form['profile']
-    if 'paramfile' not in request.files:
-        form_paramfile = None
-    else:
-        form_paramfile = request.files['paramfile']
+    request_data = get_request_data('/v1/add')
+    request_data['params'] = form_profile
+    request_json = json.dumps(request_data)
     # Create a temporary directory (for the ek.pub file), and make it world
     # readable+executable. The /hcp/enrollsvc/op_add.sh script runs behind
     # sudo, as another user, and it needs to be able to read the ek.pub.
@@ -204,14 +146,8 @@ def my_add():
     local_ekpub = os.path.join(tf.name,
                                secure_filename(form_ekpub.filename))
     form_ekpub.save(local_ekpub)
-    if form_paramfile:
-        local_paramfile = os.path.join(tf.name,
-                                       secure_filename(form_paramfile.filename))
-        form_paramfile.save(local_paramfile)
     opadd_args = sudoargs + ['/hcp/enrollsvc/op_add.sh',
-                             local_ekpub, form_hostname, form_profile]
-    if form_paramfile:
-        opadd_args += [local_paramfile]
+                             local_ekpub, form_hostname, request_json]
     c = subprocess.run(opadd_args,
                        stdout = subprocess.PIPE, stderr = subprocess.PIPE,
                        text = True)
@@ -229,12 +165,14 @@ def my_add():
 
 @app.route('/v1/query', methods=['GET'])
 def my_query():
-    client_check('/v1/query')
     if 'ekpubhash' not in request.args:
         return { "error": "ekpubhash not in request" }
-    form_ekpubhash = request.args['ekpubhash']
-    c = subprocess.run(sudoargs + ['/hcp/enrollsvc/op_query.sh',
-                                   form_ekpubhash],
+    request_data = get_request_data('/v1/query')
+    request_data['params'] = {
+        'ekpubhash': request.args['ekpubhash']
+    }
+    request_json = json.dumps(request_data)
+    c = subprocess.run(sudoargs + ['/hcp/enrollsvc/op_query.sh', request_json],
                        stdout=subprocess.PIPE, stderr = subprocess.PIPE,
                        text=True)
     if c.returncode != 0:
@@ -247,10 +185,14 @@ def my_query():
 
 @app.route('/v1/delete', methods=['POST'])
 def my_delete():
-    client_check('/v1/delete')
-    form_ekpubhash = request.form['ekpubhash']
-    c = subprocess.run(sudoargs + ['/hcp/enrollsvc/op_delete.sh',
-                                   form_ekpubhash],
+    if 'ekpubhash' not in request.args:
+        return { "error": "ekpubhash not in request" }
+    request_data = get_request_data('/v1/delete')
+    request_data['params'] = {
+        'ekpubhash': request.form['ekpubhash']
+    }
+    request_json = json.dumps(request_data)
+    c = subprocess.run(sudoargs + ['/hcp/enrollsvc/op_delete.sh', request_json],
                        stdout=subprocess.PIPE, stderr = subprocess.PIPE,
                        text=True)
     if (c.returncode != 0):
@@ -263,10 +205,14 @@ def my_delete():
 
 @app.route('/v1/find', methods=['GET'])
 def my_find():
-    client_check('/v1/find')
-    form_hostname_suffix = request.args['hostname_suffix']
-    c = subprocess.run(sudoargs + ['/hcp/enrollsvc/op_find.sh',
-                                   form_hostname_suffix],
+    if 'hostname_suffix' not in request.args:
+        return { "error": "hostname_suffix not in request" }
+    request_data = get_request_data('/v1/find')
+    request_data['params'] = {
+        'hostname_suffix': request.args['hostname_suffix']
+    }
+    request_json = json.dumps(request_data)
+    c = subprocess.run(sudoargs + ['/hcp/enrollsvc/op_find.sh', request_json],
                        stdout=subprocess.PIPE, stderr = subprocess.PIPE,
                        text=True)
     if (c.returncode != 0):
@@ -279,7 +225,6 @@ def my_find():
 
 @app.route('/v1/get-asset-signer', methods=['GET'])
 def assetSigner():
-    client_check('/v1/get-asset-signer')
     return send_file('/signer/key.pem',
                      as_attachment = True,
                      attachment_filename = 'asset-signer.pem')

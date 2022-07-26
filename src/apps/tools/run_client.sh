@@ -78,7 +78,7 @@ tpm2_dictionarylockout --clear-lockout
 # for our TPM enrollment to propagate to the attestation server, so it's normal
 # for this to fail a couple of times before succeeding.
 waitcount=0
-wait_tens=2
+wait_tens=4
 until ./sbin/tpm2-attest attest $HCP_ATTESTCLIENT_ATTEST_URL \
 				> $tmp_secrets 2>> "$tmp_attest"; do
 	waitcount=$((waitcount+1))

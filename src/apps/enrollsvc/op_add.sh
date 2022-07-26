@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 source /hcp/enrollsvc/common.sh
 
 expect_db_user
@@ -16,11 +15,17 @@ function my_tee {
 echo "Starting $0" >&2
 echo "  - Param1=$1 (path to ek.pub/ek.pem)" >&2
 echo "  - Param2=$2 (hostname)" >&2
-echo "  - Param3=$3 (profile)" >&2
+echo "  - Param3=$3 (request_json)" >&2
 
 MYEKPUB=$1
 export MYHOSTNAME=$2
-MYPROFILE=$3
+# Make sure the client's request is valid JSON
+if ! request_json=$(echo "$3" | jq -c) > /dev/null 2>&1; then
+	my_tee "Error, request is not valid JSON"
+	exit 1
+fi
+export HCP_REQUEST_JSON="$request_json"
+clientprofile=$(echo "$HCP_REQUEST_JSON" | jq -r '.params // {}')
 
 # args must be non-empty
 if [[ -z $MYEKPUB || -z $MYHOSTNAME ]]; then
@@ -58,57 +63,51 @@ fi
 serverprofilepre=$(echo "$serverprofile" | jq -r '.preclient // empty')
 serverprofilepost=$(echo "$serverprofile" | jq -r '.postclient // empty')
 
-# Process the client's "profile"
-# - make sure it's valid JSON
-if [[ -n $MYPROFILE ]]; then
-	if ! clientprofile=$(echo "$MYPROFILE" | jq) > /dev/null 2>&1; then
-		my_tee "Error, profile is not valid JSON"
-		exit 1
-	fi
-else
-	clientprofile="{}"
-fi
-
 # Merge the server and client settings, getting a "result profile"
 preresultprofile=$(jq -cn "$serverprofilepre * $clientprofile")
 resultprofile=$(jq -cn "$preresultprofile * $serverprofilepost")
 
-# The "env" inputs can be parked in the environment and will be available to
-# the routines that get run. For each key-value pair in the "env" section of
-# the JSON object;
-# - verify that the key contains only [A-Za-z0-9_] characters
-# - export an environment variable named "ENROLL_<key>" of the same value.
-resultenv=$(echo "$resultprofile" | jq -r '.env // {}')
-envitems=( $(echo "$resultenv" | jq -r 'keys[] // empty') )
-for i in ${envitems[@]}; do
-	# Make sure 'i' only consists of suitable characters!
-	if ! echo "$i" | grep -v "[^A-Za-z0-9_]" > /dev/null 2>&1; then
-		my_tee "Error, env key '$i' is not valid"
-		exit 1
-	fi
-	val=$(echo "$resultenv" | jq -r ".$i // empty")
-	export ENROLL_$i="$val"
-done
-
 # Then;
 # - force the ENROLL_HOSTNAME variable from our inputs
-export ENROLL_HOSTNAME="$MYHOSTNAME"
+# - also add application config that comes to us from env-vars but may be
+#   needed in substitution.
+toinsert=$(cat << EOF
+{
+	"__env": {
+		"ENROLL_HOSTNAME": "$MYHOSTNAME",
+		"SIGNING_KEY_DIR": "$SIGNING_KEY_DIR",
+		"SIGNING_KEY_PUB": "$SIGNING_KEY_PUB",
+		"SIGNING_KEY_PRIV": "$SIGNING_KEY_PRIV",
+		"GENCERT_CA_DIR": "$GENCERT_CA_DIR",
+		"GENCERT_CA_CERT": "$GENCERT_CA_CERT",
+		"GENCERT_CA_PRIV": "$GENCERT_CA_PRIV"
+	}
+}
+EOF
+)
+resultprofile=$(jq -cnS "$resultprofile * $toinsert")
+
 # - calculate some derivative environment variables "ENROLL_*" that we make
 #   available for parameter-expansion.
 source /hcp/enrollsvc/derive_enroll_vars.sh
-derive_enroll_vars
+resultprofile=$(echo "$resultprofile" | derive_enroll_vars)
 
-# And;
-# - run "param_expand" over the JSON profile to expand any occurances of
-#   "${ENROLL_[A-Za-z0-9_]*}", then put the resulting profile in the
-#   environment as "ENROLL_JSON". Also include GENCERT_CA_PRIV.
-enroll_vars=$(printenv | egrep -e "^ENROLL_[A-Za-z0-9_]*=" | sed -e "s/=.*\$//")
-expand_vars=( GENCERT_CA_PRIV )
-for i in $enroll_vars; do
-	expand_vars+=($i)
-done
-enroll_profile=$(echo "$resultprofile" | param_expand ${expand_vars[@]})
+enroll_profile=$(echo "$resultprofile" | /hcp/xtra/hcp_expand.sh)
 export ENROLL_JSON="$enroll_profile"
+
+# Policy check! NB: we generate the request_uid here and set it in the env-var,
+# so that lower-level callers to the policy-checker can use the same
+# request_uid.
+export HCP_REQUEST_UID=$(uuidgen)
+if [[ -n $HCP_ENROLLSVC_POLICY ]]; then
+	if ! curl -v -F hookname="enrollsvc::mgmt::client_check" \
+			-F request_uid="$HCP_REQUEST_UID" \
+			-F params="$enroll_profile" \
+			$HCP_ENROLLSVC_POLICY/v1/add >&2; then
+		echo "FAIL: policy check refused enrollment" >&2
+		exit 1
+	fi
+fi
 
 # Specialize the enroll.conf that is installed with enrollsvc. Specifically, we
 # feed in the "genprogs" setting via enroll.conf (attest-enroll will clobber it
@@ -139,7 +138,7 @@ export TPM_VENDORS=$HCP_ENROLLSVC_STATE/tpm_vendors
 ./sbin/attest-enroll -C $EPHEMERAL_ENROLL/enroll.conf \
 		-V CHECKOUT=/hcp/enrollsvc/cb_checkout.sh \
 		-V COMMIT=/hcp/enrollsvc/cb_commit.sh \
-		-I $MYEKPUB $MYHOSTNAME >&2 ||
+		-I $MYEKPUB $MYHOSTNAME > $HOME/debug-attest-enroll >&2 ||
 	my_tee "Error, 'attest-enroll' failed" 1 ||
 	exit 1
 
@@ -198,7 +197,7 @@ function update_git {
 	[[ -n "$itfailed" ]] && return
 	(echo "$EKPUBHASH" > "$FPATH/ekpubhash" &&
 		cp -a $EPHEMERAL_ENROLL/* "$FPATH/" &&
-		( [[ -z $MYPROFILE ]] || echo "$MYPROFILE" > "$FPATH/profile" ) &&
+		( [[ -z $clientprofile ]] || echo "$clientprofile" > "$FPATH/clientprofile" ) &&
 		mv $HN2EK_PATH.tmp $HN2EK_PATH &&
 		git add . &&
 		git commit -m "map $HALFHASH to $MYHOSTNAME") >&2 && return
@@ -240,7 +239,7 @@ rm -rf $EPHEMERAL_ENROLL
 
 jq -Rn --arg hostname "$MYHOSTNAME" \
 	--arg ekpubhash "$HALFHASH" \
-	--arg profile "$MYPROFILE" \
+	--arg profile "$clientprofile" \
 	'{returncode: 0, hostname: $hostname, ekpubhash: $ekpubhash, profile, $profile}'
 
 /bin/true

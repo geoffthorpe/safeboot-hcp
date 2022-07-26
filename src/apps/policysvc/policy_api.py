@@ -32,36 +32,47 @@ def bail(val, msg=None):
     abort(val, msg)
 
 # Common processing for all URIs
-def my_emgmt(uri):
+def my_common(uri, required_hookname):
     if 'hookname' not in request.form:
         bail(401, "Policy check::egmt:: no 'hookname'")
     hookname = request.form['hookname']
+    if 'request_uid' not in request.form:
+        bail(401, "Policy check::egmt:: no 'request_uid'")
+    request_uid = request.form['request_uid']
     params = None
     if 'params' in request.form:
         try:
             params = json.loads(request.form['params'])
         except ValueError:
             bail(401, "Policy check::egmt:: malformed 'params'")
+    auth = None
     if 'auth' in request.form:
         try:
             auth = json.loads(request.form['auth'])
         except ValueError:
             bail(401, "Policy check::egmt:: malformed 'auth'")
 
-    if hookname != 'enrollsvc::mgmt::client_check':
-        bail(401, f"Policy check::egmt:: unrecognized hookname: {hookname}")
+    if hookname != required_hookname:
+        bail(401, f"Policy check::egmt:: unexpected hookname: {hookname}")
 
     # Success. Write something to the log that is not completely useless.
     # Exception: /healthcheck gets hit continuously and it's best left silent.
     if uri != '/healthcheck':
         print(f"ALLOW: emgmt::{uri}")
+        print(f"request_uid={request_uid}")
+        print(f"params={json.dumps(params)}")
     return {
         "policy_endpoint": "enrollsvc::mgmt::client_check",
         "hookname": hookname,
+        "request_uid": request_uid,
         "uri": uri,
         "params": params,
         "auth": auth
     }
+def my_emgmt(uri):
+    return my_common(uri, 'enrollsvc::mgmt::client_check')
+def my_genprog(uri):
+    return my_common(uri, 'enrollsvc::mgmt::asset_check')
 
 # Is there a way to generate the handlers from an array like this?
 #     uri_list = [ '/', '/healthcheck',
@@ -97,6 +108,10 @@ def handler6():
 @app.route(f"/emgmt/v1/get-asset-signer", methods=['POST'])
 def handler7():
     return my_emgmt('/v1/get-asset-signer')
+
+@app.route(f"/emgmt/gencert-hxtool", methods=['POST'])
+def handler8():
+    return my_genprog('gencert-hxtool')
 
 if __name__ == "__main__":
     app.run()

@@ -17,7 +17,7 @@ for asset in ${certlist[@]}; do
 	fi
 	assetjson=$(echo "$hxtooljson" | jq -r ".[\"$asset\"] // {}")
 	assetjson=$(jq -cn "$commonjson * $assetjson")
-	assetcmd=( hxtool issue-certificate )
+	assetcmd="hxtool issue-certificate"
 	# Special handling:
 	# - 'name' allows the output file to be renamed
 	# - 'type' is required, must only be specified once, and we'll pass it
@@ -29,7 +29,6 @@ for asset in ${certlist[@]}; do
 		assetname="$asset"
 	fi
 	assetpath="${certprefix}$assetname.pem"
-	assetcmd+=( --certificate="$assetpath" )
 	assetdir=$(dirname "${assetpath}")
 	if [[ $assetdir != "." ]]; then
 		mkdir -p "$assetdir"
@@ -39,7 +38,7 @@ for asset in ${certlist[@]}; do
 		echo "ERROR: gencert-hxtool '$asset' has no 'type'" >&2
 		exit 1
 	fi
-	assetcmd+=( --type=$proptype )
+	assetcmd+=" --type=\"$proptype\""
 	props=( $(echo "$assetjson" | jq -r 'keys[] // empty') )
 	for prop in ${props[@]}; do
 		if [[ $prop == "name" || $prop == "type" ||
@@ -48,17 +47,31 @@ for asset in ${certlist[@]}; do
 		fi
 		propval=$(echo "$assetjson" | jq -r ".[\"$prop\"] // empty")
 		if [[ -z $propval ]]; then
-			assetcmd+=( --$prop )
+			assetcmd+=" --$prop "
 		else
-			assetcmd+=( --$prop="$propval" )
+			assetcmd+=" --$prop=\"$propval\""
 		fi
 	done
-	assetcmd+=( --certificate="FILE:$assetpath" )
+	assetcmd+=" --certificate=\"FILE:$assetpath\""
+
+	# Policy check! Add 'assetcmd' to the JSON
+	assetcmd_json=$(jq -cnS --arg "foo" "$assetcmd" '{assetcmd:$foo}')
+	assetjson=$(jq -cnS "$assetjson + $assetcmd_json")
+
+	if [[ -n $HCP_ENROLLSVC_POLICY ]]; then
+		if ! curl -v -F hookname="enrollsvc::mgmt::asset_check" \
+				-F request_uid="$HCP_REQUEST_UID" \
+				-F params="$assetjson" \
+				$HCP_ENROLLSVC_POLICY/gencert-hxtool >&2; then
+			echo "ERROR: gencert-hxtool got policy refusal" >&2
+			exit 1
+		fi
+	fi
 
 	# Execute the hxtool command
-	if ! ${assetcmd[@]}; then
+	if ! bash -c "$assetcmd"; then
 		echo "ERROR: gencert-hxtool '$asset' failed" >&2
-		echo "ERROR: cmd was: ${assetcmd[@]}" >&2
+		echo "ERROR: cmd was: $assetcmd" >&2
 		exit 1
 	fi
 	ASSETS="$ASSETS $assetpath"
