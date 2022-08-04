@@ -1,0 +1,23 @@
+{
+	"filters": [ {
+		"if-equal": [ {
+			"path": ".",
+			"value": {
+				"field1": "value1",
+				"field2": "{isfunny}",
+				"field3": {
+					"field3a": "value3a",
+					"field3b": {
+						"field3b1": "{notfunny}",
+						"field3b2": {
+							"field3b2a": null,
+							"field3b2b": "{firstname}"
+						}
+					}
+				}
+			}
+		} ],
+		"result": "accept"
+	} ],
+	"default": "reject"
+}

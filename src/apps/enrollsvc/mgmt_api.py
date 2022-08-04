@@ -10,29 +10,11 @@ from werkzeug.utils import secure_filename
 import tempfile
 import requests
 
+sys.path.insert(1, '/hcp/xtra')
+from HcpRecursiveUnion import union
+
 app = flask.Flask(__name__)
 app.config["DEBUG"] = False
-
-# We want to work with environment in such a way that an empty env-var is
-# treated like an absent env-var. Why? Here's what happens. A low level config
-# file either sets LOWLEVEL_FOO to a value or comments it out to leave it
-# undefined. In this way we can switch between alternative low-level configs. A
-# uniform high level config then sets "HIGHLEVEL_FOO=$LOWLEVEL_FOO", inheriting
-# whichever lower-level choices were made. However, this means HIGHLEVEL_FOO is
-# always "set", though the value is empty when LOWLEVEL_FOO is undefined. This
-# function takes an environment dict (e.g. 'os.environ' or 'request.environ')
-# and returns a modified dict containing only the key-value pairs which had
-# non-empty values.
-def env_purity(env):
-    result = {}
-    for k in env:
-        v = env[k]
-        if type(v) is not str:
-            continue
-        if len(v) > 0:
-            result[k] = v
-    return result
-pure_env = env_purity(os.environ)
 
 # Prepare the "request" object that lower-level calls (running behind the sudo
 # curtain) can use when making policy lookups. The caller of this function will
@@ -48,7 +30,10 @@ def get_request_data(uri):
         'uri': uri,
         'auth': {}
     }
-    e = env_purity(request.environ)
+    # Curate a copy of the request environment that only contains non-empty,
+    # string-valued variables.
+    e = { x: request.environ[x] for x in request.environ if
+             type(request.environ[x]) is str and len(request.environ[x]) > 0 }
     if 'SSL_CLIENT_CERT' in e:
         request_data['auth']['client_cert'] = e['SSL_CLIENT_CERT']
     return request_data
@@ -86,10 +71,10 @@ def home():
 <input type="submit" value="Delete">
 </form>
 
-<h2>To find host entries by hostname suffix;</h2>
+<h2>To find host entries by hostname regex;</h2>
 <form method="get" action="/v1/find">
 <table>
-<tr><td>hostname suffix</td><td><input type=text name=hostname_suffix></td></tr>
+<tr><td>hostname regex</td><td><input type=text name=hostname_regex></td></tr>
 </table>
 <input type="submit" value="Find">
 </form>
@@ -104,20 +89,24 @@ def healthcheck():
 '''
 
 # We enforce privilege separation by running this flask app as the flask_user
-# account, which has no direct access to any enrollment state. Specific sudo
-# rules allow flask_user to invoke the 4 /hcp/enrollsvc/op_<verb>.sh
-# scripts (for <verb> in "add", "query", "delete", and "find") running as
+# account, which has no direct access to any enrollment state. A sudo rule
+# allows flask_user to invoke the /hcp/enrollsvc/mgmt_sudo.sh script running as
 # 'db_user'. The latter is the account that created the enrollment DB for use
-# only by itself.  The primary role of the /hcp/enrollsvc/op_<verb>.sh scripts
-# is to perform argument-validation, to mitigate the risk of a compromised
-# flask app. (The sudo configuration ensures a fresh environment across this
-# call interface, preventing a compromised flask handler from influencing the
-# scripts other than by the arguments passed to the command.)
+# only by itself. The primary role of the /hcp/enrollsvc/mgmt_sudo.sh script is
+# to perform argument-validation, to mitigate the risk of a compromised flask
+# app. (The sudo configuration ensures a fresh environment across this call
+# interface, preventing a compromised flask handler from influencing the
+# scripts other than by the arguments passed to the command.) The first
+# argument passed to 'mgmt_sudo.sh' is the name of the requested operation
+# ("add", "query", "delete", "find" are currently-supported), which it uses to
+# validate that the number of arguments being passed and then directs execution
+# to the corresponding python script.
 #
-# This is the sudo preamble to pass to subprocess.run(), the actual script name
-# and arguments follow this, and are appended by each handler.
-db_user=os.environ['HCP_ENROLLSVC_USER_DB']
-sudoargs=['sudo','-u',db_user]
+# This is the sudo preamble to pass to subprocess.run(), the actual operation
+# string ("add", "query", etc) and arguments follow this, and are appended by
+# each handler.
+db_user = os.environ['HCP_ENROLLSVC_USER_DB']
+sudoargs = [ 'sudo', '-u', db_user, '/hcp/enrollsvc/mgmt_sudo.sh' ]
 
 @app.route('/v1/add', methods=['POST'])
 def my_add():
@@ -131,23 +120,23 @@ def my_add():
         form_profile = "{}"
     else:
         form_profile = request.form['profile']
+    form_data = json.loads(form_profile)
     request_data = get_request_data('/v1/add')
-    request_data['params'] = form_profile
+    request_data = union(form_data, request_data)
     request_json = json.dumps(request_data)
     # Create a temporary directory (for the ek.pub file), and make it world
-    # readable+executable. The /hcp/enrollsvc/op_add.sh script runs behind
+    # readable+executable. The /hcp/enrollsvc/db_add.py script runs behind
     # sudo, as another user, and it needs to be able to read the ek.pub.
     tf = tempfile.TemporaryDirectory()
     s = os.stat(tf.name)
     os.chmod(tf.name, s.st_mode | S_IROTH | S_IXOTH)
     # Sanitize the user-supplied filename, and join it to the temp directory,
     # this is where the ek.pub file gets saved and is the path passed to the
-    # op_add.sh script.
+    # db_add.sh script.
     local_ekpub = os.path.join(tf.name,
                                secure_filename(form_ekpub.filename))
     form_ekpub.save(local_ekpub)
-    opadd_args = sudoargs + ['/hcp/enrollsvc/op_add.sh',
-                             local_ekpub, form_hostname, request_json]
+    opadd_args = sudoargs + [ 'add', local_ekpub, form_hostname, request_json]
     c = subprocess.run(opadd_args,
                        stdout = subprocess.PIPE, stderr = subprocess.PIPE,
                        text = True)
@@ -168,11 +157,13 @@ def my_query():
     if 'ekpubhash' not in request.args:
         return { "error": "ekpubhash not in request" }
     request_data = get_request_data('/v1/query')
-    request_data['params'] = {
-        'ekpubhash': request.args['ekpubhash']
-    }
+    request_data['ekpubhash'] = request.args['ekpubhash']
+    if 'nofiles' in request.args:
+        request_data['nofiles'] = True
+    else:
+        request_data['nofiles'] = False
     request_json = json.dumps(request_data)
-    c = subprocess.run(sudoargs + ['/hcp/enrollsvc/op_query.sh', request_json],
+    c = subprocess.run(sudoargs + [ 'query', request_json],
                        stdout=subprocess.PIPE, stderr = subprocess.PIPE,
                        text=True)
     if c.returncode != 0:
@@ -185,14 +176,16 @@ def my_query():
 
 @app.route('/v1/delete', methods=['POST'])
 def my_delete():
-    if 'ekpubhash' not in request.args:
+    if 'ekpubhash' not in request.form:
         return { "error": "ekpubhash not in request" }
     request_data = get_request_data('/v1/delete')
-    request_data['params'] = {
-        'ekpubhash': request.form['ekpubhash']
-    }
+    request_data['ekpubhash'] = request.form['ekpubhash']
+    if 'nofiles' in request.form:
+        request_data['nofiles'] = True
+    else:
+        request_data['nofiles'] = False
     request_json = json.dumps(request_data)
-    c = subprocess.run(sudoargs + ['/hcp/enrollsvc/op_delete.sh', request_json],
+    c = subprocess.run(sudoargs + [ 'delete', request_json],
                        stdout=subprocess.PIPE, stderr = subprocess.PIPE,
                        text=True)
     if (c.returncode != 0):
@@ -205,14 +198,12 @@ def my_delete():
 
 @app.route('/v1/find', methods=['GET'])
 def my_find():
-    if 'hostname_suffix' not in request.args:
-        return { "error": "hostname_suffix not in request" }
+    if 'hostname_regex' not in request.args:
+        return { "error": "hostname_regex not in request" }
     request_data = get_request_data('/v1/find')
-    request_data['params'] = {
-        'hostname_suffix': request.args['hostname_suffix']
-    }
+    request_data['hostname_regex'] = request.args['hostname_regex']
     request_json = json.dumps(request_data)
-    c = subprocess.run(sudoargs + ['/hcp/enrollsvc/op_find.sh', request_json],
+    c = subprocess.run(sudoargs + [ 'find', request_json],
                        stdout=subprocess.PIPE, stderr = subprocess.PIPE,
                        text=True)
     if (c.returncode != 0):
@@ -225,7 +216,7 @@ def my_find():
 
 @app.route('/v1/get-asset-signer', methods=['GET'])
 def assetSigner():
-    return send_file('/signer/key.pem',
+    return send_file(f"{os.environ['HCP_ENROLLSVC_SIGNER']}/key.pem",
                      as_attachment = True,
                      attachment_filename = 'asset-signer.pem')
 

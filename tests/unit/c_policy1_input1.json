@@ -1,0 +1,14 @@
+{
+	"field1": "value1",
+	"field2": [ "value2a", "value2b", "value2c" ],
+	"field3": {
+		"field3a": "value3a",
+		"field3b": {
+			"field3b1": "value3b1",
+			"field3b2": {
+				"field3b2a": null,
+				"field3b2b": "value3b2b"
+			}
+		}
+	}
+}

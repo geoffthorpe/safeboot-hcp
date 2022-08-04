@@ -1,0 +1,13 @@
+{
+	"filters": [ {
+		"unless-equal": [ {
+			"path": ".field3.field3b.field3b1",
+			"value": "{notfunny}"
+		}, {
+			"path": ".field3.field3b.field3b2.field3b2b",
+			"value": "{firstname}"
+		} ],
+		"result": "reject"
+	} ],
+	"default": "accept"
+}

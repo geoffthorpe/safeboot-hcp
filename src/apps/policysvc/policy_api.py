@@ -10,19 +10,27 @@ from werkzeug.utils import secure_filename
 import tempfile
 import requests
 
+sys.path.insert(1, '/hcp/xtra')
+import HcpJsonPolicy
+
 app = flask.Flask(__name__)
 app.config["DEBUG"] = False
+
+# Load, via env-var, a JSON input that policy checkers can consult. Note, each
+# policy check request will carry its own '__env' settings that need to be
+# applied to the policy (ie. parameter expansion), and this can't happen after
+# we've converted the JSON to a python object. So we carry around the JSON
+# string and let each invocation expand it before parsing it.
+policyjson = {}
+if 'HCP_POLICYSVC_JSON' in os.environ:
+    policyjsonpath = os.environ['HCP_POLICYSVC_JSON']
+    policyjson = open(policyjsonpath, "r").read()
 
 @app.route('/healthcheck', methods=['GET'])
 def healthcheck():
     return '''
 <h1>Healthcheck</h1>
 '''
-
-# Our policy hook is simply going to permit everything so long as the request
-# is well-formed, and will log the relevant details so the operator can watch.
-# The idea is not to make this implementation configurable, the idea is to
-# allow someone to implement their own policy endpoint.
 
 # Wrapper around abort() that also logs
 def bail(val, msg=None):
@@ -39,13 +47,13 @@ def my_common(uri, required_hookname):
     if 'request_uid' not in request.form:
         bail(401, "Policy check::egmt:: no 'request_uid'")
     request_uid = request.form['request_uid']
-    params = None
+    params = {}
     if 'params' in request.form:
         try:
             params = json.loads(request.form['params'])
         except ValueError:
             bail(401, "Policy check::egmt:: malformed 'params'")
-    auth = None
+    auth = {}
     if 'auth' in request.form:
         try:
             auth = json.loads(request.form['auth'])
@@ -55,20 +63,28 @@ def my_common(uri, required_hookname):
     if hookname != required_hookname:
         bail(401, f"Policy check::egmt:: unexpected hookname: {hookname}")
 
+    # Before passing the request "params" through the policy filters, take the
+    # extra information and embed it. This implies that the parameters cannot
+    # have fields conflicting with any of these.
+    params['uri'] = uri
+    params['hookname'] = hookname
+    params['request_uid'] = request_uid
+    params['auth'] = auth
+
+    # Both the policy and the input data need to be in string (JSON)
+    # representation. The policy already is, but params is a struct.
+    paramsjson = json.dumps(params)
+    result = HcpJsonPolicy.run_with_env(policyjson, paramsjson,
+                                        includeEnv=True)
+    if result != "accept":
+        bail(403, f"REJECT: {json.dumps(params)}")
+
     # Success. Write something to the log that is not completely useless.
     # Exception: /healthcheck gets hit continuously and it's best left silent.
     if uri != '/healthcheck':
-        print(f"ALLOW: emgmt::{uri}")
-        print(f"request_uid={request_uid}")
-        print(f"params={json.dumps(params)}")
-    return {
-        "policy_endpoint": "enrollsvc::mgmt::client_check",
-        "hookname": hookname,
-        "request_uid": request_uid,
-        "uri": uri,
-        "params": params,
-        "auth": auth
-    }
+        print(f"ALLOW: {json.dumps(params)}")
+    return params
+
 def my_emgmt(uri):
     return my_common(uri, 'enrollsvc::mgmt::client_check')
 def my_genprog(uri):

@@ -1,0 +1,13 @@
+{
+	"filters": [ {
+		"if-equal": [ {
+			"path": ".field1",
+			"value": "value1"
+		}, {
+			"path": ".field3.field3b.field3b2.field3b2a",
+			"value": null
+		} ],
+		"result": "accept"
+	} ],
+	"default": "reject"
+}

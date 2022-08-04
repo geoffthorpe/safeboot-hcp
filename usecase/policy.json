@@ -1,0 +1,113 @@
+{
+	"filters": [
+	{
+		"name": "Only filter asset_check requests",
+		"unless-equal": [ {
+			"path": ".hookname",
+			"value": "enrollsvc::mgmt::asset_check"
+		} ],
+		"result": "accept"
+	},
+	{
+		"name": "Only accept gencert-hxtool requests",
+		"unless-equal": [ {
+			"path": ".uri",
+			"value": "gencert-hxtool"
+		} ],
+		"result": "reject"
+	},
+	{
+		"name": "Accept unmodified 'default-https-client' requests",
+		"if-equal": [ {
+			"path": ".default-https-client",
+			"value": {
+				"generate-key": "rsa",
+				"key-bits": "2048",
+				"type": "https-client",
+				"subject": "UID=host,{ENROLL_HOSTNAME2DC}",
+				"hostname": "{ENROLL_HOSTNAME}",
+				"ca-certificate": "FILE:{ENROLL_CA_ISSUER_PRIV}"
+			}
+		} ],
+		"result": "accept"
+	},
+	{
+		"name": "Accept unmodified 'default-https-server' requests",
+		"if-equal": [ {
+			"path": ".default-https-server",
+			"value": {
+				"generate-key": "rsa",
+				"key-bits": "2048",
+				"type": "https-server",
+				"hostname": "{ENROLL_HOSTNAME}",
+				"ca-certificate": "FILE:{ENROLL_CA_ISSUER_PRIV}"
+			}
+		} ],
+		"result": "accept"
+	},
+	{
+		"name": "Accept unmodified 'default-pkinit-client' requests",
+		"if-equal": [ {
+			"path": ".default-pkinit-client",
+			"value": {
+				"generate-key": "rsa",
+				"key-bits": "2048",
+				"type": "pkinit-client",
+				"pk-init-principal": "host/{ENROLL_HOSTNAME}@{ENROLL_REALM}",
+				"subject": "CN=host,{ENROLL_HOSTNAME2DC}",
+				"ca-certificate": "FILE:{ENROLL_CA_ISSUER_PRIV}"
+			}
+		} ],
+		"result": "accept"
+	},
+	{
+		"name": "Accept unmodified 'default-pkinit-kdc' requests only for kdc1",
+		"if-equal": [ {
+			"path": ".default-pkinit-kdc",
+			"value": {
+				"generate-key": "rsa",
+				"key-bits": "2048",
+				"name": "pkinit-kdc",
+				"type": "pkinit-kdc",
+				"pk-init-principal": "krbtgt/{ENROLL_REALM}@{ENROLL_REALM}",
+				"ca-certificate": "FILE:{ENROLL_CA_ISSUER_PRIV}"
+			}
+		} , {
+			"path": ".__env.ENROLL_HOSTNAME",
+			"value": "kdc1.hcphacking.xyz"
+		} ],
+		"result": "accept"
+	},
+	{
+		"name": "Allow alicia/admin as pkinit-client-user only on 'aclient'",
+		"if-equal": [ {
+			"path": ".pkinit-client-user.pk-init-principal",
+			"value": "alicia/admin@{ENROLL_REALM}"
+		} , {
+			"path": ".pkinit-client-user.type",
+			"value": "pkinit-client"
+		} , {
+			"path": ".__env.ENROLL_HOSTNAME",
+			"value": "aclient.{ENROLL_DOMAIN}"
+		} ],
+		"result": "accept"
+	},
+	{
+		"name": "Allow robert a https-client-user only on 'aclient'",
+		"if-equal": [ {
+			"path": ".https-client-user.email",
+			"value": "robert@{ENROLL_DOMAIN}"
+		} , {
+			"path": ".https-client-user.type",
+			"value": "https-client"
+		} , {
+			"path": ".__env.ENROLL_HOSTNAME",
+			"value": "aclient.{ENROLL_DOMAIN}"
+		} ],
+		"result": "accept"
+	},
+	{
+		"name": "Reject anything else",
+		"result": "reject"
+	} ]
+}

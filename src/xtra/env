@@ -1,8 +1,0 @@
-export ENROLL_ISSUERCERT=FILE:/usr/share/ca-certificates/HCP/certissuer.pem
-export ENROLL_HTTPS_CLIENT_USER=robert
-export ENROLL_DOMAIN2DC=DC=hcphacking,DC=xyz
-export ENROLL_DOMAIN=hcphacking.xyz
-export ENROLL_HOSTNAME2DC=DC=hcphacking,DC=xyz
-export ENROLL_PKINIT_CLIENT_USER=alicia
-export ENROLL_HOSTNAME=aclient.hcphacking.xyz
-export ENROLL_REALM=HCPHACKING.XYZ

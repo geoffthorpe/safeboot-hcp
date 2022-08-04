@@ -13,7 +13,7 @@
 # delete:  curl -v -F ekpubhash=<hexstring> \
 #               <enrollsvc-URL>/v1/delete
 #
-# find:    curl -v -G -d hostname_suffix=<hostname_suffix> \
+# find:    curl -v -G -d hostname_regex=<hostname_regex> \
 #               <enrollsvc-URL>/v1/find
 #
 # get-asset-signer:  curl -v -G <enrollsvc-URL>/v1/get-asset-signer
@@ -77,6 +77,8 @@ def enroll_add(args):
 def do_query_or_delete(args, is_delete):
     if is_delete:
         form_data = { 'ekpubhash': (None, args.ekpubhash) }
+        if args.nofiles:
+            form_data['nofiles'] = (None, True)
         response = requests.post(args.api + '/v1/delete',
                                  files=form_data,
                                  auth=auth,
@@ -84,6 +86,8 @@ def do_query_or_delete(args, is_delete):
                                  cert=args.requests_cert)
     else:
         form_data = { 'ekpubhash': args.ekpubhash }
+        if args.nofiles:
+            form_data['nofiles'] = True
         response = requests.get(args.api + '/v1/query',
                                 params=form_data,
                                 auth=auth,
@@ -106,7 +110,7 @@ def enroll_delete(args):
     return do_query_or_delete(args, True)
 
 def enroll_find(args):
-    form_data = { 'hostname_suffix': args.hostname_suffix }
+    form_data = { 'hostname_regex': args.hostname_regex }
     response = requests.get(args.api + '/v1/find',
                             params=form_data,
                             auth=auth,
@@ -215,8 +219,10 @@ if __name__ == '__main__':
     ekpubhash value.)
     """
     query_help_ekpubhash = 'hexidecimal prefix (empty to return all enrollments)'
+    query_help_nofiles = 'do not return file listings, just hostname and ekpubhash'
     parser_q = subparsers.add_parser('query', help=query_help, epilog=query_epilog)
     parser_q.add_argument('ekpubhash', help=query_help_ekpubhash)
+    parser_q.add_argument('--nofiles', action='store_true', help=query_help_nofiles)
     parser_q.set_defaults(func=enroll_query)
 
     delete_help = 'Delete enrollments based on prefix-search of hash(EKpub)'
@@ -232,26 +238,23 @@ if __name__ == '__main__':
     delete_help_ekpubhash = 'hexidecimal prefix (empty to delete all enrollments)'
     parser_d = subparsers.add_parser('delete', help=delete_help, epilog=delete_epilog)
     parser_d.add_argument('ekpubhash', help=delete_help_ekpubhash)
+    parser_d.add_argument('--nofiles', action='store_true', help=query_help_nofiles)
     parser_d.set_defaults(func=enroll_delete)
 
-    find_help = 'Find enrollments based on suffix-search for hostname'
+    find_help = 'Find enrollments based on regex-search for hostname'
     find_epilog = """
     The 'find' subcommand invokes the '/v1/find' handler of the Enrollment Service's
     management API, to retrieve an array of enrollment entries whose hostnames match
-    the given parameter. Unlike 'query' which searches based on the hash of the
-    TPM's EK public key, 'find' looks at the hostname each TPM is enrolled for. This
-    is a suffix search, meaning it will match on enrollments whose hostnames end
-    with the provided string. E.g. "a.xyz" will match "gamma.xyz" and "delta.xyz"
-    but not "a.xyz.com". If the string is zero-length, the command matches on all
-    enrolled entries in the database. Note, the array returned from this command
-    consists of solely of 'ekpubhash' values for matching enrollments. To obtain
-    details about the matching entries (including the hostnames that matched),
-    subsequent API calls (using 'query') should be performed using the 'ekpubhash'
-    fields.
+    the given regular expression. Unlike 'query' which searches based on the hash of
+    the TPM's EK public key, 'find' looks at the hostname each TPM is enrolled for.
+    Note, the array returned from this command consists of solely of 'ekpubhash'
+    values for matching enrollments. To obtain details about the matching entries
+    (including the hostnames that matched), subsequent API calls (using 'query')
+    should be performed using the 'ekpubhash' fields.
     """
-    find_help_suffix = 'hostname suffix (empty to return all enrollments)'
+    find_help_regex = 'hostname regular expression'
     parser_f = subparsers.add_parser('find', help=find_help, epilog=find_epilog)
-    parser_f.add_argument('hostname_suffix', help=find_help_suffix)
+    parser_f.add_argument('hostname_regex', help=find_help_regex)
     parser_f.set_defaults(func=enroll_find)
 
     getAssetSigner_help = 'Retrieve trust anchor for asset-signing'

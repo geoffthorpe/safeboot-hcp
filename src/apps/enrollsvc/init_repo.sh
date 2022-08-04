@@ -21,7 +21,7 @@ mkdir $REPO_PATH
 cd $REPO_PATH
 git init
 touch .git/git-daemon-export-ok
-touch $HN2EK_PATH
+echo "[]" > $HN2EK_PATH
 mkdir $EK_BASENAME
 touch $EK_BASENAME/do_not_remove
 git add .

@@ -8,14 +8,14 @@ $(eval $(call ext_builder_initialize,\
 
 $(eval $(call ext_builder_add_codebase,\
 	xtra,\
-	hcp_expand,\
+	HcpPython,\
 	,\
 	$(HCP_XTRA_SRC),\
-	hcp_expand.sh,\
+	HcpHostname.py,\
 	true,\
 	true,\
 	true,\
-	install hcp_expand.sh $(HCP_XTRA_INSTALL_DEST),\
+	install --mode=64 *.py $(HCP_XTRA_INSTALL_DEST),\
 	))
 
 $(eval $(call ext_builder_finalize,xtra))

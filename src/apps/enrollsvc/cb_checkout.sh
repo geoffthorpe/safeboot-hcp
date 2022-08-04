@@ -9,10 +9,10 @@
 #   $CHECKOUT "$ekhash" "$hostname" "$DBDIR" "$CONF"
 # Stdout is assumed to be the directory where enrollment will occur.
 #
-# In our usage here, the op_add.sh script sets EPHEMERAL_ENROLL to a
+# In our usage here, the db_add.py script sets EPHEMERAL_ENROLL to a
 # (temporary) location where it wants the enrollment outcomes to go, and points
 # CHECKOUT to this script before invoking attest-enroll. We just have to echo
-# the path op_add.sh passed to us, and don't use any of the callback arguments.
+# the path db_add.py passed to us, and don't use any of the callback arguments.
 
 [[ -z "$EPHEMERAL_ENROLL" ]] && exit 1
 echo "$EPHEMERAL_ENROLL"

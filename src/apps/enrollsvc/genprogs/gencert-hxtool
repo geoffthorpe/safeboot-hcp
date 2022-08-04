@@ -4,6 +4,7 @@ source /hcp/common/hcp.sh
 
 cd "$1"
 
+envjson=$(echo "$ENROLL_JSON" | jq -r '.["__env"] // {}')
 hxtooljson=$(echo "$ENROLL_JSON" | jq -r '.["gencert-hxtool"] // {}')
 certlist=( $(echo "$hxtooljson" | jq -r '.["list"] // empty') )
 certprefix=$(echo "$hxtooljson" | jq -r '.["prefix"] // "cert-"')
@@ -54,11 +55,10 @@ for asset in ${certlist[@]}; do
 	done
 	assetcmd+=" --certificate=\"FILE:$assetpath\""
 
-	# Policy check! Add 'assetcmd' to the JSON
-	assetcmd_json=$(jq -cnS --arg "foo" "$assetcmd" '{assetcmd:$foo}')
-	assetjson=$(jq -cnS "$assetjson + $assetcmd_json")
-
+	# Policy check!
 	if [[ -n $HCP_ENROLLSVC_POLICY ]]; then
+		# Add '__env' to the JSON
+		assetjson=$(jq -cnS "{ \"$asset\": $assetjson } + { \"__env\": $envjson}")
 		if ! curl -v -F hookname="enrollsvc::mgmt::asset_check" \
 				-F request_uid="$HCP_REQUEST_UID" \
 				-F params="$assetjson" \
