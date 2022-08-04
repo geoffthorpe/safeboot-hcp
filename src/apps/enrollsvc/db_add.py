@@ -129,7 +129,8 @@ os.environ['ENROLL_JSON'] = json.dumps(result_profile)
 # because it doesn't consume our profile.)
 # So before doing that and performing the enrollment, send our profile to the
 # policy-checker!
-if 'HCP_ENROLLSVC_POLICY' in os.environ:
+policy_url = db_common.env_get_or_none('HCP_ENROLLSVC_POLICY')
+if policy_url:
 	uuid = uuid4().urn
 	os.environ['HCP_REQUEST_UID'] = uuid
 	form_data = {
@@ -137,7 +138,7 @@ if 'HCP_ENROLLSVC_POLICY' in os.environ:
 		'request_uid': (None, uuid),
 		'params': (None, json.dumps(resultprofile))
 	}
-	url = f"{os.environ['HCP_ENROLLSVC_POLICY']}/v1/add"
+	url = f"{policy_url}/v1/add"
 	response = requests.post(url, files=form_data)
 	if response.status_code != 200:
 		bail(f"policy-checker refused enrollment: {response.status_code}")

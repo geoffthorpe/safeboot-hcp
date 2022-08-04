@@ -20,6 +20,16 @@ def env_get(k):
 		bail(f"Environment variable not a string: {k}:{v}")
 	return v
 
+def env_get_or_none(k):
+	if not k in os.environ:
+		return None
+	v = os.environ[k]
+	if not isinstance(v, str):
+		return None
+	if len(v) == 0:
+		return None
+	return v
+
 def env_get_dir(k):
 	v = env_get(k)
 	path = Path(v)
