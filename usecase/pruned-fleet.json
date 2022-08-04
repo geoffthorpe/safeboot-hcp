@@ -7,8 +7,8 @@
 		"enroll_api": "http://emgmt.hcphacking.xyz:5000",
 		"enroll_profile": {
 			"__env": {
-				"PKINIT_CLIENT_USER": "nobody",
-				"HTTPS_CLIENT_USER": "nobody"
+				"ENROLL_PKINIT_CLIENT_USER": "nobody",
+				"ENROLL_HTTPS_CLIENT_USER": "nobody"
 			},
 			"genprogs": "genconf-krb5 gencert-hxtool",
 			"gencert-hxtool": {
