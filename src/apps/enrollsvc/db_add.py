@@ -120,9 +120,9 @@ data_no_env = json.dumps(resultprofile)
 HcpEnvExpander.env_check(origenv)
 envjson, env = HcpEnvExpander.env_selfexpand(origenv)
 data_no_env = HcpEnvExpander.env_expand(data_no_env, env)
-result_profile = json.loads(data_no_env)
-result_profile['__env'] = origenv
-os.environ['ENROLL_JSON'] = json.dumps(result_profile)
+resultprofile = json.loads(data_no_env)
+resultprofile['__env'] = origenv
+os.environ['ENROLL_JSON'] = json.dumps(resultprofile)
 
 # The JSON profile is now fully curated. (The only thing left to do is generate
 # the enroll.conf that safeboot's 'attest-enroll' requires, but that's only
