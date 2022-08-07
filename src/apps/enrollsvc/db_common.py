@@ -9,7 +9,7 @@ def log(s):
 	print(s, file=sys.stderr)
 
 def bail(s):
-	log(f"FAIL(db_add.py): {s}")
+	log(f"FAIL: {s}")
 	sys.exit(1)
 
 def env_get(k):
@@ -43,6 +43,16 @@ def env_get_file(k):
 	if not path.is_file():
 		bail(f"Environment variable not a file: {k}:{v}")
 	return v
+
+def dict_val_or(d, k, o):
+	if k not in d:
+		return o
+	return d[k]
+
+def dict_pop_or(d, k, o):
+	if k not in d:
+		return o
+	return d.pop(k)
 
 # The following environment elements are required by all db ops
 enrollsvc_state = env_get('HCP_ENROLLSVC_STATE')
