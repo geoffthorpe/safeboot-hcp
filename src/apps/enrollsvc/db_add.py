@@ -138,7 +138,7 @@ if policy_url:
 		'request_uid': (None, uuid),
 		'params': (None, json.dumps(resultprofile))
 	}
-	url = f"{policy_url}/v1/add"
+	url = f"{policy_url}/emgmt/v1/add"
 	response = requests.post(url, files=form_data)
 	if response.status_code != 200:
 		bail(f"policy-checker refused enrollment: {response.status_code}")

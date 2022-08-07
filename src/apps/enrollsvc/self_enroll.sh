@@ -10,7 +10,8 @@ expect_db_user
 MYPROFILE=$(cat - << EOF
 {
 	"gencert-hxtool": {
-		"list": "default-pkinit-client default-https-client default-https-server"
+		"list": [ "default-pkinit-client", "default-https-client",
+			  "default-https-server" ]
 	}
 }
 EOF
@@ -18,15 +19,47 @@ EOF
 
 MYOUT=$(mktemp)
 
-# TODO: this is one of those remaining corners of the code that doesn't handle
-# unsynchronized startup of the services. There's no retry handling if the
-# policysvc hook isn't (yet) avaiable, for example.
-if ! python3 /hcp/enrollsvc/db_add.py \
-		"$HCP_SWTPMSVC_STATE/tpm/ek.pub" \
-		"$HCP_ENROLLSVC_SELFENROLL_HOSTNAME" \
-		"$MYPROFILE" > "$MYOUT" 2>&1; then
-	echo "Error, self-enrollment failed. Trace output;" >&2
-	cat "$MYOUT" >&2
-	exit 1
-fi
+unset WARNED_HEALTHCHECK
+unset WARNED_DBADD
+
+function try_self_enroll {
+	# If the policy service isn't available, better to figure that out from
+	# a healthcheck directly from the policysvc, rather than having
+	# db_add.py fail policy checks only after doing some heavy-lifting.
+	if [[ -n $HCP_ENROLLSVC_POLICY ]] && ! curl -f -s -G \
+			$HCP_ENROLLSVC_POLICY/healthcheck > /dev/null 2>&1; then
+		if [[ -z $WARNED_HEALTHCHECK ]]; then
+			echo "Warning, policysvc not available yet, polling" >&2
+			WARNED_HEALTHCHECK=1
+		fi
+		return 1
+	fi
+	if [[ -n $WARNED_HEALTHCHECK ]]; then
+		echo "Policysvc now available" >&2
+		unset WARNED_HEALTHCHECK
+	fi
+
+	if ! python3 /hcp/enrollsvc/db_add.py \
+			"$HCP_SWTPMSVC_STATE/tpm/ek.pub" \
+			"$HCP_ENROLLSVC_SELFENROLL_HOSTNAME" \
+			"$MYPROFILE" > "$MYOUT" 2>&1; then
+		if [[ -z $WARNED_DBADD ]]; then
+			cat "$MYOUT" > $HOME/debug-self-enroll
+			echo -n "Warning, self-enrollment failed. Trace output" >&2
+			echo " copied to $HOME/debug-self-enroll" >&2
+			WARNED_DBADD=1
+		fi
+		return 1
+	fi
+	if [[ -n $WARNED_DBADD ]]; then
+		echo "Self-enrollment finally succeeded" >&2
+		unset WARNED_DBADD
+	fi
+	return 0
+}
+
+echo "Doing self-enrollment" >&2
+while ! try_self_enroll; do
+	sleep 1
+done
 true

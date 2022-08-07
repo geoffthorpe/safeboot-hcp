@@ -1,80 +1,103 @@
-#!/bin/bash
+#!/usr/bin/python3
 
-source /hcp/common/hcp.sh
+import os
+import requests
+import subprocess
+import sys
+import json
+from pathlib import Path
 
-cd "$1"
+sys.stderr = open(f"{os.environ['HOME']}/debug-hxtool", 'w')
 
-envjson=$(echo "$ENROLL_JSON" | jq -r '.["__env"] // {}')
-hxtooljson=$(echo "$ENROLL_JSON" | jq -r '.["gencert-hxtool"] // {}')
-certlist=( $(echo "$hxtooljson" | jq -r '.["list"] // empty') )
-certprefix=$(echo "$hxtooljson" | jq -r '.["prefix"] // "cert-"')
-commonjson=$(echo "$hxtooljson" | jq -r '.["<common>"] // {}')
+sys.path.insert(1, '/hcp/xtra')
+from HcpRecursiveUnion import union
 
-ASSETS=""
+sys.path.insert(1, '/hcp/enrollsvc')
+from db_common import log, bail, dict_val_or, dict_pop_or, env_get, env_get_or_none
 
-for asset in ${certlist[@]}; do
-	if [[ $asset == "<common>" ]]; then
-		continue
-	fi
-	assetjson=$(echo "$hxtooljson" | jq -r ".[\"$asset\"] // {}")
-	assetjson=$(jq -cn "$commonjson * $assetjson")
-	assetcmd="hxtool issue-certificate"
+class HcpErrorGencertHxtool(Exception):
+	pass
+
+# attest-enroll sends us 3 arguments (+1 for the program name, so
+# len(sys.args)==4), but we only consume the first, the directory to produce
+# output to.
+if len(sys.argv) <= 3:
+	bail(f"Wrong number of arguments: {len(sys.argv)}")
+
+output_dir = sys.argv[1]
+if not Path(output_dir).is_dir():
+	bail(f"Output location is not a directory: {output_dir}")
+
+policy_url = env_get_or_none('HCP_ENROLLSVC_POLICY')
+if policy_url:
+	request_uid = env_get('HCP_REQUEST_UID')
+
+# Error-checking? No, if assumptions and requirements aren't met; exceptions.
+conf_enroll = json.loads(env_get('ENROLL_JSON'))
+conf_env = dict_val_or(conf_enroll, '__env', {})
+conf_hxtool = dict_val_or(conf_enroll, 'gencert-hxtool', {})
+conf_common = dict_val_or(conf_hxtool, '<common>', {})
+certlist = [ x for x in dict_val_or(conf_hxtool, 'list', []) if x != '<common>' ]
+certprefix = dict_val_or(conf_hxtool, 'prefix', [])
+
+output_assets = []
+
+for asset in certlist:
+	# Each 'asset' from the list of desired certs should have a section
+	# in the 'hxtool' config block, it defines the command to run!
+	if asset not in conf_hxtool:
+		raise HcpErrorGencertHxtool(f"asset {asset} not in JSON {conf_hxtool}")
+	conf_asset = union(conf_common, conf_hxtool[asset])
+	# Keep a copy for the policy check (before conf_asset gets fields popped)
+	copy_asset = conf_asset.copy()
+	cmd = [ 'hxtool', 'issue-certificate' ]
 	# Special handling:
-	# - 'name' allows the output file to be renamed
-	# - 'type' is required, must only be specified once, and we'll pass it
-	#   to "hxtool issue-certificate" as the first arg.
-	# - 'certificate' is ignored, we set it as the last arg using
-	#   $assetname.
-	assetname=$(echo "$assetjson" | jq -r '.["name"] // empty')
-	if [[ -z $assetname ]]; then
-		assetname="$asset"
-	fi
-	assetpath="${certprefix}$assetname.pem"
-	assetdir=$(dirname "${assetpath}")
-	if [[ $assetdir != "." ]]; then
-		mkdir -p "$assetdir"
-	fi
-	proptype=$(echo "$assetjson" | jq -r '.["type"] // empty')
-	if [[ -z $proptype ]]; then
-		echo "ERROR: gencert-hxtool '$asset' has no 'type'" >&2
-		exit 1
-	fi
-	assetcmd+=" --type=\"$proptype\""
-	props=( $(echo "$assetjson" | jq -r 'keys[] // empty') )
-	for prop in ${props[@]}; do
-		if [[ $prop == "name" || $prop == "type" ||
-				$prop == "certificate" ]]; then
-			continue
-		fi
-		propval=$(echo "$assetjson" | jq -r ".[\"$prop\"] // empty")
-		if [[ -z $propval ]]; then
-			assetcmd+=" --$prop "
-		else
-			assetcmd+=" --$prop=\"$propval\""
-		fi
-	done
-	assetcmd+=" --certificate=\"FILE:$assetpath\""
+	# - the '--certificate' setting comes from 'name' if defined, otherwise
+	#   from 'asset' itself
+	# - the '--type' setting comes from 'type' (REQUIRED)
+	# - any non-option args come from 'args' (OPTIONAL)
+	# - all other key-value pairs (OPTIONAL) define '--key=value' options
+	#   - if value==None ('null' in the original JSON); just '--key'
+	if 'certificate' in conf_asset:
+		raise HcpErrorGencertHxtool(f"Must not have 'certificate' property!")
+	if 'name' in conf_asset:
+		assetname = conf_asset.pop('name')
+	else:
+		assetname = asset
+	assetname = f"{certprefix}{assetname}.pem"
+	output_assets += [ assetname ]
+	cmd += [ f'--certificate={assetname}' ]
+	cmd += [ f'--type={conf_asset.pop("type")}' ]
+	args = dict_pop_or(conf_asset, 'args', [])
+	for prop in conf_asset:
+		propval = conf_asset[prop]
+		if propval:
+			cmd += [ f"--{prop}={propval}" ]
+		else:
+			cmd += [ f"--{prop}" ]
+	cmd += args
 
-	# Policy check!
-	if [[ -n $HCP_ENROLLSVC_POLICY ]]; then
-		# Add '__env' to the JSON
-		assetjson=$(jq -cnS "{ \"$asset\": $assetjson } + { \"__env\": $envjson}")
-		if ! curl -v -F hookname="enrollsvc::mgmt::asset_check" \
-				-F request_uid="$HCP_REQUEST_UID" \
-				-F params="$assetjson" \
-				$HCP_ENROLLSVC_POLICY/gencert-hxtool >&2; then
-			echo "ERROR: gencert-hxtool got policy refusal" >&2
-			exit 1
-		fi
-	fi
+	# Policy check
+	if policy_url:
+		json_asset = json.dumps({ asset: copy_asset, '__env': conf_env })
+		form_data = {
+			'hookname': (None, 'enrollsvc::mgmt::asset_check'),
+			'request_uid': (None, request_uid),
+			'params': (None, json_asset)
+		}
+		response = requests.post(f"{policy_url}/emgmt/gencert-hxtool",
+					 files = form_data)
+		if response.status_code != 200:
+			bail(f"policy-checker {response.status_code} refused {json_asset}")
 
-	# Execute the hxtool command
-	if ! bash -c "$assetcmd"; then
-		echo "ERROR: gencert-hxtool '$asset' failed" >&2
-		echo "ERROR: cmd was: $assetcmd" >&2
-		exit 1
-	fi
-	ASSETS="$ASSETS $assetpath"
-done
+	# Run the command
+	result = subprocess.run(cmd, cwd = output_dir, text = True,
+				stdout = subprocess.PIPE,
+				stderr = subprocess.PIPE)
+	if result.returncode != 0:
+		# print(c.stdout, file = sys.stderr)
+		# print(c.stderr, file = sys.stderr)
+		bail(f"hxtool command failed {result.returncode}: {cmd}")
 
-echo "sensitive $ASSETS"
+# Finally, our stdout tells the enrollment process what we produced
+print(f'sensitive {" ".join(output_assets)}')
