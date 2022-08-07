@@ -32,12 +32,15 @@ def healthcheck():
 <h1>Healthcheck</h1>
 '''
 
-# Wrapper around abort() that also logs
+# This is also in enrollsvc/db_common.py, but we should factor it out further
+# so that there's no duplication.
 def bail(val, msg=None):
     if not msg:
         msg = "Unclarified error"
-    print(f"FAIL:{val}: {msg}")
+    print(f"FAIL:{val}: {msg}", file=sys.stderr)
     abort(val, msg)
+def log(s):
+	print(s, file=sys.stderr)
 
 # Common processing for all URIs
 def my_common(uri, required_hookname):
@@ -74,10 +77,10 @@ def my_common(uri, required_hookname):
     # Both the policy and the input data need to be in string (JSON)
     # representation. The policy already is, but params is a struct.
     paramsjson = json.dumps(params)
-    result = HcpJsonPolicy.run_with_env(policyjson, paramsjson,
-                                        includeEnv=True)
-    if result != "accept":
-        bail(403, f"REJECT: {json.dumps(params)}")
+    policy_result = HcpJsonPolicy.run_with_env(policyjson, paramsjson,
+                                                 includeEnv=True)
+    if policy_result['result'] != "accept":
+        bail(403, f"REJECT:\n{json.dumps(params)}\n{json.dumps(policy_result)}")
 
     # Success. Write something to the log that is not completely useless.
     # Exception: /healthcheck gets hit continuously and it's best left silent.

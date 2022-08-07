@@ -148,9 +148,15 @@ def run(policy, data):
 		if allmatch:
 			result = i['result']
 			if result == "reject" or result == "accept":
-				return result
+				return {
+					'result': result,
+					'label': label
+				}
 		# no filter made a decision, so keep looping
-	return policy['default']
+	return {
+		'result': policy['default'],
+		'label': '__default'
+	}
 
 # Wrapper function to deal with input that has embedded '__env'. That "env" is
 # decoded and fully self-expanded, then it is used to expand both the input and

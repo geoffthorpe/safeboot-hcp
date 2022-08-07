@@ -30,45 +30,45 @@ c_policy1_pol1 = HcpJsonPolicy.loads(open('c_policy1_pol1.json', 'r').read())
 c_policy1_input1 = json.loads(open('c_policy1_input1.json', 'r').read())
 result = HcpJsonPolicy.run(c_policy1_pol1, c_policy1_input1)
 print(f"c_policy1_pol1 -> {result}")
-if result != "reject":
+if result['result'] != "reject":
 	sys.exit(1)
 
 c_policy1_pol2 = HcpJsonPolicy.loads(open('c_policy1_pol2.json', 'r').read())
 result = HcpJsonPolicy.run(c_policy1_pol2, c_policy1_input1)
 print(f"c_policy1_pol2 -> {result}")
-if result != "accept":
+if result['result'] != "accept":
 	sys.exit(1)
 
 c_policy1_pol3 = HcpJsonPolicy.loads(open('c_policy1_pol3.json', 'r').read())
 result = HcpJsonPolicy.run(c_policy1_pol3, c_policy1_input1)
 print(f"c_policy1_pol3 -> {result}")
-if result != "accept":
+if result['result'] != "accept":
 	sys.exit(1)
 
 result = HcpJsonPolicy.run(c_policy1_pol3, c_policy1_pol3)
 print(f"c_policy1_pol3 -> {result}")
-if result != "reject":
+if result['result'] != "reject":
 	sys.exit(1)
 
 result = HcpJsonPolicy.run_with_env(
 		open('c_policy2_pol1.json', 'r').read(),
 		open('c_policy2_input1.json', 'r').read())
 print(f"c_policy2_pol1 -> {result}")
-if result != "accept":
+if result['result'] != "accept":
 	sys.exit(1)
 
 result = HcpJsonPolicy.run_with_env(
 		open('c_policy2_pol2.json', 'r').read(),
 		open('c_policy2_input1.json', 'r').read())
 print(f"c_policy2_pol2 -> {result}")
-if result != "reject":
+if result['result'] != "reject":
 	sys.exit(1)
 
 result = HcpJsonPolicy.run_with_env(
 		open('c_policy2_pol3.json', 'r').read(),
 		open('c_policy2_input1.json', 'r').read())
 print(f"c_policy2_pol3 -> {result}")
-if result != "accept":
+if result['result'] != "accept":
 	sys.exit(1)
 
 import HcpRecursiveUnion
