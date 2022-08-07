@@ -175,7 +175,7 @@ os.environ['TPM_VENDORS'] = f"{db_common.enrollsvc_state}/tpm_vendors"
 # We do the post-processing ourselves, from the ephemeral_dir, once
 # 'attest-enroll' is done.
 c = subprocess.run(
-	[ '/safeboot/sbin/attest-enroll',
+	[ '/safeboot/sbin/attest-enroll', '-v',
 		'-C', f"{ephemeral_dir}/enroll.conf",
 		'-V', 'CHECKOUT=/hcp/enrollsvc/cb_checkout.sh',
 		'-V', 'COMMIT=/hcp/enrollsvc/cb_commit.sh',
