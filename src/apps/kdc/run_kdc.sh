@@ -97,7 +97,7 @@ EOF
 	}
 	enable-pkinit = yes
 	synthetic_clients = true
-	pkinit_identity = FILE:/etc/ssl/hostcerts/hostcert-pkinit-kdc.pem
+	pkinit_identity = FILE:/etc/ssl/hostcerts/hostcert-pkinit-kdc-key.pem
 	pkinit_anchors = FILE:/usr/share/ca-certificates/HCP/certissuer.pem
 	#pkinit_pool = PKCS12:/path/to/useful-intermediate-certs.pfx
 	#pkinit_pool = FILE:/path/to/other-useful-intermediate-certs.pem

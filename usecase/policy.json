@@ -26,7 +26,7 @@
 				"type": "https-client",
 				"subject": "UID=host,{ENROLL_HOSTNAME2DC}",
 				"hostname": "{ENROLL_HOSTNAME}",
-				"ca-certificate": "FILE:{ENROLL_CA_ISSUER_PRIV}"
+				"ca-certificate": "{ENROLL_CA_ISSUER_PRIV}"
 			}
 		} ],
 		"result": "accept"
@@ -40,7 +40,7 @@
 				"key-bits": "2048",
 				"type": "https-server",
 				"hostname": "{ENROLL_HOSTNAME}",
-				"ca-certificate": "FILE:{ENROLL_CA_ISSUER_PRIV}"
+				"ca-certificate": "{ENROLL_CA_ISSUER_PRIV}"
 			}
 		} ],
 		"result": "accept"
@@ -55,7 +55,7 @@
 				"type": "pkinit-client",
 				"pk-init-principal": "host/{ENROLL_HOSTNAME}@{ENROLL_REALM}",
 				"subject": "CN=host,{ENROLL_HOSTNAME2DC}",
-				"ca-certificate": "FILE:{ENROLL_CA_ISSUER_PRIV}"
+				"ca-certificate": "{ENROLL_CA_ISSUER_PRIV}"
 			}
 		} ],
 		"result": "accept"
@@ -70,7 +70,7 @@
 				"name": "pkinit-kdc",
 				"type": "pkinit-kdc",
 				"pk-init-principal": "krbtgt/{ENROLL_REALM}@{ENROLL_REALM}",
-				"ca-certificate": "FILE:{ENROLL_CA_ISSUER_PRIV}"
+				"ca-certificate": "{ENROLL_CA_ISSUER_PRIV}"
 			}
 		} , {
 			"path": ".__env.ENROLL_HOSTNAME",

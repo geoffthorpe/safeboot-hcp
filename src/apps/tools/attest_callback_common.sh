@@ -28,52 +28,34 @@ else
 	cp krb5.conf /etc/
 fi
 
-# GENPROG: gencert-pubs-only
-# OUTPUT: hostcert-*-pub.pem
-#         certissuer.pem
+# GENPROG: gencert-hxtool
+# OUTPUT: hostcert-*[-key].pem
+
+CERTS=$(find . -name "hostcert-*.pem")
+if [[ -n $CERTS ]]; then
+	echo "Installing hostcerts"
+fi
+for cert in $CERTS; do
+	key="${cert::(-4)}-key.pem"
+	if [[ ! -f $key ]]; then
+		# The wildcard for CERTS will match on the keys too, so testing
+		# for the existence of the key corresponding to each cert
+		# avoids that.
+		continue
+	fi
+	mkdir -p /etc/ssl/hostcerts
+	cp "$cert" "$key" /etc/ssl/hostcerts
+	echo "- (Cert) $cert"
+	echo "-  (Key) $key"
+	chmod 644 "/etc/ssl/hostcerts/$cert"
+	chmod 600 "/etc/ssl/hostcerts/$key"
+done
+
+# GENPROG: gencert-issuer
+# OUTPUT: certissuer.pem
 
 if [[ ! -f certissuer.pem ]]; then
 	echo "No 'certissuer.pem' found, skipping" >&2
 else
 	add_trust_root certissuer.pem HCP certissuer.pem
 fi
-CERTS=$(find . -name "hostcert-*-pub.pem")
-if [[ -n $CERTS ]]; then
-	echo "Installing hostcerts (public, mode 644)"
-fi
-for i in $CERTS; do
-	mkdir -p /etc/ssl/hostcerts
-	if [[ -f "/etc/ssl/hostcerts/$i" ]]; then
-		if cmp "$i" "/etc/ssl/hostcerts/$i" > /dev/null; then
-			echo "- $i unchanged, skipping"
-			continue
-		fi
-		echo "- $i changed, overwriting"
-	else
-		echo "- $i"
-	fi
-	cp "$i" "/etc/ssl/hostcerts/$i"
-	chmod 644 "/etc/ssl/hostcerts/$i"
-done
-
-# GENPROG: gencert-[^(pubs-only)]
-# OUTPUT: hostcert-*[^(-pub)].pem
-
-CERTS=$(find . -name "hostcert-*.pem" ! -name "*-pub.pem")
-if [[ -n $CERTS ]]; then
-	echo "Installing hostcerts (private, mode 600)"
-fi
-for i in $CERTS; do
-	mkdir -p /etc/ssl/hostcerts
-	if [[ -f "/etc/ssl/hostcerts/$i" ]]; then
-		if cmp "$i" "/etc/ssl/hostcerts/$i" > /dev/null; then
-			echo "- $i unchanged, skipping"
-			continue
-		fi
-		echo "- $i changed, overwriting"
-	else
-		echo "- $i"
-	fi
-	cp "$i" "/etc/ssl/hostcerts/$i"
-	chmod 600 "/etc/ssl/hostcerts/$i"
-done

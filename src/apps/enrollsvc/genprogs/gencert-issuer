@@ -1,0 +1,49 @@
+#!/usr/bin/python3
+
+import os
+import subprocess
+import sys
+import json
+from pathlib import Path
+
+#sys.stderr = open(f"{os.environ['HOME']}/debug-issuer", 'a')
+
+sys.path.insert(1, '/hcp/enrollsvc')
+from db_common import log, bail, dict_val_or, env_get
+
+# attest-enroll sends us 3 arguments (+1 for the program name, so
+# len(sys.args)==4), but we only consume the first, the directory to produce
+# output to.
+if len(sys.argv) <= 3:
+	bail(f"Wrong number of arguments: {len(sys.argv)}")
+
+output_dir = sys.argv[1]
+if not Path(output_dir).is_dir():
+	bail(f"Output location is not a directory: {output_dir}")
+
+# Error-checking? No, if assumptions and requirements aren't met; exceptions.
+conf_enroll = json.loads(env_get('ENROLL_JSON'))
+conf_issuer = dict_val_or(conf_enroll, 'gencert-issuer', {})
+conf_source = dict_val_or(conf_issuer, 'source', None)
+conf_dest = dict_val_or(conf_issuer, 'dest', "certissuer.pem")
+
+if not conf_source:
+	print("skip")
+	sys.exit(0)
+
+if not Path(conf_source).is_file():
+	bail(f"Issuer source is not a file: {conf_common}")
+
+# Run an "openssl x509" command on the source (which probably includes a
+# private key) to extract the public cert to the desired destination
+cmd = [ 'openssl', 'x509', '-inform', 'PEM', '-outform', 'PEM',
+	'-in', conf_source, '-out', conf_dest ]
+result = subprocess.run(cmd, cwd = output_dir, text = True,
+			stdout = subprocess.PIPE,
+			stderr = subprocess.PIPE)
+if result.returncode != 0:
+	# print(result.stdout, file = sys.stderr)
+	# print(result.stderr, file = sys.stderr)
+	bail(f"openssl command for issuer cert {result.returncode}: {cmd}")
+
+print(f"public {conf_dest}")

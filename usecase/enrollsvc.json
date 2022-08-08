@@ -1,7 +1,7 @@
 {
 	"preclient": {
 		"__env": {
-			"ENROLL_ISSUERCERT": "FILE:/usr/share/ca-certificates/HCP/certissuer.pem",
+			"ENROLL_ISSUERCERT": "/usr/share/ca-certificates/HCP/certissuer.pem",
 			"ENROLL_CERTPREFIX": "hostcert-"
 		},
 		"genprogs": "gencert-hxtool",
@@ -31,9 +31,6 @@
 				"subject": "UID=host,{ENROLL_HOSTNAME2DC}",
 				"hostname": "{ENROLL_HOSTNAME}"
 			}
-		},
-		"gencert-pubs-only": {
-			"match": "{ENROLL_CERTPREFIX}*.pem"
 		}
 	},
 	"postclient": {
@@ -43,18 +40,22 @@
 			"ENROLL_DOMAIN": "hcphacking.xyz"
 		},
 		"genprogs_pre": "genhostname genrootfskey",
-		"genprogs_post": "gencert-pubs-only genmetadata",
+		"genprogs_post": "gencert-issuer genmetadata",
 		"gencert-hxtool": {
 			"<common>": {
-				"ca-certificate": "FILE:{ENROLL_CA_ISSUER_PRIV}"
+				"ca-certificate": "{ENROLL_CA_ISSUER_PRIV}"
 			}
+		},
+		"gencert-issuer": {
+			"source": "{ENROLL_CA_ISSUER_PRIV}",
+			"dest": "certissuer.pem"
 		},
 		"genconf-krb5": {
 			"libdefaults": {
 				"default_realm": "{ENROLL_REALM}"
 			},
 			"appdefaults": {
-				"pkinit_anchors": "{ENROLL_ISSUERCERT}"
+				"pkinit_anchors": "FILE:{ENROLL_ISSUERCERT}"
 			},
 			"realms": {
 				"{ENROLL_REALM}": {
