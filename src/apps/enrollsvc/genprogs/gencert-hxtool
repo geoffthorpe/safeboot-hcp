@@ -77,10 +77,25 @@ for asset in certlist:
 	args = dict_pop_or(conf_asset, 'args', [])
 	for prop in conf_asset:
 		propval = conf_asset[prop]
-		if propval:
-			cmd += [ f"--{prop}={propval}" ]
+		if not propval:
+			propvals = []
+		elif isinstance(propval, str) or isinstance(propval, int):
+			propvals = [ str(propval) ]
+		elif isinstance(propval, dict):
+			propvals = [ json.dumps(propval) ]
+		elif not isinstance(propval, list):
+			raise HcpErrorGencertHxtool(
+				f"Property {prop} has bad type: {type(propval)}")
 		else:
-			cmd += [ f"--{prop}" ]
+			propvals = propval
+		for propval in propvals:
+			if not propval:
+				cmd += [ f"--{prop}" ]
+			elif not isinstance(propval, str):
+				raise HcpErrorGencertHxtool(
+					f"Property {prop} has bad type: {type(propval)}")
+			else:
+				cmd += [ f"--{prop}={propval}" ]
 	cmd += args
 
 	# Policy check
