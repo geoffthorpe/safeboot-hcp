@@ -27,7 +27,11 @@ $(eval $(call ext_builder_add_codebase,\
 	./bootstrap,\
 	./configure --disable-doxygen-doc --prefix=$(HCP_TPMWARE_INSTALL_DEST),\
 	make $(HCP_TPMWARE_MAKE_PARALLEL),\
-	make install))
+	make $(HCP_TPMWARE_MAKE_PARALLEL) install))
+$(eval $(call ext_builder_codebase_simpledep,\
+	tpmware,\
+	tpm2-tss,\
+	$(HCP_TPMWARE_SRC)/tpm2-tss))
 
 ##############
 # tpm2-tools #
@@ -50,7 +54,11 @@ $(eval $(call ext_builder_add_codebase,\
 	$(HACK_TPM2-TOOLS) ./bootstrap,\
 	$(HACK_TPM2-TOOLS) ./configure --prefix=$(HCP_TPMWARE_INSTALL_DEST),\
 	$(HACK_TPM2-TOOLS) make $(HCP_TPMWARE_MAKE_PARALLEL),\
-	$(HACK_TPM2-TOOLS) make install))
+	$(HACK_TPM2-TOOLS) make $(HCP_TPMWARE_MAKE_PARALLEL) install))
+$(eval $(call ext_builder_codebase_simpledep,\
+	tpmware,\
+	tpm2-tools,\
+	$(HCP_TPMWARE_SRC)/tpm2-tools))
 
 endif # HCP_TPM2_SOURCE
 
@@ -67,7 +75,11 @@ $(eval $(call ext_builder_add_codebase,\
 	NOCONFIGURE=1 ./autogen.sh,\
 	./configure --with-openssl --with-tpm2 --prefix=$(HCP_TPMWARE_INSTALL_DEST),\
 	make $(HCP_TPMWARE_MAKE_PARALLEL),\
-	make install))
+	make $(HCP_TPMWARE_MAKE_PARALLEL) install))
+$(eval $(call ext_builder_codebase_simpledep,\
+	tpmware,\
+	libtpms,\
+	$(HCP_TPMWARE_SRC)/libtpms))
 
 #########
 # swtpm #
@@ -85,7 +97,11 @@ $(eval $(call ext_builder_add_codebase,\
 		./configure --with-openssl --with-tpm2 \
 			--prefix=$(HCP_TPMWARE_INSTALL_DEST),\
 	make $(HCP_TPMWARE_MAKE_PARALLEL),\
-	make install))
+	make $(HCP_TPMWARE_MAKE_PARALLEL) install))
+$(eval $(call ext_builder_codebase_simpledep,\
+	tpmware,\
+	swtpm,\
+	$(HCP_TPMWARE_SRC)/swtpm))
 
 # Thus concludes the "tpmware" package
 $(eval $(call ext_builder_finalize,tpmware))

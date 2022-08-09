@@ -26,6 +26,7 @@ $(eval LOCAL_FILES := $(strip $4))
 $(eval SAFEBOOT_INSTALL_CMD += mkdir -p $(HCP_SAFEBOOT_INSTALL_DEST)/$(LOCAL_INSTPATH) ;)
 $(eval SAFEBOOT_INSTALL_CMD += (cd $(LOCAL_SRCPATH) ; cp $(LOCAL_FILES) $(HCP_SAFEBOOT_INSTALL_DEST)/$(LOCAL_INSTPATH)/) ;)
 $(eval SAFEBOOT_INSTALL_CMD += (cd $(HCP_SAFEBOOT_INSTALL_DEST)/$(LOCAL_INSTPATH) ; chmod $(LOCAL_ATTRS) $(LOCAL_FILES)) ;)
+$(eval SAFEBOOT_DEP_FILES += $(foreach i,$(LOCAL_FILES),$(HCP_SAFEBOOT_SRC)/$2/$i))
 endef
 $(eval $(call add_safeboot_install,\
 		.,.,644,\
@@ -62,6 +63,9 @@ $(eval $(call ext_builder_add_codebase,\
 	true,\
 	true,\
 	$(SAFEBOOT_INSTALL_CMD)))
+
+# The add_codebase() defines some symbols we can use to hook dependencies in!
+$(HCP_EXT_DEP_safeboot_safeboot_INSTALLED): $(SAFEBOOT_DEP_FILES)
 
 # Thus concludes the "safeboot" package
 $(eval $(call ext_builder_finalize,safeboot))

@@ -17,6 +17,10 @@ $(eval $(call ext_builder_add_codebase,\
 	true,\
 	install --mode=64 *.py $(HCP_XTRA_INSTALL_DEST),\
 	))
+$(eval $(call ext_builder_codebase_simpledep,\
+	xtra,\
+	HcpPython,\
+	$(HCP_XTRA_SRC)))
 
 $(eval $(call ext_builder_finalize,xtra))
 

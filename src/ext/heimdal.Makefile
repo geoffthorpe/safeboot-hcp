@@ -22,9 +22,14 @@ $(eval $(call ext_builder_add_codebase,\
 	./autogen.sh,\
 	MAKEINFO=true ./configure --prefix=$(HCP_HEIMDAL_INSTALL_DEST) --disable-texinfo,\
 	MAKEINFO=true make $(HCP_BUILDER_MAKE_PARALLEL),\
-	MAKEINFO=true make install))
+	MAKEINFO=true make $(HCP_BUILDER_MAKE_PARALLEL) install))
 
-# Thus concludes the "heimdal" package
+$(eval $(call ext_builder_codebase_simpledep,\
+	heimdal,\
+	heimdal,\
+	$(HCP_HEIMDAL_SRC)))
+
+# Closing arguments for the package
 $(eval $(call ext_builder_finalize,heimdal))
 
 endif # HCP_HEIMDAL_SOURCE
