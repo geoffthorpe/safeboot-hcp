@@ -4,7 +4,7 @@ HCP_TPMWARE_INSTALL_DEST := /install
 HCP_TPMWARE_MAKE_PARALLEL ?= $(HCP_BUILDER_MAKE_PARALLEL)
 
 # "tpmware" is the package of codebases, "install" is the tarball it creates
-$(eval $(call ext_builder_initialize,\
+$(eval $(call builder_initialize,\
 	tpmware,\
 	install,\
 	$(HCP_TPMWARE_INSTALL_DEST),\
@@ -18,7 +18,7 @@ ifdef HCP_TPM2_SOURCE
 # tpm2-tss #
 ############
 
-$(eval $(call ext_builder_add_codebase,\
+$(eval $(call builder_add_codebase,\
 	tpmware,\
 	tpm2-tss,\
 	,\
@@ -28,7 +28,7 @@ $(eval $(call ext_builder_add_codebase,\
 	./configure --disable-doxygen-doc --prefix=$(HCP_TPMWARE_INSTALL_DEST),\
 	make $(HCP_TPMWARE_MAKE_PARALLEL),\
 	make $(HCP_TPMWARE_MAKE_PARALLEL) install))
-$(eval $(call ext_builder_codebase_simpledep,\
+$(eval $(call builder_codebase_simpledep,\
 	tpmware,\
 	tpm2-tss,\
 	$(HCP_TPMWARE_SRC)/tpm2-tss))
@@ -45,7 +45,7 @@ $(eval $(call ext_builder_codebase_simpledep,\
 HACK_TPM2-TOOLS += PKG_CONFIG_PATH=$(HCP_TPMWARE_INSTALL_DEST)/lib/pkgconfig
 HACK_TPM2-TOOLS += TSS2_ESYS_2_3_CFLAGS=\"-I$(HCP_TPMWARE_INSTALL_DEST) -I$(HCP_TPMWARE_INSTALL_DEST)/tss2\"
 HACK_TPM2-TOOLS += TSS2_ESYS_2_3_LIBS=\"-L$(HCP_TPMWARE_INSTALL_DEST)/lib -ltss2-esys\"
-$(eval $(call ext_builder_add_codebase,\
+$(eval $(call builder_add_codebase,\
 	tpmware,\
 	tpm2-tools,\
 	tpm2-tss,\
@@ -55,7 +55,7 @@ $(eval $(call ext_builder_add_codebase,\
 	$(HACK_TPM2-TOOLS) ./configure --prefix=$(HCP_TPMWARE_INSTALL_DEST),\
 	$(HACK_TPM2-TOOLS) make $(HCP_TPMWARE_MAKE_PARALLEL),\
 	$(HACK_TPM2-TOOLS) make $(HCP_TPMWARE_MAKE_PARALLEL) install))
-$(eval $(call ext_builder_codebase_simpledep,\
+$(eval $(call builder_codebase_simpledep,\
 	tpmware,\
 	tpm2-tools,\
 	$(HCP_TPMWARE_SRC)/tpm2-tools))
@@ -66,7 +66,7 @@ endif # HCP_TPM2_SOURCE
 # libtpms #
 ###########
 
-$(eval $(call ext_builder_add_codebase,\
+$(eval $(call builder_add_codebase,\
 	tpmware,\
 	libtpms,\
 	,\
@@ -76,7 +76,7 @@ $(eval $(call ext_builder_add_codebase,\
 	./configure --with-openssl --with-tpm2 --prefix=$(HCP_TPMWARE_INSTALL_DEST),\
 	make $(HCP_TPMWARE_MAKE_PARALLEL),\
 	make $(HCP_TPMWARE_MAKE_PARALLEL) install))
-$(eval $(call ext_builder_codebase_simpledep,\
+$(eval $(call builder_codebase_simpledep,\
 	tpmware,\
 	libtpms,\
 	$(HCP_TPMWARE_SRC)/libtpms))
@@ -85,7 +85,7 @@ $(eval $(call ext_builder_codebase_simpledep,\
 # swtpm #
 #########
 
-$(eval $(call ext_builder_add_codebase,\
+$(eval $(call builder_add_codebase,\
 	tpmware,\
 	swtpm,\
 	libtpms,\
@@ -98,10 +98,10 @@ $(eval $(call ext_builder_add_codebase,\
 			--prefix=$(HCP_TPMWARE_INSTALL_DEST),\
 	make $(HCP_TPMWARE_MAKE_PARALLEL),\
 	make $(HCP_TPMWARE_MAKE_PARALLEL) install))
-$(eval $(call ext_builder_codebase_simpledep,\
+$(eval $(call builder_codebase_simpledep,\
 	tpmware,\
 	swtpm,\
 	$(HCP_TPMWARE_SRC)/swtpm))
 
 # Thus concludes the "tpmware" package
-$(eval $(call ext_builder_finalize,tpmware))
+$(eval $(call builder_finalize,tpmware))

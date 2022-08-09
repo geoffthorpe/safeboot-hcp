@@ -3,7 +3,7 @@ HCP_SAFEBOOT_INSTALL_DEST := /safeboot
 
 # We steal the TPMWARE settings as to whether or not enable the
 # SUBMODULE_{RESET,TARGETS} options
-$(eval $(call ext_builder_initialize,\
+$(eval $(call builder_initialize,\
 	safeboot,\
 	safeboot,\
 	$(HCP_SAFEBOOT_INSTALL_DEST),\
@@ -53,7 +53,7 @@ $(eval $(call add_safeboot_install,\
 # Now add the 'safeboot' codebase to the package. We only implement the
 # "install" hook, to patch in the necessary "attest_server.py"->"attest-server"
 # symlink and put the relevant files into their installation destination.
-$(eval $(call ext_builder_add_codebase,\
+$(eval $(call builder_add_codebase,\
 	safeboot,\
 	safeboot,\
 	,\
@@ -65,7 +65,7 @@ $(eval $(call ext_builder_add_codebase,\
 	$(SAFEBOOT_INSTALL_CMD)))
 
 # The add_codebase() defines some symbols we can use to hook dependencies in!
-$(HCP_EXT_DEP_safeboot_safeboot_INSTALLED): $(SAFEBOOT_DEP_FILES)
+$(HCP_BUILD_DEP_safeboot_safeboot_INSTALLED): $(SAFEBOOT_DEP_FILES)
 
 # Thus concludes the "safeboot" package
-$(eval $(call ext_builder_finalize,safeboot))
+$(eval $(call builder_finalize,safeboot))

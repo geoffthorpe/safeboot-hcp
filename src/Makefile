@@ -14,13 +14,10 @@ include $(HCP_SRC)/base/Makefile
 # undesirable, unreliable, or impossible for many reasons).
 include $(HCP_SRC)/builder/Makefile
 
-# Define an API for "ext_builder" packages, which let you implement
-# "configure", "build", "install" rules for a source tree, and have all the
-# Makefile and docker hooks set up for it. ext-{tpmware,heimdal,safeboot,xtra}
-# all use this. One restriction is that they must install/run in distinct,
-# non-overlapping paths, due to how their assets are installed into mounted
-# volumes and the resulting "packages" are basically tarballs of that volume.
-include $(HCP_SRC)/ext/Makefile
+# External code-bases with their own build systems, etc.
+include $(HCP_SRC)/ext/tpmware.Makefile
+include $(HCP_SRC)/ext/heimdal.Makefile
+include $(HCP_SRC)/ext/safeboot.Makefile
 
 # Produce a tarball of xtras, like our parameter-expansion tool
 include $(HCP_SRC)/xtra/Makefile

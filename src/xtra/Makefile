@@ -1,12 +1,12 @@
 HCP_XTRA_SRC := $(TOP)/src/xtra
 HCP_XTRA_INSTALL_DEST := /hcp/xtra
 
-$(eval $(call ext_builder_initialize,\
+$(eval $(call builder_initialize,\
 	xtra,\
 	xtra,\
 	$(HCP_XTRA_INSTALL_DEST),,))
 
-$(eval $(call ext_builder_add_codebase,\
+$(eval $(call builder_add_codebase,\
 	xtra,\
 	HcpPython,\
 	,\
@@ -17,10 +17,9 @@ $(eval $(call ext_builder_add_codebase,\
 	true,\
 	install --mode=64 *.py $(HCP_XTRA_INSTALL_DEST),\
 	))
-$(eval $(call ext_builder_codebase_simpledep,\
+$(eval $(call builder_codebase_simpledep,\
 	xtra,\
 	HcpPython,\
 	$(HCP_XTRA_SRC)))
 
-$(eval $(call ext_builder_finalize,xtra))
-
+$(eval $(call builder_finalize,xtra))
