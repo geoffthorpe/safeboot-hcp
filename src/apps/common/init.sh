@@ -68,4 +68,4 @@ if [[ -n $HCP_CABOODLE_ALONE ]]; then
 fi
 ps ax | grep fqdn-updater.sh | grep bash | grep -v grep > /dev/null 2>&1 && exit 0
 test -x /hcp/common/fqdn-updater.sh &&
-	nohup /hcp/common/fqdn-updater.sh > /.hcp-fqdn-updater.output 2>&1 &
+	nohup /hcp/common/fqdn-updater.sh > /.fqdn-updater.output 2>&1 &
