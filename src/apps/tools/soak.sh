@@ -4,9 +4,7 @@ source /hcp/common/hcp.sh
 
 set -e
 
-export PATH=/install/bin:/safeboot/sbin:$PATH
-export LD_LIBRARY_PATH=/install/lib:$LD_LIBRARY_PATH
-export DIR=/safeboot
+export DIR=/install-safeboot
 cd $DIR
 
 # Iteration utility. This allows you to do;

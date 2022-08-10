@@ -32,7 +32,7 @@ echo "Running 'attestsvc-hcp' service"
 
 # Convince the safeboot scripts to find safeboot.conf and functions.sh and
 # the sbin stuff
-export DIR=/safeboot
+export DIR=/install-safeboot
 export BINDIR=$DIR
 
 # Steer attest-server (and attest-verify) towards our source of truth

@@ -1,5 +1,5 @@
 HCP_HEIMDAL_SRC := $(TOP)/ext-heimdal
-HCP_HEIMDAL_INSTALL_DEST := /install
+HCP_HEIMDAL_INSTALL_DEST := /install-heimdal
 
 # Only compile-in heimdal if we're not using upstream packages
 ifdef HCP_HEIMDAL_SOURCE

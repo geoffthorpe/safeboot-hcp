@@ -5,7 +5,7 @@
 
 import sys
 
-sys.path.insert(1, '/safeboot/sbin')
+sys.path.insert(1, '/install-safeboot/sbin')
 
 from attest_server import app
 

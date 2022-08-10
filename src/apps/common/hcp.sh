@@ -5,39 +5,48 @@
 # with a non-zero status code. It's good discipline for scripts though.
 [[ -z $PS1 ]] && set -e
 
-# Adds safeboot's "sbin" to the PATH.
-if [[ ! -d "/safeboot/sbin" ]]; then
-	echo "Error, /safeboot/sbin is not present" >&2
-	return 1
-fi
-#echo "Adding /safeboot/sbin to PATH" >&2
-export PATH=/safeboot/sbin:$PATH
+function add_env_path {
+	if [[ -n $1 ]]; then
+		echo "$1:$2"
+	else
+		echo "$2"
+	fi
+}
+
+function add_install_path {
+	local D=$1
+	if [[ ! -d $D ]]; then return; fi
+	if [[ -d "$D/bin" ]]; then
+		export PATH=$(add_env_path "$PATH" "$D/bin")
+	fi
+	if [[ -d "$D/sbin" ]]; then
+		export PATH=$(add_env_path "$PATH" "$D/sbin")
+	fi
+	if [[ -d "$D/libexec" ]]; then
+		export PATH=$(add_env_path "$PATH" "$D/libexec")
+	fi
+	if [[ -d "$D/lib" ]]; then
+		export LD_LIBRARY_PATH=$(add_env_path \
+			"$LD_LIBRARY_PATH" "$D/lib")
+		if [[ -d "$D/lib/python/dist-packages" ]]; then
+			export PYTHONPATH=$(add_env_path \
+				"$PYTHONPATH" "$D/lib/python/dist-packages")
+		fi
+	fi
+
+}
+
+for i in $(find / -maxdepth 1 -mindepth 1 -type d -name "install-*"); do
+	add_install_path "$i"
+done
 
 function source_safeboot_functions {
-	if [[ ! -f /safeboot/functions.sh ]]; then
+	if [[ ! -f /install-safeboot/functions.sh ]]; then
 		echo "Error, Safeboot 'functions.sh' isn't installed"
 		return 1
 	fi
-	#echo "Sourcing /safeboot/functions.sh"
-	source "/safeboot/functions.sh"
+	source "/install-safeboot/functions.sh"
 }
-
-# Add's /install/{bin,lib[/python3/dist-packages]} to the relevant environment
-# variables. Note, unlike for safeboot, there is no error case, because the
-# depended-upon software may be installed via OS-native packages in other
-# paths.
-if [[ -d "/install/bin" ]]; then
-	export PATH=/install/bin:$PATH
-	#echo "Adding /install/sbin to PATH" >&2
-fi
-if [[ -d "/install/lib" ]]; then
-	export LD_LIBRARY_PATH=/install/lib:$LD_LIBRARY_PATH
-	#echo "Adding /install/lib to LD_LIBRARY_PATH" >&2
-	if [[ -d /install/lib/python3/dist-packages ]]; then
-		export PYTHONPATH=/install/lib/python3/dist-packages:$PYTHONPATH
-		#echo "Adding /install/lib/python3/dist-packages to PYTHONPATH" >&2
-	fi
-fi
 
 function show_hcp_env {
 	printenv | egrep -e "^HCP_" | sort

@@ -32,27 +32,15 @@ if ! /hcp/tools/run_client.sh 2> $attestlog; then
 	done
 fi
 
-if [[ -x /install/libexec/kdc ]]; then
-	KDC_BIN=/install/libexec/kdc
-elif [[ -x /usr/lib/heimdal-servers/kdc ]]; then
-	KDC_BIN=/usr/lib/heimdal-servers/kdc
-else
+if [[ ! -x $(which kdc) ]]; then
 	echo "Error, no KDC binary found"
 	exit 1
 fi
-if [[ -x /install/libexec/kpasswdd ]]; then
-	KPASSWDD_BIN=/install/libexec/kpasswdd
-elif [[ -x /usr/lib/heimdal-servers/kpasswdd ]]; then
-	KPASSWDD_BIN=/usr/lib/heimdal-servers/kpasswdd
-else
+if [[ ! -x $(which kpasswdd) ]]; then
 	echo "Error, no KPASSWDD binary found"
 	exit 1
 fi
-if [[ -x /install/libexec/kadmind ]]; then
-	KADMIND_BIN=/install/libexec/kadmind
-elif [[ -x /usr/lib/heimdal-servers/kadmind ]]; then
-	KADMIND_BIN=/usr/lib/heimdal-servers/kadmind
-else
+if [[ ! -x $(which kadmind) ]]; then
 	echo "Error, no KADMIND binary found"
 	exit 1
 fi
@@ -122,9 +110,9 @@ fi
 # to as a last step. We're relying on there being an "--init"-style PID1 to
 # reparent orphaned processes and forward signals.
 echo "Starting the KDC suite of services"
-echo "- $KPASSWDD_BIN --config-file=$MYETC/kdc.conf"
-$KPASSWDD_BIN --config-file=$MYETC/kdc.conf &
-echo "- $KADMIND_BIN --config-file=$MYETC/kdc.conf --keytab=$MYVAR/kadmin.keytab --realm=$HCP_KDC_REALM"
-$KADMIND_BIN --config-file=$MYETC/kdc.conf --keytab=$MYVAR/kadmin.keytab --realm=$HCP_KDC_REALM &
-echo "- $KDC_BIN --config-file=$MYETC/kdc.conf"
-exec $KDC_BIN --config-file=$MYETC/kdc.conf
+echo "- kpasswdd --config-file=$MYETC/kdc.conf"
+kpasswdd --config-file=$MYETC/kdc.conf &
+echo "- kadmind --config-file=$MYETC/kdc.conf --keytab=$MYVAR/kadmin.keytab --realm=$HCP_KDC_REALM"
+kadmind --config-file=$MYETC/kdc.conf --keytab=$MYVAR/kadmin.keytab --realm=$HCP_KDC_REALM &
+echo "- kdc --config-file=$MYETC/kdc.conf"
+exec kdc --config-file=$MYETC/kdc.conf

@@ -154,7 +154,7 @@ if 'genprogs_post' in resultprofile:
 if 'genprogs' in resultprofile:
 	genprogs = resultprofile['genprogs']
 genprogs = f"{genprogs_pre} {genprogs} {genprogs_post}"
-shutil.copy('/safeboot/enroll.conf', ephemeral_dir)
+shutil.copy('/install-safeboot/enroll.conf', ephemeral_dir)
 with open(f"{ephemeral_dir}/enroll.conf", 'a') as fenroll:
 	fenroll.write(f"export GENPROGS=({genprogs})")
 
@@ -175,13 +175,13 @@ os.environ['TPM_VENDORS'] = f"{db_common.enrollsvc_state}/tpm_vendors"
 # We do the post-processing ourselves, from the ephemeral_dir, once
 # 'attest-enroll' is done.
 c = subprocess.run(
-	[ '/safeboot/sbin/attest-enroll', '-v',
+	[ '/install-safeboot/sbin/attest-enroll', '-v',
 		'-C', f"{ephemeral_dir}/enroll.conf",
 		'-V', 'CHECKOUT=/hcp/enrollsvc/cb_checkout.sh',
 		'-V', 'COMMIT=/hcp/enrollsvc/cb_commit.sh',
 		'-I', f"{path_ekpub}",
 		f"{hostname}" ],
-	cwd = '/safeboot',
+	cwd = '/install-safeboot',
 	stdout = subprocess.PIPE,
 	stderr = subprocess.PIPE,
 	text = True)

@@ -1,5 +1,5 @@
 HCP_SAFEBOOT_SRC := $(TOP)/ext-safeboot
-HCP_SAFEBOOT_INSTALL_DEST := /safeboot
+HCP_SAFEBOOT_INSTALL_DEST := /install-safeboot
 
 # We steal the TPMWARE settings as to whether or not enable the
 # SUBMODULE_{RESET,TARGETS} options
@@ -14,7 +14,7 @@ $(eval $(call builder_initialize,\
 # that will add the missing symlink and install the files.
 $(eval SAFEBOOT_INSTALL_CMD := mkdir -p $(HCP_SAFEBOOT_INSTALL_DEST)/sbin ;)
 $(eval SAFEBOOT_INSTALL_CMD += (cd $(HCP_SAFEBOOT_INSTALL_DEST)/sbin && rm -f attest_server.py && ln -s attest-server attest_server.py) ;)
-# $1 = destination path relative to /safeboot, no leading nor trailing "/"
+# $1 = destination path relative to /install-safeboot, no leading nor trailing "/"
 # $2 = source path, relative to codebase top-level, no leading "/"
 # $3 = attributes (first arg to "chmod")
 # $4 = file names

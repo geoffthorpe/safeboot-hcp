@@ -200,9 +200,9 @@ if ! ln -s "$HCP_ENROLLSVC_STATE/sudoers" /etc/sudoers.d/hcp > /dev/null 2>&1 &&
 	exit 1
 fi
 if ! ln -s "$HCP_ENROLLSVC_STATE/safeboot-enroll.conf" \
-			/safeboot/enroll.conf > /dev/null 2>&1 &&
-		[[ ! -h /safeboot/enroll.conf ]]; then
-	echo "Error, couldn't create symlink '/safeboot/enroll.conf'" >&2
+			/install-safeboot/enroll.conf > /dev/null 2>&1 &&
+		[[ ! -h /install-safeboot/enroll.conf ]]; then
+	echo "Error, couldn't create symlink '/install-safeboot/enroll.conf'" >&2
 	exit 1
 fi
 

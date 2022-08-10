@@ -25,7 +25,7 @@ source_safeboot_functions
 
 # The following helps to convince the safeboot scripts to find safeboot.conf
 # and functions.sh
-export DIR=/safeboot
+export DIR=/install-safeboot
 cd $DIR
 
 # passed in from "docker run" cmd-line
