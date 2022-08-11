@@ -38,7 +38,7 @@ conf_env = dict_val_or(conf_enroll, '__env', {})
 conf_hxtool = dict_val_or(conf_enroll, 'gencert-hxtool', {})
 conf_common = dict_val_or(conf_hxtool, '<common>', {})
 certlist = [ x for x in dict_val_or(conf_hxtool, 'list', []) if x != '<common>' ]
-certprefix = dict_val_or(conf_hxtool, 'prefix', [])
+certprefix = dict_val_or(conf_hxtool, 'prefix', "")
 
 output_assets_sensitive = []
 output_assets_public = []
