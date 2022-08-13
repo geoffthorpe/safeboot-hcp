@@ -1,19 +1,15 @@
 HCP_TESTS_SRC := $(TOP)/tests
 
-CREATED_CABOODLE := $(HCP_APPS_OUT)/image.caboodle
-CREATED_TOOLS := $(HCP_APPS_OUT)/image.tools
-CREATED_SERVICES := $(foreach i,enroll attest swtpm,\
-			$(HCP_APPS_OUT)/image.$isvc)
+CREATED_CABOODLE := $(HCP_caboodle_TFILE)
+CREATED_TOOLS := $(HCP_tools_TFILE)
+CREATED_SERVICES := $(foreach i,enroll attest swtpm policy,$(HCP_$isvc_TFILE))
 CREATED_TESTCREDS := $(HCP_TESTCREDS_DONE)
 
 define test_case
 $(eval name := $(strip $1))
-$(eval deps := $(strip $2))
 $(eval bashcmd := export HCP_TEST_PATH="$(HCP_TESTS_SRC)/$(name).sh" && \
 	"$(HCP_TESTS_SRC)/wrapper.sh")
-test_$(name): $(foreach i,$(deps),$(CREATED_$i))
-test_$(name): $(HCP_OUT)/docker-compose.env
-test_$(name): $(HCP_OUT)/usecase
+test_$(name): $(ALL)
 test_$(name):
 	$Qecho "Starting '$$@'"
 	$Qbash -c '$(bashcmd)'
@@ -21,8 +17,8 @@ test_$(name):
 $(eval TESTS += test_$(name))
 endef
 
-$(eval $(call test_case,caboodle_alone_basic,CABOODLE))
-$(eval $(call test_case,services_client_basic,TOOLS SERVICES TESTCREDS))
-$(eval $(call test_case,unit,CABOODLE))
+$(eval $(call test_case,caboodle_alone_basic))
+$(eval $(call test_case,services_client_basic))
+$(eval $(call test_case,unit))
 
 tests: $(TESTS)

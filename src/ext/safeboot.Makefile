@@ -5,7 +5,7 @@ HCP_SAFEBOOT_INSTALL_DEST := /install-safeboot
 # SUBMODULE_{RESET,TARGETS} options
 $(eval $(call builder_initialize,\
 	safeboot,\
-	safeboot,\
+	$(HCP_SAFEBOOT_SRC),\
 	$(HCP_SAFEBOOT_INSTALL_DEST),\
 	$(HCP_TPMWARE_SUBMODULE_RESET),\
 	$(HCP_TPMWARE_SUBMODULE_TARGETS)))
@@ -57,7 +57,7 @@ $(eval $(call builder_add_codebase,\
 	safeboot,\
 	safeboot,\
 	,\
-	$(HCP_SAFEBOOT_SRC),\
+	.,\
 	functions.sh,\
 	true,\
 	true,\

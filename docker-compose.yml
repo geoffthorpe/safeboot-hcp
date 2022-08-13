@@ -191,7 +191,7 @@ services:
 
     kdc1:
         extends: common
-        image: ${HCP_IMAGE_kdc}
+        image: ${HCP_IMAGE_kdcsvc}
         volumes:
           - kdc1:${HCP_KDC1_STATE}
           - tpmsocket_kdc1:${HCP_KDC1_ATTEST_TCTI_SOCKDIR}

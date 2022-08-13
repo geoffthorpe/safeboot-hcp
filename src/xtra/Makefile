@@ -3,23 +3,22 @@ HCP_XTRA_INSTALL_DEST := /hcp/xtra
 
 $(eval $(call builder_initialize,\
 	xtra,\
-	xtra,\
+	$(HCP_XTRA_SRC),\
 	$(HCP_XTRA_INSTALL_DEST),,))
 
 $(eval $(call builder_add_codebase,\
 	xtra,\
 	HcpPython,\
 	,\
-	$(HCP_XTRA_SRC),\
+	.,\
 	HcpHostname.py,\
 	true,\
 	true,\
 	true,\
-	install --mode=64 *.py $(HCP_XTRA_INSTALL_DEST),\
+	install --mode=644 *.py $(HCP_XTRA_INSTALL_DEST),\
 	))
 $(eval $(call builder_codebase_simpledep,\
 	xtra,\
-	HcpPython,\
-	$(HCP_XTRA_SRC)))
+	HcpPython))
 
 $(eval $(call builder_finalize,xtra))

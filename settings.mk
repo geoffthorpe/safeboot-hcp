@@ -72,6 +72,31 @@ HCP_HEIMDAL_SOURCE := 1
 # the parallelism to 4.
 HCP_BUILDER_MAKE_PARALLEL := -j 16
 
+# HCP containers are all started via a common interface at container startup
+# time, where a common/shared launcher script is told what environment settings
+# to load, which in turn defines what application to run. So any container
+# image that contains the necessary subset of components can perform that
+# function. By extension, the "caboodle" HCP image can be used to launch any
+# HCP service or tool, because (by definition) it contains the maximum set of
+# components.
+#
+# If the following symbol is defined, a different container image will be built
+# for each HCP-defined service and another container image is built containing
+# HCP-defined tools. These will only have the necessary packages installed. If
+# it is not defined, only the "caboodle" image will be built. Likewise, the
+# "docker-compose" environment will adjust accordingly, in that it will use
+# service-specific and tool-specific images if this symbols is defined,
+# otherwise it will use the caboodle image for all purposes.
+#
+# (This won't give you noticably smaller images, 99% of the image is
+# unconditional. The issue is more about whether specialization of purpose is
+# (un)desirable in the context where the images get used, kinda like
+# type-safety. And like type-safety, it's most useful during development to
+# catch and eliminate unintentional interdependencies. But like type-safety it
+# may have hygeine value at run-time, different images for different roles, at
+# the expense of managing multiple images rather than one.)
+HCP_APPS_GRANULAR := 1
+
 # If the following is enabled, the submodule-building support will assume it
 # "owns" the submodules. I.e. it will not only autoconf, configure, compile,
 # and install the submodules, it will "clean" them back to pristine state. This

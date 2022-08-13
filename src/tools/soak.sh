@@ -143,7 +143,7 @@ function swtpm_start {
 	echo "SUCCESS (pid=${swtpm_pid[$1]})"
 	rm $pcrread_log
 	# Sneaky hack, see corresponding note in
-	# src/apps/attestclient/run_client.sh
+	# src/tools/run_client.sh
 	tpm2_dictionarylockout --clear-lockout > /dev/null 2>&1 || true
 }
 

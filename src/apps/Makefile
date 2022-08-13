@@ -4,28 +4,37 @@ HCP_APPS_SRC := $(HCP_SRC)/apps
 $(HCP_APPS_OUT): | $(HCP_OUT)
 MDIRS += $(HCP_APPS_OUT)
 
-# HCP_CODEBALLS is the list of codebases, <foo>, that get installed to
-# /hcp/<foo> in container images. Their code is assumed to be in src/apps/<foo>,
-# which must contain a Makefile. Those Makefiles are of the form;
-#
-# (0 or more subsets of files with corresponding chmod attributes)
-#    $(eval $(call app_add,<foo>,shell-exec,755,run_*.sh))
-#    $(eval $(call app_add,<foo>,shell-include,644,common.env))
-#    $(eval $(call app_add,<foo>,utils,755,util_*.sh util_*.py))
-# (0 or more finalizers to declare output tarballs)
-#    $(eval $(call app_finalize,<foo>))
-# (0 or more container images, producing "hcp_<fooapp>", that includes the
-# named list of tarballs from HCP_CODEBALLS, plus 0 or more external tarballs,
-# as required)
-#    $(eval $(call app_image,<fooapp>,<foo1> <foo2>,<ext1> <ext2>))
+# Include the app_image() subroutine
+include $(HCP_APPS_SRC)/Makefile.sub
 
-HCP_CODEBALLS := common enrollsvc attestsvc swtpmsvc tools kdc policysvc caboodle
+# Build a hcp_common image on top of base-platform that includes all
+# our non-app code
+$(eval $(call app_image,common,,safeboot tpmware heimdal xtra common))
 
-include $(HCP_APPS_SRC)/Makefile.code
-include $(HCP_APPS_SRC)/Makefile.images
+# Build a hcp_caboodle image with everything
+$(eval $(call app_image,caboodle,common,\
+	caboodle enrollsvc attestsvc policysvc swtpmsvc tools kdcsvc))
 
-include $(foreach i,$(HCP_CODEBALLS),$(HCP_APPS_SRC)/$i/Makefile)
+# Only build service/tools-specific images if requested
+ifdef HCP_APPS_GRANULAR
+$(eval $(call app_image,tools,common,tools))
+$(eval $(call app_image,enrollsvc,tools,enrollsvc swtpmsvc))
+$(eval $(call app_image,attestsvc,common,attestsvc))
+$(eval $(call app_image,policysvc,common,policysvc))
+$(eval $(call app_image,swtpmsvc,common,swtpmsvc))
+$(eval $(call app_image,kdcsvc,tools,kdcsvc))
+else
+$(eval $(call app_alias,tools,caboodle))
+$(eval $(call app_alias,enrollsvc,caboodle))
+$(eval $(call app_alias,attestsvc,caboodle))
+$(eval $(call app_alias,policysvc,caboodle))
+$(eval $(call app_alias,swtpmsvc,caboodle))
+$(eval $(call app_alias,kdcsvc,caboodle))
+endif
 
+# Post-process now that all apps are registered
+$(eval APPS_NAMES := $(strip $(APPS_NAMES)))
+APPS := $(foreach i,$(APPS_NAMES),$(HCP_$i_TFILE))
 ALL += $(APPS)
 
 ###########

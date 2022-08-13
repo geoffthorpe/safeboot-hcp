@@ -8,7 +8,7 @@ ifdef HCP_HEIMDAL_SOURCE
 # SUBMODULE_{RESET,TARGETS} options
 $(eval $(call builder_initialize,\
 	heimdal,\
-	heimdal,\
+	$(HCP_HEIMDAL_SRC),\
 	$(HCP_HEIMDAL_INSTALL_DEST),\
 	$(HCP_TPMWARE_SUBMODULE_RESET),\
 	$(HCP_TPMWARE_SUBMODULE_TARGETS)))
@@ -17,7 +17,7 @@ $(eval $(call builder_add_codebase,\
 	heimdal,\
 	heimdal,\
 	,\
-	$(HCP_HEIMDAL_SRC),\
+	.,\
 	autogen.sh,\
 	./autogen.sh,\
 	MAKEINFO=true ./configure --prefix=$(HCP_HEIMDAL_INSTALL_DEST) --disable-texinfo,\
@@ -26,8 +26,7 @@ $(eval $(call builder_add_codebase,\
 
 $(eval $(call builder_codebase_simpledep,\
 	heimdal,\
-	heimdal,\
-	$(HCP_HEIMDAL_SRC)))
+	heimdal))
 
 # Closing arguments for the package
 $(eval $(call builder_finalize,heimdal))

@@ -6,7 +6,7 @@ HCP_TPMWARE_MAKE_PARALLEL ?= $(HCP_BUILDER_MAKE_PARALLEL)
 # "tpmware" is the package of codebases, "install" is the tarball it creates
 $(eval $(call builder_initialize,\
 	tpmware,\
-	install,\
+	$(HCP_TPMWARE_SRC),\
 	$(HCP_TPMWARE_INSTALL_DEST),\
 	$(HCP_TPMWARE_SUBMODULE_RESET),\
 	$(HCP_TPMWARE_SUBMODULE_TARGETS)))
@@ -22,7 +22,7 @@ $(eval $(call builder_add_codebase,\
 	tpmware,\
 	tpm2-tss,\
 	,\
-	$(HCP_TPMWARE_SRC)/tpm2-tss,\
+	tpm2-tss,\
 	bootstrap,\
 	./bootstrap,\
 	./configure --disable-doxygen-doc --prefix=$(HCP_TPMWARE_INSTALL_DEST),\
@@ -30,8 +30,7 @@ $(eval $(call builder_add_codebase,\
 	make $(HCP_TPMWARE_MAKE_PARALLEL) install))
 $(eval $(call builder_codebase_simpledep,\
 	tpmware,\
-	tpm2-tss,\
-	$(HCP_TPMWARE_SRC)/tpm2-tss))
+	tpm2-tss))
 
 ##############
 # tpm2-tools #
@@ -49,7 +48,7 @@ $(eval $(call builder_add_codebase,\
 	tpmware,\
 	tpm2-tools,\
 	tpm2-tss,\
-	$(HCP_TPMWARE_SRC)/tpm2-tools,\
+	tpm2-tools,\
 	bootstrap,\
 	$(HACK_TPM2-TOOLS) ./bootstrap,\
 	$(HACK_TPM2-TOOLS) ./configure --prefix=$(HCP_TPMWARE_INSTALL_DEST),\
@@ -57,8 +56,7 @@ $(eval $(call builder_add_codebase,\
 	$(HACK_TPM2-TOOLS) make $(HCP_TPMWARE_MAKE_PARALLEL) install))
 $(eval $(call builder_codebase_simpledep,\
 	tpmware,\
-	tpm2-tools,\
-	$(HCP_TPMWARE_SRC)/tpm2-tools))
+	tpm2-tools))
 
 endif # HCP_TPM2_SOURCE
 
@@ -70,7 +68,7 @@ $(eval $(call builder_add_codebase,\
 	tpmware,\
 	libtpms,\
 	,\
-	$(HCP_TPMWARE_SRC)/libtpms,\
+	libtpms,\
 	autogen.sh,\
 	NOCONFIGURE=1 ./autogen.sh,\
 	./configure --with-openssl --with-tpm2 --prefix=$(HCP_TPMWARE_INSTALL_DEST),\
@@ -78,8 +76,7 @@ $(eval $(call builder_add_codebase,\
 	make $(HCP_TPMWARE_MAKE_PARALLEL) install))
 $(eval $(call builder_codebase_simpledep,\
 	tpmware,\
-	libtpms,\
-	$(HCP_TPMWARE_SRC)/libtpms))
+	libtpms))
 
 #########
 # swtpm #
@@ -89,7 +86,7 @@ $(eval $(call builder_add_codebase,\
 	tpmware,\
 	swtpm,\
 	libtpms,\
-	$(HCP_TPMWARE_SRC)/swtpm,\
+	swtpm,\
 	autogen.sh,\
 	NOCONFIGURE=1 ./autogen.sh,\
 	LIBTPMS_LIBS='-L$(HCP_TPMWARE_INSTALL_DEST)/lib -ltpms' \
@@ -100,8 +97,7 @@ $(eval $(call builder_add_codebase,\
 	make $(HCP_TPMWARE_MAKE_PARALLEL) install))
 $(eval $(call builder_codebase_simpledep,\
 	tpmware,\
-	swtpm,\
-	$(HCP_TPMWARE_SRC)/swtpm))
+	swtpm))
 
 # Thus concludes the "tpmware" package
 $(eval $(call builder_finalize,tpmware))

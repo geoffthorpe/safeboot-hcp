@@ -19,10 +19,18 @@ include $(HCP_SRC)/ext/tpmware.Makefile
 include $(HCP_SRC)/ext/heimdal.Makefile
 include $(HCP_SRC)/ext/safeboot.Makefile
 
-# Produce a tarball of xtras, like our parameter-expansion tool
+# Internal code-bases
+include $(HCP_SRC)/common/Makefile
 include $(HCP_SRC)/xtra/Makefile
+include $(HCP_SRC)/tools/Makefile
+include $(HCP_SRC)/enrollsvc/Makefile
+include $(HCP_SRC)/attestsvc/Makefile
+include $(HCP_SRC)/swtpmsvc/Makefile
+include $(HCP_SRC)/policysvc/Makefile
+include $(HCP_SRC)/kdcsvc/Makefile
+include $(HCP_SRC)/caboodle/Makefile
 
-# Produce HCP applications (code tarballs and container images)
+# Build the desired container images
 include $(HCP_SRC)/apps/Makefile
 
 # Produce usable (but test, non-production) credentials

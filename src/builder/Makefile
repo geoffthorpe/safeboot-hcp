@@ -9,6 +9,14 @@ MDIRS += $(HCP_BUILDER_OUT)
 builder: $(HCP_BUILDER_OUT)/built
 ALL += $(HCP_BUILDER_OUT)/built
 
+# We could turn this into a settings.mk choice, but for now just locally
+# hard-code it. It determines whether everything has to get rebuilt if the
+# builder itself isn't fully up-to-date. E.g. if you touch this Makefile, the
+# builder image gets updated by dependency - do you want everything else that
+# has been built _using_ this builder image to be rebuilt because the image got
+# updated? Probably not.
+LAZY := 1
+
 $(HCP_BUILDER_OUT)/Dockerfile: | $(HCP_BUILDER_OUT)
 $(HCP_BUILDER_OUT)/Dockerfile: $(HCP_BUILDER_SRC)/Makefile
 $(HCP_BUILDER_OUT)/Dockerfile: $(HCP_BUILDER_SRC)/Dockerfile
@@ -56,13 +64,13 @@ $(eval N := $(strip $1))
 $(eval HCP_BUILD_OUT_$N := $(HCP_OUT)/sbuilder_$N)
 $(eval HCP_BUILD_INSTALL_VOLUME_$N := $(HCP_IMAGE_PREFIX)_v$N)
 $(eval HCP_BUILD_INSTALL_TOUCH_$N := $(HCP_BUILD_OUT_$N)/vol.created)
-$(eval HCP_BUILD_TGZ_$N := $(strip $2))
+$(eval HCP_BUILD_TGZ_$N := $N)
+$(eval HCP_BUILD_SRC_$N := $(strip $2))
 $(eval HCP_BUILD_INSTALL_DEST_$N := $(strip $3))
 $(eval HCP_BUILD_RESET_$N := $(strip $4))
 $(eval HCP_BUILD_XTRATARGETS_$N := $(strip $5))
 $(eval HCP_BUILD_RESULT_PREFIX_$N := $(HCP_BUILD_OUT_$N)/$(HCP_BUILD_TGZ_$N))
 $(eval HCP_BUILD_RESULT_TGZ_$N := $(HCP_BUILD_RESULT_PREFIX_$N).tar.gz)
-$(eval HCP_BUILD_RESULT_DFILE_$N := $(HCP_BUILD_RESULT_PREFIX_$N).Dockerfile)
 $(HCP_BUILD_OUT_$N): | $(HCP_OUT)
 MDIRS += $(HCP_BUILD_OUT_$N)
 $(HCP_BUILD_INSTALL_TOUCH_$N): | $(HCP_BUILD_OUT_$N)
@@ -91,10 +99,6 @@ $(eval HCP_BUILD_TGZ_CMD_$N += /hcp/base/chowner.sh vol.created $(HCP_BUILD_TGZ_
 $(HCP_BUILD_RESULT_TGZ_$N): $(foreach i,$(HCP_BUILD_MODULES_$N),$(HCP_BUILD_OUT_$N)/$i.installed)
 $(HCP_BUILD_RESULT_TGZ_$N):
 	$Q$(HCP_BUILD_INSTALL_RUN_$N) "$(HCP_BUILD_TGZ_CMD_$N)"
-$(HCP_BUILD_RESULT_DFILE_$N): $(HCP_BUILD_RESULT_TGZ_$N)
-$(HCP_BUILD_RESULT_DFILE_$N):
-	$Qecho "COPY sbuilder_$N/$(HCP_BUILD_TGZ_$N).tar.gz /" > $$@
-	$Qecho "RUN tar zxf $(HCP_BUILD_TGZ_$N).tar.gz && rm $(HCP_BUILD_TGZ_$N).tar.gz" >> $$@
 $N: $(HCP_BUILD_RESULT_TGZ_$N)
 ALL += $(HCP_BUILD_RESULT_TGZ_$N)
 ifneq (,$(HCP_BUILD_RESET_$N))
@@ -106,7 +110,6 @@ clean_$N: $(foreach i,$(HCP_BUILD_RESETS_$N),$(HCP_BUILD_OUT_$N)/$i.reset)
 endif
 clean_$N:
 	$Qrm -f $(HCP_BUILD_RESULT_TGZ_$N)
-	$Qrm -f $(HCP_BUILD_RESULT_DFILE_$N)
 ifneq (,$(wildcard $(HCP_BUILD_INSTALL_TOUCH_$N)))
 	$Qdocker volume rm $(HCP_BUILD_INSTALL_VOLUME_$N)
 	$Qrm $(HCP_BUILD_INSTALL_TOUCH_$N)
@@ -127,7 +130,7 @@ endef
 # $1 = package name, as passed as $1 to builder_initialize.
 # $2 = name of codebase,
 # $3 = codebases that must be installed before we can configure.
-# $4 = path to source
+# $4 = path to source (relative to $2 to builder_initialize)
 # $5 = reference file (relative to codebase top-level) for chown-ership of
 #      files.
 # $6 = command line to bootstrap the codebase
@@ -140,7 +143,8 @@ define builder_add_codebase
 $(eval N := $(strip $1))
 $(eval LOCAL_NAME := $(strip $2))
 $(eval LOCAL_DEPS := $(strip $3))
-$(eval LOCAL_SRCPATH := $(strip $4))
+$(eval LOCAL_SRCPATH := $(HCP_BUILD_SRC_$N)/$(strip $4))
+$(eval HCP_BUILD_SRC_$N_$(LOCAL_NAME) := $(LOCAL_SRCPATH))
 $(eval LOCAL_CHOWNER := $(strip $5))
 $(eval LOCAL_CHOWN := trap '/hcp/base/chowner.sh $(LOCAL_CHOWNER) .' EXIT ; cd /src-$(LOCAL_NAME))
 $(eval LOCAL_BOOTSTRAP := $(LOCAL_CHOWN) ; $(strip $6))
@@ -157,7 +161,7 @@ $(eval HCP_BUILD_DEP_$N_$(LOCAL_NAME)_BOOTSTRAPPED := $(HCP_BUILD_OUT_$N)/$(LOCA
 $(eval HCP_BUILD_DEP_$N_$(LOCAL_NAME)_CONFIGURED := $(HCP_BUILD_OUT_$N)/$(LOCAL_NAME).configured)
 $(eval HCP_BUILD_DEP_$N_$(LOCAL_NAME)_COMPILED := $(HCP_BUILD_OUT_$N)/$(LOCAL_NAME).compiled)
 $(eval HCP_BUILD_DEP_$N_$(LOCAL_NAME)_INSTALLED := $(HCP_BUILD_OUT_$N)/$(LOCAL_NAME).installed)
-$(HCP_BUILD_DEP_$N_$(LOCAL_NAME)_BOOTSTRAPPED): $(LOCAL_SRCPATH)/$(LOCAL_CHOWNER)
+$(HCP_BUILD_DEP_$N_$(LOCAL_NAME)_BOOTSTRAPPED): | $(LOCAL_SRCPATH)/$(LOCAL_CHOWNER)
 $(HCP_BUILD_DEP_$N_$(LOCAL_NAME)_BOOTSTRAPPED): $(HCP_BUILD_BUILDER_DEP_$N)
 $(HCP_BUILD_DEP_$N_$(LOCAL_NAME)_BOOTSTRAPPED): | $(HCP_BUILD_INSTALL_TOUCH_$N)
 $(HCP_BUILD_DEP_$N_$(LOCAL_NAME)_BOOTSTRAPPED):
@@ -197,27 +201,29 @@ endef
 # Once builder_add_codebase() is run, there are "HCP_BUILD_DEP_a_b_state"
 # make targets defined for each package name 'a', codebase 'b', and "state" as
 # one of {"BOOTSTRAPPED", "CONFIGURED", "COMPILED", "INSTALLED"}, and these
-# targets are actual touchfiles. As such, after calling this function, the
-# caller can declare dependencies on the source in whatever ways necessary to
-# ensure that dependencies on these codebases trigger rebuilds as and when
+# targets are actual touchfiles. As such, after builder_add_codebase() returns,
+# the caller can declare dependencies on the source in whatever ways necessary
+# to ensure that dependencies on these codebases trigger rebuilds as and when
 # required.
 #
 # The following function can provide a naive dependency rule that helps in many
-# cases, especially for autotools packages (which might be otherwise impossible
-# to link to their auto-generated dependency scheme). It makes the "INSTALLED"
-# target depend on the newest file in the source tree. This acts as a
-# hair-trigger to re-run the install rule as soon as anything relevant could
-# have conceivably changed.  It does assume though (like the autoconf tools)
-# that the source's "install" rule will itself first trigger recompilation (or
-# even reconfiguration, or even rebootstrapping) if the state of files demand
-# it.
+# cases, especially for autotools-managed (autoconf/automake/libtool/etc)
+# codebases which might be otherwise impossible to hook up to their
+# auto-generated dependency scheme. It makes the "INSTALLED" target for the
+# codebase depend on the newest file in the source directory tree. This acts as
+# a hair-trigger to re-run the install rule as soon as anything relevant could
+# have conceivably changed, because any filesystem activity at all in that tree
+# will cause the codebase's "install" logic to run. This approach does
+# assume/require that the source's "install" rule will itself first trigger
+# recompilation (or even reconfiguration, or even rebootstrapping) if the state
+# of files demand it. This is fortunately true for autotools-managed code
+# bases.
 # $1 = package name, as passed as $1 to builder_initialize.
-# $2 = name of codebase,
-# $3 = path to source
+# $2 = name of codebase, as passed as $2 to builder_initialize.
 define builder_codebase_simpledep
 $(eval N := $(strip $1))
 $(eval LOCAL_NAME := $(strip $2))
-$(eval LOCAL_SRCPATH := $(strip $3))
+$(eval LOCAL_SRCPATH := $(HCP_BUILD_SRC_$N_$(LOCAL_NAME)))
 $(eval LOCAL_nfile := $(shell find $(LOCAL_SRCPATH) -type f -printf '%T@ %p\n' | sort -n | tail -1 | cut -f2- -d" "))
 $(HCP_BUILD_DEP_$N_$(LOCAL_NAME)_INSTALLED): $(LOCAL_nfile)
 endef

@@ -10,7 +10,7 @@ mkdir -p $(show_hcp_env | egrep "_SOCKDIR=\/" | sed -e "s/^.*_SOCKDIR=//" | uniq
 
 # As we're about to reproduce the testcred-creation logic (from
 # src/testcreds.Makefile), we also need to reproduce the role-account-creation
-# logic from src/apps/enrollsvc/common.sh).
+# logic from src/enrollsvc/common.sh).
 role_account_uid_file \
 	$HCP_EUSER_DB \
 	$HCP_EMGMT_STATE/uid_db_user \

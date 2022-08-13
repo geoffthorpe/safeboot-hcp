@@ -4,8 +4,8 @@ $(HCP_TESTCREDS_OUT): | $(HCP_OUT)
 MDIRS += $(HCP_TESTCREDS_OUT)
 
 # The "caboodle_test" case spins up its credentials internally and doesn't use
-# the stuff below. NB: KEEP THIS CONSISTENT WITH src/apps/caboodle/common.sh,
-# OR CONSOLIDATE THEM SOMEHOW!
+# the stuff below. NB: KEEP THIS CONSISTENT WITH src/caboodle/common.sh, OR
+# CONSOLIDATE THEM SOMEHOW!
 
 HCP_TESTCREDS_DOCKER_RUN := \
 	docker run -i --rm --init --label $(HCP_IMAGE_PREFIX)all=1 \
@@ -19,7 +19,7 @@ HCP_TESTCREDS_DOCKER_RUN := \
 # host-side. It also, encapsulates the dependencies on $(HCP_OUT) being created
 # and the hcp_common image being built.
 $(HCP_TESTCREDS_OUT)/reference: | $(HCP_TESTCREDS_OUT)
-$(HCP_TESTCREDS_OUT)/reference: | $(HCP_APPS_OUT)/image.common
+$(HCP_TESTCREDS_OUT)/reference: | $(HCP_common_TFILE)
 $(HCP_TESTCREDS_OUT)/reference:
 	$Qecho "Unused file" > "$@"
 
