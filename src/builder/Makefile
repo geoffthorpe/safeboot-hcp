@@ -61,7 +61,7 @@ endif
 # tarball/Dockerfile.
 define builder_initialize
 $(eval N := $(strip $1))
-$(eval HCP_BUILD_OUT_$N := $(HCP_OUT)/sbuilder_$N)
+$(eval HCP_BUILD_OUT_$N := $(HCP_OUT)/pkg_$N)
 $(eval HCP_BUILD_INSTALL_VOLUME_$N := $(HCP_IMAGE_PREFIX)_v$N)
 $(eval HCP_BUILD_INSTALL_TOUCH_$N := $(HCP_BUILD_OUT_$N)/vol.created)
 $(eval HCP_BUILD_TGZ_$N := $N)

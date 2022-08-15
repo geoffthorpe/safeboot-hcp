@@ -4,7 +4,7 @@
 define app_image
 
 $(eval LOCAL_NAME := $(strip $1))
-$(eval LOCAL_CTX := $(HCP_APPS_OUT)/ctx.$(LOCAL_NAME))
+$(eval LOCAL_CTX := $(HCP_APPS_OUT)/$(LOCAL_NAME))
 $(eval LOCAL_CTX_TFILE := $(LOCAL_CTX)/_assembled)
 $(eval LOCAL_ANAME := app_$(LOCAL_NAME))
 $(eval LOCAL_DNAME := $(call HCP_IMAGE,$(LOCAL_NAME)))
