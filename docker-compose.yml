@@ -41,6 +41,8 @@ volumes:
     tpmsocket_kdc_secondary:
 
 networks:
+    pol_private:
+        internal: true
     hcpnetwork:
         internal: true
 
@@ -56,11 +58,13 @@ services:
           - HCP_ENTRYPOINT_EXCEPT=bash
         #  - VERBOSE=1
 
+# This policysvc instance runs in a private network so that only containers
+# explicitly connected get access. (Right now this is emgmt only.)
     pol:
         extends: common
         image: ${HCP_IMAGE_policysvc}
         networks:
-          - hcpnetwork
+          - pol_private
         environment:
           - HCP_INSTANCE=/usecase/pol.env
           - HCP_ENTRYPOINT=/hcp/policysvc/run_policy.sh
@@ -69,10 +73,12 @@ services:
             timeout: 1s
             interval: 2s
 
+# Enrollment svc, mgmt interface
     emgmt:
         extends: common
         image: ${HCP_IMAGE_enrollsvc}
         networks:
+          - pol_private
           - hcpnetwork
         volumes:
           - enrolldb:${HCP_EMGMT_STATE}:rw
@@ -89,6 +95,7 @@ services:
             timeout: 1s
             interval: 2s
 
+# Enrollment svc, replication interface
     erepl:
         extends: common
         image: ${HCP_IMAGE_enrollsvc}
@@ -104,6 +111,7 @@ services:
             timeout: 1s
             interval: 2s
 
+# Attestation svc, replication client
     arepl:
         extends: common
         image: ${HCP_IMAGE_attestsvc}
@@ -119,6 +127,7 @@ services:
             timeout: 1s
             interval: 2s
 
+# Attestation svc, attestation interface
     ahcp:
         extends: common
         image: ${HCP_IMAGE_attestsvc}
@@ -152,6 +161,7 @@ services:
           - HCP_INSTANCE=/usecase/orchestrator.env
           - HCP_ENTRYPOINT=/hcp/tools/run_orchestrator.sh
 
+# Attestation client
     aclient:
         extends: common
         image: ${HCP_IMAGE_tools}
@@ -178,6 +188,7 @@ services:
             timeout: 1s
             interval: 2s
 
+# Caboodle instance
     caboodle_alone:
         extends: common
         image: ${HCP_IMAGE_caboodle}
