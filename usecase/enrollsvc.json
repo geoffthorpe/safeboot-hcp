@@ -6,7 +6,7 @@
 		},
 		"genprogs": "gencert-hxtool",
 		"gencert-hxtool": {
-			"list": [],
+			"list": [ "default-https-client" ],
 			"prefix": "{ENROLL_CERTPREFIX}",
 			"<common>": {
 				"generate-key": "rsa",
