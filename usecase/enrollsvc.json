@@ -40,7 +40,10 @@
 			"ENROLL_DOMAIN": "hcphacking.xyz"
 		},
 		"genprogs_pre": "genhostname genrootfskey",
-		"genprogs_post": "gencert-issuer genmetadata",
+		"genprogs_post": "gencert-issuer genmetadata genreenroll",
+		"genreenroll": {
+			"hours": 5
+		},
 		"gencert-hxtool": {
 			"<common>": {
 				"ca-certificate": "{ENROLL_CA_ISSUER_PRIV}"
