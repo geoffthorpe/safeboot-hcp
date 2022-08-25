@@ -1,8 +1,14 @@
 #!/bin/bash
 
-# This script supports the case where enrollsvc::mgmt is creating and running
-# an integrated swtpm (not a side-car), and enrolling itself directly with
-# db_add.py (not going via the web API). It's not a general purpose enrollment.
+# This script exists primarily to support the development workflow, though it
+# can be activated in production (or default package installations) if it fits
+# the requirement. (It is only engaged if HCP_ENROLLSVC_ENABLE_SELFENROLL is
+# set.)
+#
+# This script supports local enrollments without requiring the enrollsvc::mgmt
+# service to be up. This helps avoid circular dependencies for initializing
+# systems that are themselves provide part of the enrollment flow.
+
 source /hcp/enrollsvc/common.sh
 
 expect_db_user

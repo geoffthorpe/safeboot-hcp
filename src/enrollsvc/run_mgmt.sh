@@ -35,8 +35,9 @@ EOF
 	mkdir -p $HCP_EMGMT_ATTEST_TCTI_SOCKDIR
 	/hcp/swtpmsvc/run_swtpm.sh &
 
-	# Handle self-enrollment of private swtpmsvc
-	if [[ -n $HCP_ENROLLSVC_ENABLE_SWTPM_SELFENROLL &&
+	# Handle self-enrollment of private swtpmsvc (and/or anything
+	# else we're configured to do early-enrollment for)
+	if [[ -n $HCP_ENROLLSVC_ENABLE_SELFENROLL &&
 			! -f "$HCP_ENROLLSVC_STATE/self-enrolled" ]]; then
 		echo "enrollsvc::mgmt, self-enrolling local swtpm instance"
 		chmod 644 "$HCP_SWTPMSVC_STATE/tpm/ek.pub"
