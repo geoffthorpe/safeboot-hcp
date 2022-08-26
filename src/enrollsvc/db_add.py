@@ -15,10 +15,13 @@ from HcpHostname import valid_hostname, dc_hostname, pop_hostname
 from HcpRecursiveUnion import union
 import HcpEnvExpander
 
+sys.path.insert(1, '/hcp/common')
+import hcp_common
+log = hcp_common.log
+bail = hcp_common.bail
+
 sys.path.insert(1, '/hcp/enrollsvc')
 import db_common
-log = db_common.log
-bail = db_common.bail
 run_git_cmd = db_common.run_git_cmd
 
 # IMPORTANT: this file must send any miscellaneous output to stderr _only_.
@@ -52,12 +55,12 @@ if len(clientjson) == 0:
 clientdata = json.loads(clientjson)
 
 # We also expect these env-vars to point to things
-signing_key_dir = db_common.env_get_dir('SIGNING_KEY_DIR')
-signing_key_pub = db_common.env_get_file('SIGNING_KEY_PUB')
-signing_key_priv = db_common.env_get_file('SIGNING_KEY_PRIV')
-gencert_ca_dir = db_common.env_get_dir('GENCERT_CA_DIR')
-gencert_ca_cert = db_common.env_get_file('GENCERT_CA_CERT')
-gencert_ca_priv = db_common.env_get_file('GENCERT_CA_PRIV')
+signing_key_dir = hcp_common.env_get_dir('SIGNING_KEY_DIR')
+signing_key_pub = hcp_common.env_get_file('SIGNING_KEY_PUB')
+signing_key_priv = hcp_common.env_get_file('SIGNING_KEY_PRIV')
+gencert_ca_dir = hcp_common.env_get_dir('GENCERT_CA_DIR')
+gencert_ca_cert = hcp_common.env_get_file('GENCERT_CA_CERT')
+gencert_ca_priv = hcp_common.env_get_file('GENCERT_CA_PRIV')
 
 # Make sure attest-enroll prefers HCP's genprogs
 genprogspath = '/hcp/enrollsvc/genprogs'
@@ -129,7 +132,7 @@ os.environ['ENROLL_JSON'] = json.dumps(resultprofile)
 # because it doesn't consume our profile.)
 # So before doing that and performing the enrollment, send our profile to the
 # policy-checker!
-policy_url = db_common.env_get_or_none('HCP_ENROLLSVC_POLICY')
+policy_url = hcp_common.env_get_or_none('HCP_ENROLLSVC_POLICY')
 if policy_url:
 	uuid = uuid4().urn
 	os.environ['HCP_REQUEST_UID'] = uuid

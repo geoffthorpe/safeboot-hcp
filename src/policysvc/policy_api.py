@@ -32,15 +32,13 @@ def healthcheck():
 <h1>Healthcheck</h1>
 '''
 
-# This is also in enrollsvc/db_common.py, but we should factor it out further
-# so that there's no duplication.
+# There is also a bail() in hcp_common.py, but it is generic and doesn't use
+# the flask-specific abort() to control the http status code.
 def bail(val, msg=None):
     if not msg:
         msg = "Unclarified error"
     print(f"FAIL:{val}: {msg}", file=sys.stderr)
     abort(val, msg)
-def log(s):
-	print(s, file=sys.stderr)
 
 # Common processing for all URIs
 def my_common(uri, required_hookname):

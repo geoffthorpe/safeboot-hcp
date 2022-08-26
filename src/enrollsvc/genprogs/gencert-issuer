@@ -8,8 +8,8 @@ from pathlib import Path
 
 #sys.stderr = open(f"{os.environ['HOME']}/debug-issuer", 'a')
 
-sys.path.insert(1, '/hcp/enrollsvc')
-from db_common import log, bail, dict_val_or, env_get
+sys.path.insert(1, '/hcp/common')
+from hcp_common import log, bail, dict_val_or, env_get
 
 # attest-enroll sends us 3 arguments (+1 for the program name, so
 # len(sys.args)==4), but we only consume the first, the directory to produce

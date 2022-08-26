@@ -4,10 +4,11 @@ import re
 import json
 import glob
 
+sys.path.insert(1, '/hcp/common')
+from hcp_common import log, bail
+
 sys.path.insert(1, '/hcp/enrollsvc')
 import db_common
-log = db_common.log
-bail = db_common.bail
 run_git_cmd = db_common.run_git_cmd
 
 valid_ekpubhash_prefix_re = '[a-f0-9_-]*'

@@ -2,10 +2,11 @@ import sys
 import os
 import json
 
+sys.path.insert(1, '/hcp/common')
+from hcp_common import bail
+
 sys.path.insert(1, '/hcp/enrollsvc')
 import db_common
-log = db_common.log
-bail = db_common.bail
 
 # Usage:
 # db_find.py <clientjson>

@@ -15,7 +15,7 @@ $(eval $(call builder_add_codebase,\
 	true,\
 	true,\
 	true,\
-	install *.sh $(HCP_COMMON_INSTALL_DEST),\
+	install *.sh *.py $(HCP_COMMON_INSTALL_DEST),\
 	))
 $(eval $(call builder_codebase_simpledep,\
 	common,\

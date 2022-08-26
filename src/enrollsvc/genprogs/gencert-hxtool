@@ -12,8 +12,8 @@ from pathlib import Path
 sys.path.insert(1, '/hcp/xtra')
 from HcpRecursiveUnion import union
 
-sys.path.insert(1, '/hcp/enrollsvc')
-from db_common import log, bail, dict_val_or, dict_pop_or, env_get, env_get_or_none
+sys.path.insert(1, '/hcp/common')
+from hcp_common import log, bail, dict_val_or, dict_pop_or, env_get, env_get_or_none
 
 class HcpErrorGencertHxtool(Exception):
 	pass
