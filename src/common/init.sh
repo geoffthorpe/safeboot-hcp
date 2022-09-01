@@ -2,6 +2,26 @@
 
 set -e
 
+# The containers produce relevant operational logging to stderr (stdout is
+# generally IO between processes so we don't rely on it ever making it all the
+# way to a logger). However it's often useful to provide far more detailed
+# debugging output, and sometimes on a per-executable basis, so we'd like to
+# direct that to files that can be selectively inspected and that don't
+# interlace with the monitoring-centric logs. _Yet we must avoid the cardinal
+# sin of monotonic-increasing filesystem usage_!
+#
+# Solution: run a background process that will periodically inspect a
+# registered set of directories for debugging files that are older than some
+# specified lapse of time and delete them.
+ps ax | grep python3 | grep purger.py | grep -v grep > /dev/null 2>&1 ||
+	if [[ -n $HCP_PURGER_JSON ]]; then
+		nohup python3 /hcp/common/purger.py \
+			> /.purger.output 2>&1 &
+	elif [[ -n $HCP_PURGER_JSON_PATH ]]; then
+		nohup python3 /hcp/common/purger.py "$(cat $HCP_PURGER_JSON_PATH)" \
+			> /.purger.output 2>&1 &
+	fi
+
 # The following is only relevant when running a closed system inside a docker
 # network, usually to test use-cases/scenarios. If you're deploying a production
 # service and want your containers interacting with the host and other networks,
