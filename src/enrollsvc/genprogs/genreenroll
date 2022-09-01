@@ -10,7 +10,7 @@ from pathlib import Path
 #sys.stderr = open(f"{os.environ['HOME']}/debug-reenroll", 'a')
 
 sys.path.insert(1, '/hcp/common')
-from hcp_common import log, bail, dict_val_or, env_get
+from hcp_common import log, bail, dict_val_or, env_get, dict_timedelta
 
 # attest-enroll sends us 3 arguments (+1 for the program name, so
 # len(sys.args)==4), but we only consume the first, the directory to produce
@@ -28,36 +28,7 @@ now = datetime.now(timezone.utc)
 # Error-checking? No, if assumptions and requirements aren't met; exceptions.
 conf_enroll = json.loads(env_get('ENROLL_JSON'))
 conf_issuer = dict_val_or(conf_enroll, 'genreenroll', {})
-# If we have 'years', use that. Otherwise, if we have 'months', use that. Etc.
-# Note, 'years' is treated conservatively as 365 days.
-# Note, 'months' is treated conservatively as 28 days.
-def get_int_or_none(k):
-	ret = dict_val_or(conf_issuer, k, None)
-	if ret and not isinstance(ret, int):
-		bail(f"Wrong type for {k} property: {type(ret)},{ret}")
-	return ret
-td = timedelta()
-conf_years = get_int_or_none('years')
-conf_months = get_int_or_none('months')
-conf_weeks = get_int_or_none('weeks')
-conf_days = get_int_or_none('days')
-conf_hours = get_int_or_none('hours')
-conf_minutes = get_int_or_none('minutes')
-conf_seconds = get_int_or_none('seconds')
-if conf_years:
-	td += timedelta(days = conf_years * 365)
-if conf_months:
-	td += timedelta(days = conf_months * 28)
-if conf_weeks:
-	td += timedelta(days = conf_weeks * 7)
-if conf_days:
-	td += timedelta(days = conf_days)
-if conf_hours:
-	td += timedelta(hours = conf_hours)
-if conf_minutes:
-	td += timedelta(minutes = conf_minutes)
-if conf_seconds:
-	td += timedelta(seconds = conf_seconds)
+td = dict_timedelta(conf_issuer)
 if td.seconds == 0:
 	bail("Non-zero time period must be provided to genreenroll")
 
