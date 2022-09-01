@@ -9,6 +9,12 @@ import hashlib
 from tempfile import TemporaryDirectory
 from uuid import uuid4
 
+import datetime
+now = datetime.datetime.now(datetime.timezone.utc)
+suffix = f"{now.year:04}:{now.month:02}:{now.day:02}:{now.hour:02}"
+tracefile = open(f"{os.environ['HOME']}/debug-dbadd-{suffix}", 'a')
+sys.stderr = tracefile
+
 sys.path.insert(1, '/hcp/xtra')
 
 from HcpHostname import valid_hostname, dc_hostname, pop_hostname
@@ -186,7 +192,7 @@ c = subprocess.run(
 		f"{hostname}" ],
 	cwd = '/install-safeboot',
 	stdout = subprocess.PIPE,
-	stderr = subprocess.PIPE,
+	stderr = tracefile,
 	text = True)
 if c.returncode != 0:
 	# print(c.stdout, file = sys.stderr)

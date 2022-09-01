@@ -1,0 +1,17 @@
+{
+	"dir": "/purger",
+	"period": 60,
+	"retry": 120,
+	"purgerlogdir": "/purger/logs",
+	"purgerlogfmt": "log-{t.year:04}{t.month:02}{t.day:02}{t.hour:02}",
+	"purgerlogjson": [
+		{
+			"glob": "/purger/logs/log-*",
+			"hours": 5
+		},
+		{
+			"glob": "/home/emgmtdb/debug-*",
+			"days": 2
+		}
+	]
+}
