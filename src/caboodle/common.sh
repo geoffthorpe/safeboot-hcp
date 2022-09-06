@@ -80,6 +80,7 @@ declare -A hcp_entity=( \
 	[kdc1_tpm]=./kdc1_tpm.env \
 	[aclient]=./aclient.env \
 	[aclient_tpm]=./aclient_tpm.env \
+	[wait_emgmt]=./wait_emgmt.env \
         )
 # Declare what type of service it is (lifetime)
 declare -A hcp_entity_type=( \
@@ -93,6 +94,7 @@ declare -A hcp_entity_type=( \
 	[kdc1_tpm]=service \
 	[aclient]=util \
 	[aclient_tpm]=service \
+	[wait_emgmt]=util \
 	)
 # Ordered list of entities
 hcp_entities=$(echo "${!hcp_entity[@]}" | tr " " "\n" | sort)
