@@ -78,7 +78,7 @@ services:
         environment:
           - HCP_INSTANCE=/usecase/emgmt.env
         healthcheck:
-            test: /hcp/enrollsvc/healthcheck.sh
+            test: /hcp/tools/emgmt_healthcheck.sh
             timeout: 1s
             interval: 2s
 
