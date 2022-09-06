@@ -68,13 +68,10 @@ function hcp_pre_launch {
 	fi
 	HCP_LAUNCH_DIR=$(dirname "$HCP_INSTANCE")
 	HCP_LAUNCH_ENV=$(basename "$HCP_INSTANCE")
-	echo "Entering directory '$HCP_LAUNCH_DIR'"
 	cd $HCP_LAUNCH_DIR
 	if [[ -f common.env ]]; then
-		echo "Sourcing common config: common.env"
 		source common.env
 	fi
-	echo "Sourcing specific config: $HCP_LAUNCH_ENV"
 	source "$HCP_LAUNCH_ENV"
 	# If we're supposed to launch any background tasks (eg. FQDN
 	# discovery), use this opportunity.
