@@ -9,11 +9,12 @@ import hashlib
 from tempfile import TemporaryDirectory
 from uuid import uuid4
 
-import datetime
-now = datetime.datetime.now(datetime.timezone.utc)
-suffix = f"{now.year:04}:{now.month:02}:{now.day:02}:{now.hour:02}"
-tracefile = open(f"{os.environ['HOME']}/debug-dbadd-{suffix}", 'a')
-sys.stderr = tracefile
+sys.path.insert(1, '/hcp/common')
+import hcp_tracefile
+tfile = hcp_tracefile.tracefile("dbadd")
+sys.stderr = tfile
+import hcp_common
+log = hcp_common.log
 
 sys.path.insert(1, '/hcp/xtra')
 
@@ -21,14 +22,10 @@ from HcpHostname import valid_hostname, dc_hostname, pop_hostname
 from HcpRecursiveUnion import union
 import HcpEnvExpander
 
-sys.path.insert(1, '/hcp/common')
-import hcp_common
-log = hcp_common.log
-bail = hcp_common.bail
-
 sys.path.insert(1, '/hcp/enrollsvc')
 import db_common
 run_git_cmd = db_common.run_git_cmd
+bail = db_common.bail
 
 # IMPORTANT: this file must send any miscellaneous output to stderr _only_.
 # This process is launched (by mgmt_sudo.sh) behind a 'sudo' call from the
@@ -150,7 +147,8 @@ if policy_url:
 	url = f"{policy_url}/emgmt/v1/add"
 	response = requests.post(url, files=form_data)
 	if response.status_code != 200:
-		bail(f"policy-checker refused enrollment: {response.status_code}")
+		log(f"policy-checker refused enrollment: {response.status_code}")
+		sys.exit(403)
 
 # Prepare that enroll.conf that safeboot feeds on
 genprogs_pre = ""
@@ -192,11 +190,9 @@ c = subprocess.run(
 		f"{hostname}" ],
 	cwd = '/install-safeboot',
 	stdout = subprocess.PIPE,
-	stderr = tracefile,
+	stderr = tfile,
 	text = True)
 if c.returncode != 0:
-	# print(c.stdout, file = sys.stderr)
-	# print(c.stderr, file = sys.stderr)
 	bail(f"safeboot 'attest-enroll' failed: {c.returncode}")
 
 # Enrollment performed, so assets are in 'ephemeral_dir'. Now we need to add it
@@ -218,6 +214,7 @@ fpath_base = db_common.fpath_base(ekpubhash)
 fpath_parent = db_common.fpath_parent(ekpubhash)
 
 # The critical section begins
+log("Enrollment critical section beginning")
 db_common.repo_lock()
 
 # From here on in, we should not allow any error to prevent us from unlocking. Of course,
@@ -250,7 +247,6 @@ except Exception as e:
 	except Exception as e:
 		log(f"Failed: enrollment DB rollback: {e}")
 		bail(f"CATASTROPHIC! DB stays locked for manual intervention")
-		raise caught
 	log(f"Enrollment DB rollback complete")
 
 # Remove the lock, then reraise any exception we intercepted
@@ -258,6 +254,7 @@ db_common.repo_unlock()
 if caught:
 	log(f"Enrollment DB exception continuation: {caught}")
 	raise caught
+log("Enrollment critical section complete")
 
 # The point of this entire file: produce a JSON to stdout that confirms the
 # transaction. This gets returned to the client.
@@ -268,3 +265,5 @@ result = {
 	'profile': clientdata
 }
 print(json.dumps(result, sort_keys = True))
+log("JSON output produced, exiting with code 201")
+sys.exit(201)

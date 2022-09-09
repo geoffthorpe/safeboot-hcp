@@ -45,10 +45,15 @@ function try_self_enroll {
 		unset WARNED_HEALTHCHECK
 	fi
 
-	if ! python3 /hcp/enrollsvc/db_add.py \
+	# The db_*.py scripts use http status codes as their exit codes, so if
+	# we're not careful they always appear to be failing (0 isn't a valid
+	# http status code). We are expecting 201 for an "add" operation.
+	myret=0
+	python3 /hcp/enrollsvc/db_add.py \
 			"$HCP_SWTPMSVC_STATE/tpm/ek.pub" \
 			"$HCP_ENROLLSVC_SELFENROLL_HOSTNAME" \
-			"$MYPROFILE" > "$MYOUT" 2>&1; then
+			"$MYPROFILE" > "$MYOUT" 2>&1 || myret=$?
+	if [[ $myret != 201 ]]; then
 		if [[ -z $WARNED_DBADD ]]; then
 			cat "$MYOUT" > $HOME/debug-self-enroll
 			echo -n "Warning, self-enrollment failed. Trace output" >&2

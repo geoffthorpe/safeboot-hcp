@@ -1,6 +1,6 @@
 # vim: set expandtab shiftwidth=4 softtabstop=4:
 import flask
-from flask import request, abort, send_file
+from flask import request, abort, send_file, Response
 import subprocess
 import json
 import os, sys
@@ -9,6 +9,12 @@ from markupsafe import escape
 from werkzeug.utils import secure_filename
 import tempfile
 import requests
+
+sys.path.insert(1, '/hcp/common')
+from hcp_tracefile import tracefile
+tfile = tracefile("mgmtapi")
+sys.stderr = tfile
+from hcp_common import log
 
 sys.path.insert(1, '/hcp/xtra')
 from HcpRecursiveUnion import union
@@ -108,8 +114,34 @@ def healthcheck():
 db_user = os.environ['HCP_ENROLLSVC_USER_DB']
 sudoargs = [ 'sudo', '-u', db_user, '/hcp/enrollsvc/mgmt_sudo.sh' ]
 
+# The exit code from the sudo's process is expected to be the http status code,
+# rather than the more conventional unix approach where 0 is success and
+# anything else is an error code. To be safe, we sanity-check the status code
+# before allowing it to be used, and we handle construction of the response.
+def check_status_code(c):
+    log(f"check_status_code: returncode={c.returncode}")
+    # We accept success in the form of 200 or 201, ...
+    if c.returncode == 200 or c.returncode == 201:
+        try:
+            j = json.loads(c.stdout)
+        except json.JSONDecodeError as e:
+            log(f"JSON decoding error, line={e.lineno}, col={e.colno}, msg={e.msg}")
+            log("--- document to JSONDecode ---")
+            log(f"{e.doc}")
+            log("--- document to JSONDecode ---")
+            abort(500)
+    # ... or failure in the form of 403, 409, or 500
+    elif c.returncode == 403 or c.returncode == 409 or c.returncode == 500:
+        abort(c.returncode)
+    else:
+        log(f"check_status_code: unrecognized code, changing to 500")
+        abort(500)
+    log(f"decoded from stdout: {j}")
+    return j, c.returncode, {'Content-Type': 'application/json'}
+
 @app.route('/v1/add', methods=['POST'])
 def my_add():
+    log(f"my_add: request={request}")
     if 'ekpub' not in request.files:
         return { "error": "ekpub not in request" }
     if 'hostname' not in request.form:
@@ -120,6 +152,7 @@ def my_add():
         form_profile = "{}"
     else:
         form_profile = request.form['profile']
+    log(f"my_add: form_profile={form_profile}")
     form_data = json.loads(form_profile)
     request_data = get_request_data('/v1/add')
     request_data = union(form_data, request_data)
@@ -137,23 +170,15 @@ def my_add():
                                secure_filename(form_ekpub.filename))
     form_ekpub.save(local_ekpub)
     opadd_args = sudoargs + [ 'add', local_ekpub, form_hostname, request_json]
+    log(f"my_add: opadd_args={opadd_args}")
     c = subprocess.run(opadd_args,
-                       stdout = subprocess.PIPE, stderr = subprocess.PIPE,
+                       stdout = subprocess.PIPE, stderr = tfile,
                        text = True)
-    if c.returncode != 0:
-        # stderr is for debugging
-        # stdout is for the user (hint: don't leak sensitive info to stdout!)
-        print("Failed operation, dumping stderr")
-        print(c.stderr, file = sys.stderr)
-        return {
-            "returncode": c.returncode,
-            "txt": c.stdout
-        }
-    j = json.loads(c.stdout)
-    return j
+    return check_status_code(c)
 
 @app.route('/v1/query', methods=['GET'])
 def my_query():
+    log(f"my_query: request={request}")
     if 'ekpubhash' not in request.args:
         return { "error": "ekpubhash not in request" }
     request_data = get_request_data('/v1/query')
@@ -163,19 +188,15 @@ def my_query():
     else:
         request_data['nofiles'] = False
     request_json = json.dumps(request_data)
+    log(f"my_query: request_json={request_json}")
     c = subprocess.run(sudoargs + [ 'query', request_json],
-                       stdout=subprocess.PIPE, stderr = subprocess.PIPE,
+                       stdout=subprocess.PIPE, stderr = tfile,
                        text=True)
-    if c.returncode != 0:
-        print("Failed operation, dumping stdout+stderr")
-        print(c.stdout, file = sys.stderr)
-        print(c.stderr, file = sys.stderr)
-        abort(500)
-    j = json.loads(c.stdout)
-    return j
+    return check_status_code(c)
 
 @app.route('/v1/delete', methods=['POST'])
 def my_delete():
+    log(f"my_delete: request={request}")
     if 'ekpubhash' not in request.form:
         return { "error": "ekpubhash not in request" }
     request_data = get_request_data('/v1/delete')
@@ -185,37 +206,30 @@ def my_delete():
     else:
         request_data['nofiles'] = False
     request_json = json.dumps(request_data)
+    log(f"my_delete: request_json={request_json}")
     c = subprocess.run(sudoargs + [ 'delete', request_json],
                        stdout=subprocess.PIPE, stderr = subprocess.PIPE,
                        text=True)
-    if (c.returncode != 0):
-        print("Failed operation, dumping stdout+stderr")
-        print(c.stdout, file = sys.stderr)
-        print(c.stderr, file = sys.stderr)
-        abort(500)
-    j = json.loads(c.stdout)
-    return j
+    return check_status_code(c)
 
 @app.route('/v1/find', methods=['GET'])
 def my_find():
+    log(f"my_find: request={request}")
     if 'hostname_regex' not in request.args:
         return { "error": "hostname_regex not in request" }
     request_data = get_request_data('/v1/find')
     request_data['hostname_regex'] = request.args['hostname_regex']
     request_json = json.dumps(request_data)
+    log(f"my_find: request_json={request_json}")
     c = subprocess.run(sudoargs + [ 'find', request_json],
                        stdout=subprocess.PIPE, stderr = subprocess.PIPE,
                        text=True)
-    if (c.returncode != 0):
-        print("Failed operation, dumping stdout+stderr")
-        print(c.stdout, file = sys.stderr)
-        print(c.stderr, file = sys.stderr)
-        abort(500)
-    j = json.loads(c.stdout)
-    return j
+    return check_status_code(c)
 
 @app.route('/v1/get-asset-signer', methods=['GET'])
 def assetSigner():
+    log(f"assetSigner: request={request}")
+    log(f"assetSigner: {os.environ['HCP_ENROLLSVC_SIGNER']}/key.pem")
     return send_file(f"{os.environ['HCP_ENROLLSVC_SIGNER']}/key.pem",
                      as_attachment = True,
                      attachment_filename = 'asset-signer.pem')

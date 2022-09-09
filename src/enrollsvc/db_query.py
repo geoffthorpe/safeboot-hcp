@@ -5,11 +5,12 @@ import json
 import glob
 
 sys.path.insert(1, '/hcp/common')
-from hcp_common import log, bail
+from hcp_common import log
 
 sys.path.insert(1, '/hcp/enrollsvc')
 import db_common
 run_git_cmd = db_common.run_git_cmd
+bail = db_common.bail
 
 valid_ekpubhash_prefix_re = '[a-f0-9_-]*'
 valid_ekpubhash_prefix_prog = re.compile(valid_ekpubhash_prefix_re)
@@ -100,7 +101,6 @@ except Exception as e:
 	except Exception as e:
 		log(f"Failed: enrollment DB rollback: {e}")
 		bail(f"CATASTROPHIC! DB stays locked for manual intervention")
-		raise caught
 	log(f"Enrollment DB rollback complete")
 
 # Remove the lock, then reraise any exception we intercepted
@@ -119,3 +119,4 @@ result = {
 	'entries': entries
 }
 print(json.dumps(result))
+sys.exit(200)

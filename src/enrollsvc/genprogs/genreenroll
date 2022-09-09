@@ -7,10 +7,11 @@ import json
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-#sys.stderr = open(f"{os.environ['HOME']}/debug-reenroll", 'a')
-
 sys.path.insert(1, '/hcp/common')
 from hcp_common import log, bail, dict_val_or, env_get, dict_timedelta
+import hcp_tracefile
+tfile = hcp_tracefile.tracefile("genreenroll")
+sys.stderr = tfile
 
 # attest-enroll sends us 3 arguments (+1 for the program name, so
 # len(sys.args)==4), but we only consume the first, the directory to produce

@@ -3,10 +3,11 @@ import os
 import json
 
 sys.path.insert(1, '/hcp/common')
-from hcp_common import bail
+from hcp_common import log
 
 sys.path.insert(1, '/hcp/enrollsvc')
 import db_common
+bail = db_common.bail
 
 # Usage:
 # db_find.py <clientjson>
@@ -47,3 +48,4 @@ result = {
 	'entries': entries
 }
 print(json.dumps(result, sort_keys = True))
+sys.exit(200)
