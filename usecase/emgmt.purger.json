@@ -12,6 +12,10 @@
 		{
 			"glob": "/home/emgmtdb/debug-*",
 			"days": 2
+		},
+		{
+			"glob": "/root/debug-*",
+			"days": 2
 		}
 	]
 }
