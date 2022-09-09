@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+# vim: set expandtab shiftwidth=4 softtabstop=4:
 
 # A crude way to perform these tasks directly (using curl) is;
 #
@@ -23,9 +24,22 @@ import requests
 import os
 import sys
 import argparse
+import time
 
+loglevel = 0
+def set_loglevel(v):
+    global loglevel
+    loglevel = v
+
+def _log(level, s):
+    if level <= loglevel:
+        print(f"{s}", file = sys.stderr)
+def err(s):
+    _log(0, s)
 def log(s):
-    print(f"{s}", file = sys.stderr)
+    _log(1, s)
+def debug(s):
+    _log(2, s)
 
 auth = None
 if os.environ.get('HCP_GSSAPI'):
@@ -47,6 +61,38 @@ if os.environ.get('HCP_GSSAPI'):
 # unpack those and pass the parameters into a more API-like interface for the
 # actual implementations.
 
+# This internal function is used as a wrapper to deal with exceptions and
+# retries. 'args' specifies whether retries' should be attempted and how many
+# times, how long to pause between those retries, etc. 'request_fn' is a
+# caller-supplied callback (eg. lambda) function that performs the desired
+# operation and (if no exception occurs) returns the desired result.  This
+# caller-supplied function typically calls requests.get() or requests.post()
+# with whatever inputs are desired and passes back the return value from that.
+# Note, the retries are only considered in the case that an exception was
+# thrown in the 'request_fn'. If 'request_fn' returns without exception, we
+# pass along whatever it returned rather than retrying. (If the response
+# contains a non-2xx http status code, that's not our business.)
+        #except requests.exceptions.RequestException as e:
+def requester_loop(args, request_fn):
+    debug(f"requester_loop: retries={args.retries}, pause={args.pause}")
+    retries = args.retries
+    while True:
+        try:
+            debug("requester_loop: calling request_fn()")
+            response = request_fn()
+        except Exception as e:
+            if retries > 0:
+                debug(f"requester_loop: caught exception, retries={retries}")
+                debug(f" - e: {e}")
+                retries -= 1
+                time.sleep(args.pause)
+                continue
+            debug(f"requester_loop: caught exception, no retries")
+            debug(f" - e: {e}")
+            raise e
+        debug("requester_loop: returning")
+        return response
+
 # Handler functions for the subcommands (add, query, delete, find)
 # They all return a 2-tuple of {result,json}, where result is True iff the
 # operation was successful.
@@ -58,21 +104,28 @@ def enroll_add(args):
     }
     if args.profile is not None:
         form_data['profile'] = (None, args.profile)
-    response = requests.post(args.api + '/v1/add',
+    debug("'add' handler about to call API")
+    debug(f" - url: {args.api + '/v1/add'}")
+    debug(f" - files: {form_data}")
+    myrequest = lambda: requests.post(args.api + '/v1/add',
                              files=form_data,
                              auth=auth,
                              verify=args.requests_verify,
                              cert=args.requests_cert)
-    if response.status_code != 200:
-        print(f"Error, response status code was {response.status_code}")
-        rcode = -1
+    response = requester_loop(args, myrequest)
+    debug(f" - response: {response}")
+    debug(f" - response.content: {response.content}")
+    if response.status_code != 201:
+        err(f"Error, 'add' response status code was {response.status_code}")
         return False, None
     try:
         jr = json.loads(response.content)
         rcode = jr['returncode']
-    except KeyError:
-        print("Error, JSON decoding of response failed")
+    except Exception as e:
+        err(f"Error, JSON decoding of 'add' response failed: {e}")
         rcode = -1
+    debug(f" - jr: {jr}")
+    debug(f" - rcode: {rcode}")
     if rcode != 0:
         return False, jr
     return True, jr
@@ -82,28 +135,39 @@ def do_query_or_delete(args, is_delete):
         form_data = { 'ekpubhash': (None, args.ekpubhash) }
         if args.nofiles:
             form_data['nofiles'] = (None, True)
-        response = requests.post(args.api + '/v1/delete',
+        debug("'delete' handler about to call API")
+        debug(f" - url: {args.api + '/v1/delete'}")
+        debug(f" - files: {form_data}")
+        myrequest = lambda: requests.post(args.api + '/v1/delete',
                                  files=form_data,
                                  auth=auth,
                                  verify=args.requests_verify,
                                  cert=args.requests_cert)
+        response = requester_loop(args, myrequest)
     else:
         form_data = { 'ekpubhash': args.ekpubhash }
         if args.nofiles:
             form_data['nofiles'] = True
-        response = requests.get(args.api + '/v1/query',
+        debug("'query' handler about to call API")
+        debug(f" - url: {args.api + '/v1/query'}")
+        debug(f" - files: {form_data}")
+        myrequest = lambda: requests.get(args.api + '/v1/query',
                                 params=form_data,
                                 auth=auth,
                                 verify=args.requests_verify,
                                 cert=args.requests_cert)
+        response = requester_loop(args, myrequest)
+    debug(f" - response: {response}")
+    debug(f" - response.content: {response.content}")
     if response.status_code != 200:
-        print(f"Error, response status code was {response.status_code}")
+        err(f"Error, response status code was {response.status_code}")
         return False, None
     try:
         jr = json.loads(response.content)
-    except:
-        print("Error, JSON decoding of response failed")
+    except Exception as e:
+        log(f"Error, JSON decoding of response failed: {e}")
         return False, None
+    debug(f" - jr: {jr}")
     return True, jr
 
 def enroll_query(args):
@@ -114,32 +178,46 @@ def enroll_delete(args):
 
 def enroll_find(args):
     form_data = { 'hostname_regex': args.hostname_regex }
-    response = requests.get(args.api + '/v1/find',
+    debug("'find' handler about to call API")
+    debug(f" - url: {args.api + '/v1/find'}")
+    debug(f" - files: {form_data}")
+    myrequest = lambda: requests.get(args.api + '/v1/find',
                             params=form_data,
                             auth=auth,
                             verify=args.requests_verify,
                             cert=args.requests_cert)
+    response = requester_loop(args, myrequest)
+    debug(f" - response: {response}")
+    debug(f" - response.content: {response.content}")
     if response.status_code != 200:
-        print(f"Error, response status code was {response.status_code}")
+        log(f"Error, 'find' response status code was {response.status_code}")
         return False, None
     try:
         jr = json.loads(response.content)
-    except:
-        print("Error, JSON decoding of response failed")
+    except Exception as e:
+        log("Error, JSON decoding of 'find' response failed: {e}")
         return False, None
+    debug(f" - jr: {jr}")
     return True, jr
 
 def enroll_getAssetSigner(args):
-    response = requests.get(args.api + '/v1/get-asset-signer',
+    debug("'getAssetSigner' handler about to call API")
+    debug(f" - url: {args.api + '/v1/get-asset-signer'}")
+    myrequest = lambda: requests.get(args.api + '/v1/get-asset-signer',
                             auth=auth,
                             verify=args.requests_verify,
                             cert=args.requests_cert)
+    response = requester_loop(args, myrequest)
+    debug(f" - response: {response}")
+    debug(f" - response.content: {response.content}")
     if response.status_code != 200:
-        print(f"Error, response status code was {response.status_code}")
+        log(f"Error, 'getAssetSigner' response status code was {response.status_code}")
         return False, None
     if args.output:
+        debug(" - output: {args.output}")
         open(args.output, 'wb').write(response.content)
     else:
+        debug(" - output: stdout")
         sys.stdout.buffer.write(response.content)
     return True, None
 
@@ -164,8 +242,11 @@ if __name__ == '__main__':
     enroll_help_api = 'base URL for management interface'
     enroll_help_cacert = 'path to CA cert (or bundle) for validating server certificate'
     enroll_help_noverify = 'disable validation of server certificate'
+    enroll_help_verbosity = 'verbosity level, 0 means quiet, more than 0 means less quiet'
     enroll_help_clientcert = 'path to client cert to authenticate with'
     enroll_help_clientkey = 'path to client key (if not included with --clientcert)'
+    enroll_help_retries = 'max number of API retries'
+    enroll_help_pause = 'number of seconds between retries'
     parser = argparse.ArgumentParser(description=enroll_desc,
                                      epilog=enroll_epilog)
     parser.add_argument('--api', metavar='<URL>',
@@ -182,6 +263,12 @@ if __name__ == '__main__':
     parser.add_argument('--clientkey', metavar='<PATH>',
                         default=os.environ.get('ENROLLSVC_API_CLIENTKEY'),
                         help=enroll_help_clientkey)
+    parser.add_argument('--verbosity', type=int, metavar='<level>',
+                        default=0, help=enroll_help_verbosity)
+    parser.add_argument('--retries', type=int, metavar='<num>',
+                        default=0, help=enroll_help_retries)
+    parser.add_argument('--pause', type=int, metavar='<secs>',
+                        default=0, help=enroll_help_pause)
 
     subparsers = parser.add_subparsers()
 
@@ -277,8 +364,10 @@ if __name__ == '__main__':
 
     # Process the command-line
     args = parser.parse_args()
+    set_loglevel(args.verbosity)
+    log(f"verbosity={args.verbosity}")
     if not args.api:
-        print("Error, no API URL was provided.")
+        err("Error, no API URL was provided.")
         sys.exit(-1)
     if args.noverify:
         args.requests_verify = False
@@ -294,15 +383,17 @@ if __name__ == '__main__':
     else:
         args.requests_cert = False
 
-    # Dispatch. Note that 'json' is not necessarily JSON. :-) E.g. the getAssetSigner
-    # function will None
+    # Dispatch. Here, we are operating as a program with a parent process, not a library with
+    # a caller. If we don't catch exceptions, they get handled by the runtime which will print
+    # stack traces to stderr and exit, there is no concept of the exceptions reaching the
+    # parent process. As such, catch them all here.
     try:
         result, j = args.func(args)
-    except:
-        print("Error, unable to hit API end-point")
+    except Exception as e:
+        print(f"Error, unable to hit API end-point: {e}", file = sys.stderr)
         sys.exit(-1)
+    log(f"handler returned: result={result},j={j}")
     if j:
         print(json.dumps(j))
     if not result:
-        print("Error, API returned failure")
         sys.exit(-1)
