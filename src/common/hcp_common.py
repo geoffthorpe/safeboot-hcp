@@ -5,10 +5,11 @@ from datetime import datetime, timezone, timedelta
 
 def log(s):
 	print(s, file=sys.stderr)
+	sys.stderr.flush()
 
-def bail(s):
+def bail(s, exitcode = 1):
 	log(f"FAIL: {s}")
-	sys.exit(1)
+	sys.exit(exitcode)
 
 def env_get(k):
 	if not k in os.environ:
@@ -25,6 +26,15 @@ def env_get_or_none(k):
 	if not isinstance(v, str):
 		return None
 	if len(v) == 0:
+		return None
+	return v
+
+def env_get_dir_or_none(k):
+	v = env_get_or_none(k)
+	if not v:
+		return None
+	path = Path(v)
+	if not path.is_dir():
 		return None
 	return v
 

@@ -5,7 +5,11 @@ import re
 import json
 
 sys.path.insert(1, '/hcp/common')
-from hcp_common import log, bail, env_get
+import hcp_common
+log = hcp_common.log
+env_get = hcp_common.env_get
+def bail(s, exitcode = 500):
+	hcp_common.bail(s, exitcode)
 
 # The following environment elements are required by all db ops
 enrollsvc_state = env_get('HCP_ENROLLSVC_STATE')
