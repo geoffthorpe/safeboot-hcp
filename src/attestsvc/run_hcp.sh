@@ -20,7 +20,7 @@
 	done
 )
 
-. /hcp/attestsvc/common.sh
+source /hcp/attestsvc/common.sh
 
 expect_root
 

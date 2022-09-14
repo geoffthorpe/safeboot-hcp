@@ -20,7 +20,7 @@
 	done
 )
 
-. /hcp/enrollsvc/common.sh
+source /hcp/enrollsvc/common.sh
 
 expect_root
 
