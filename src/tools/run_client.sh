@@ -2,24 +2,101 @@
 
 source /hcp/common/hcp.sh
 
-if [[ -z "$HCP_ATTESTCLIENT_ATTEST_URL" ]]; then
-	echo "Error, HCP_ATTESTCLIENT_ATTEST_URL (\"$HCP_ATTESTCLIENT_ATTEST_URL\") is not set"
+retries=0
+pause=1
+VERBOSE=0
+URL="$HCP_ATTESTCLIENT_ATTEST_URL"
+TCTI="$HCP_ATTESTCLIENT_TPM2TOOLS_TCTI"
+VERIFIER=
+ANCHOR=$([[ -n $HCP_ATTESTCLIENT_VERIFIER ]] &&
+	echo "$HCP_ATTESTCLIENT_VERIFIER/key.pem" || true)
+CALLBACKS="$HCP_ATTESTCLIENT_CALLBACKS"
+
+usage() {
+	((${1:-1} == 0)) || exec 1>&2
+	pager=cat
+	if [[ -t 0 && -t 1 && -t 2 ]]; then
+		if [[ -z ${PAGER:-} ]] && type less >/dev/null 2>&1; then
+			pager=less
+		elif [[ -z ${PAGER:-} ]] && type more >/dev/null 2>&1; then
+			pager=more
+		elif [[ -n ${PAGER:-} ]]; then
+			pager=$PAGER
+		fi
+	fi
+	$pager <<EOF
+Usage: $PROG [OPTIONS] [names ...]
+
+  Runs the attestation client. Note that the TPM must be available when this
+  tool runs - the retry logic (per -R and -P options) only applies to the
+  attestation process, to support the case where the TPM/host tuple has been
+  enrolled but the enrollment has not yet replicated to the attestation
+  service.
+
+  Options:
+
+    -h               This message
+    -v               Verbose
+    -R <num>         Number of retries before failure
+        (default: $retries)
+    -P <seconds>     Time between retries
+        (default: $pause)
+    -U <url>         Attestation URL
+        (default: $(test -n "$URL" && echo "$URL" || echo "None"))
+    -T <tcti>        'TPM2TOOLS_TCTI' setting, for path to TPM
+        (default: $(test -n "$TCTI" && echo "$TCTI" || echo "None"))
+    -A <path>        Path to enrollsvc trust anchor for verification
+        (default: $(test -n "$ANCHOR" && echo "$ANCHOR" || echo "None"))
+    -C <callbacks>   Space-separated list of callbacks to execute"
+        (default: $(test -n "$CALLBACKS" && echo "\"$CALLBACKS\"" || echo "None"))
+EOF
+	exit "${1:-1}"
+}
+
+while getopts +:R:P:U:T:A:C:hv opt; do
+case "$opt" in
+R)	retries="$OPTARG";;
+P)	pause="$OPTARG";;
+U)	URL="$OPTARG";;
+T)	TCTI="$OPTARG";;
+A)	ANCHOR="$OPTARG";;
+C)	CALLBACKS="$OPTARG";;
+h)	usage 0;;
+v)	((VERBOSE++)) || true;;
+*)	echo >&2 "Unknown option: $opt"; usage;;
+esac
+done
+shift $((OPTIND - 1))
+
+if ((VERBOSE > 0)); then
+	cat >&2 <<EOF
+Starting $PROG:
+ - retries=$retries
+ - pause=$pause
+ - onlyenroll=$onlyenroll
+ - onlycreate=$onlycreate
+ - VERBOSE=$VERBOSE
+ - URL=$URL
+ - JSONPATH=$JSONPATH
+ - #names=$#
+ - {names}=$@
+EOF
+fi
+
+if [[ -z $URL ]]; then
+	echo "Error, no attestation URL configured" >&2
 	exit 1
 fi
-if [[ -z "$HCP_ATTESTCLIENT_TPM2TOOLS_TCTI" ]]; then
-	echo "Error, HCP_ATTESTCLIENT_TPM2TOOLS_TCTI (\"$HCP_ATTESTCLIENT_TPM2TOOLS_TCTI\") is not set"
+if [[ -z $TCTI ]]; then
+	echo "Error, no TCTI (path to TPM) configured" >&2
 	exit 1
 fi
-export TPM2TOOLS_TCTI=$HCP_ATTESTCLIENT_TPM2TOOLS_TCTI
-if [[ -z "$HCP_ATTESTCLIENT_VERIFIER" || ! -d "$HCP_ATTESTCLIENT_VERIFIER" ]]; then
-	echo "Error, HCP_ATTESTCLIENT_VERIFIER (\"$HCP_ATTESTCLIENT_VERIFIER\") is not a valid directory" >&2
+export TPM2TOOLS_TCTI="$TCTI"
+if [[ -z $ANCHOR ]]; then
+	echo "Error, no trust anchor (enrollsvc signer cert) configured" >&2
 	exit 1
 fi
-export ENROLL_SIGN_ANCHOR=$HCP_ATTESTCLIENT_VERIFIER/key.pem
-if [[ ! -f "$ENROLL_SIGN_ANCHOR" ]]; then
-	echo "Error, HCP_ATTESTCLIENT_VERIFIER does not contain key.pem" >&2
-	exit 1
-fi
+export ENROLL_SIGN_ANCHOR=$ANCHOR
 
 source_safeboot_functions
 
@@ -27,10 +104,6 @@ source_safeboot_functions
 # and functions.sh
 export DIR=/install-safeboot
 cd $DIR
-
-# passed in from "docker run" cmd-line
-export HCP_ATTESTCLIENT_TPM2TOOLS_TCTI
-export HCP_ATTESTCLIENT_ATTEST_URL
 
 echo "Running 'attestclient'"
 
@@ -43,21 +116,10 @@ tmp_extract=`mktemp -d`
 trap 'rm -rf $tmp_pcrread $tmp_secrets $tmp_attest $tmp_key $tmp_extract' EXIT ERR
 
 # Check that our TPM is configured and alive
-waitcount=0
-until tpm2_pcrread >> "$tmp_pcrread" 2>&1; do
-	waitcount=$((waitcount+1))
-	if [[ $waitcount -eq 1 ]]; then
-		echo "Warning: waiting for TPM to initialize" >&2
-	fi
-	if [[ $waitcount -eq 11 ]]; then
-		echo "Error: giving up. Outputs of tpm_pcrread follow;" >&2
-		cat $tmp_pcrread >&2
-		exit 1
-	fi
-	sleep 1
-done
-if [[ $waitcount -gt 0 ]]; then
-	echo "Info: TPM available after retrying" >&2
+if ! tpm2_pcrread >> "$tmp_pcrread" 2>&1; then
+	echo "Error, TPM not available;" >&2
+	cat $tmp_pcrread >&2
+	exit 1
 fi
 
 # TODO: this is a temporary and bad fix. The swtpm assumes that connections
@@ -74,30 +136,34 @@ fi
 # call will actually fail so has to be commented out.
 tpm2_dictionarylockout --clear-lockout
 
-# Now keep trying to get a successful attestation. It may take a few seconds
-# for our TPM enrollment to propagate to the attestation server, so it's normal
-# for this to fail a couple of times before succeeding.
-waitcount=0
-wait_tens=4
-until ./sbin/tpm2-attest attest $HCP_ATTESTCLIENT_ATTEST_URL \
-				> $tmp_secrets 2>> "$tmp_attest"; do
-	waitcount=$((waitcount+1))
-	if [[ $waitcount -eq 1 ]]; then
-		echo "Warning: attestation failed, may just be replication latency" >&2
-	fi
-	if [[ $waitcount -eq 11 ]]; then
-		if [[ $wait_tens -eq 1 ]]; then
-			echo "Error: attestation failed many times, giving up" >&2
-			cat $tmp_attest >&2
-			exit 1
+while :; do
+	ecode=0
+	# "tpm2-attest attest" returns an exit code of 2 (rather than 1) if the
+	# error was (only) that the server didn't have an enrollment matching
+	# out TPM. This is the case where retry logic applies. Note, we
+	# replicate the semantic - if we fail because the exit codes are 2,
+	# we'll exit with 2 as well.
+	./sbin/tpm2-attest attest $URL > "$tmp_secrets" 2> "$tmp_attest" ||
+		ecode=$?
+	if [[ $ecode == 2 ]]; then
+		if [[ $retries == 0 ]]; then
+			echo "Error, attestsvc doesn't recognize our TPM" >&2
+			exit 2
 		fi
-		wait_tens=$((wait_tens-1))
-		echo "Warning: retried for another 10 seconds" >&2
-		waitcount=1
+		((VERBOSE > 0)) &&
+			echo "Warn, attestsvc doesn't (yet) recognize our TPM" >&2
+		retries=$((retries-1))
+		sleep $pause
+		continue
 	fi
-	sleep 1
+	if [[ $ecode != 0 ]]; then
+		echo "Error, 'tpm2-attest attest' failed;" >&2
+		cat "$tmp_attest" >&2
+		exit 1
+	fi
+	echo "Info, 'tpm2-attest attest' succeeded"
+	break
 done
-echo "Info: attestation succeeded after retrying" >&2
 
 if (
 	echo "Extracting the attestation result"
@@ -117,8 +183,8 @@ if (
 			tpm2 policypcr '--pcr-list=sha256:11' > /dev/null 2>&1
 		aead_decrypt "$i.enc" $tmp_key "$i"
 	done
-	if [[ -n $HCP_ATTESTCLIENT_CALLBACKS ]]; then
-		for i in $HCP_ATTESTCLIENT_CALLBACKS; do
+	if [[ -n $CALLBACKS ]]; then
+		for i in $CALLBACKS; do
 			echo "Running callback '$i'"
 			if ! $i; then
 				echo "Failure in callback '$i'" >&2
