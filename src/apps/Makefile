@@ -9,7 +9,8 @@ include $(HCP_APPS_SRC)/Makefile.sub
 
 # Build a hcp_common image on top of base-platform that includes all
 # our non-app code
-$(eval $(call app_image,common,,safeboot tpmware heimdal xtra common))
+$(eval $(call app_image,common,,safeboot tpmware heimdal xtra common,\
+	[\"/hcp/common/launcher.sh\"],))
 
 # Build a hcp_caboodle image with everything
 $(eval $(call app_image,caboodle,common,\
@@ -17,12 +18,12 @@ $(eval $(call app_image,caboodle,common,\
 
 # Only build service/tools-specific images if requested
 ifdef HCP_APPS_GRANULAR
-$(eval $(call app_image,tools,common,tools))
-$(eval $(call app_image,enrollsvc,tools,enrollsvc swtpmsvc))
-$(eval $(call app_image,attestsvc,common,attestsvc))
-$(eval $(call app_image,policysvc,common,policysvc))
-$(eval $(call app_image,swtpmsvc,common,swtpmsvc))
-$(eval $(call app_image,kdcsvc,tools,kdcsvc))
+$(eval $(call app_image,tools,common,tools,,))
+$(eval $(call app_image,enrollsvc,tools,enrollsvc swtpmsvc,,))
+$(eval $(call app_image,attestsvc,tools,attestsvc,,))
+$(eval $(call app_image,policysvc,common,policysvc,,[\"/hcp/policysvc/run_policy.sh\"]))
+$(eval $(call app_image,swtpmsvc,common,swtpmsvc,,[\"/hcp/swtpmsvc/run_swtpm.sh\"]))
+$(eval $(call app_image,kdcsvc,tools,kdcsvc,,[\"/hcp/kdcsvc/run_kdc.sh\"]))
 else
 $(eval $(call app_alias,tools,caboodle))
 $(eval $(call app_alias,enrollsvc,caboodle))

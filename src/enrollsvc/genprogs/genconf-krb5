@@ -1,7 +1,5 @@
 #!/bin/bash
 
-source /hcp/common/hcp.sh
-
 cd "$1"
 
 myjson=$(echo "$ENROLL_JSON" | jq -r '.["genconf-krb5"] // empty')

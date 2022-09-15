@@ -2,11 +2,18 @@
 
 echo "SERVICES_TEST: starting all services"
 $DCOMPOSE up -d pol emgmt erepl arepl ahcp aclient_tpm
+
 echo "SERVICES_TEST: waiting for emgmt to come up"
-$DCOMPOSE exec -e HCP_INSTANCE=/usecase/emgmt.env emgmt /hcp/tools/emgmt_healthcheck.sh -R 9999
+$DCOMPOSE exec emgmt /hcp/tools/emgmt_healthcheck.sh -R 9999
+
 echo "SERVICES_TEST: running orchestrator"
-$DCOMPOSE run orchestrator || exit 1
+$DCOMPOSE run orchestrator /hcp/tools/run_orchestrator.sh aclient
+
+echo "SERVICES_TEST: waiting for ahcp to come up"
+$DCOMPOSE exec ahcp /hcp/tools/ahcp_healthcheck.sh -R 9999
+
 echo "SERVICES_TEST: running attestation client"
-$DCOMPOSE run aclient || exit 1
+$DCOMPOSE run aclient /hcp/tools/run_client.sh -R 9999
+
 echo "SERVICES_TEST: stopping all services"
 # The trap in wrapper.sh takes care of stopping things

@@ -80,7 +80,8 @@ declare -A hcp_entity=( \
 	[kdc1_tpm]=./kdc1_tpm.env \
 	[aclient]=./aclient.env \
 	[aclient_tpm]=./aclient_tpm.env \
-	[wait_emgmt]=./wait_emgmt.env \
+	[wait_emgmt]=./emgmt.env \
+	[wait_ahcp]=./ahcp.env \
         )
 # Declare what type of service it is (lifetime)
 declare -A hcp_entity_type=( \
@@ -95,6 +96,22 @@ declare -A hcp_entity_type=( \
 	[aclient]=util \
 	[aclient_tpm]=service \
 	[wait_emgmt]=util \
+	[wait_ahcp]=util \
+	)
+# Declare the commands to run
+declare -A hcp_entity_cmd=( \
+	[pol]=/hcp/policysvc/run_policy.sh \
+	[emgmt]=/hcp/enrollsvc/run_mgmt.sh \
+	[erepl]=/hcp/enrollsvc/run_repl.sh \
+	[arepl]=/hcp/attestsvc/run_repl.sh \
+	[ahcp]=/hcp/attestsvc/run_hcp.sh \
+	[orchestrator]="/hcp/tools/run_orchestrator.sh aclient" \
+	[kdc1]=/hcp/kdcsvc/run_kdc.sh \
+	[kdc1_tpm]=/hcp/swtpmsvc/run_swtpm.sh \
+	[aclient]="/hcp/tools/run_client.sh -R 9999" \
+	[aclient_tpm]=/hcp/swtpmsvc/run_swtpm.sh \
+	[wait_emgmt]="/hcp/tools/emgmt_healthcheck.sh -R 9999" \
+	[wait_ahcp]="/hcp/tools/ahcp_healthcheck.sh -R 9999" \
 	)
 # Ordered list of entities
 hcp_entities=$(echo "${!hcp_entity[@]}" | tr " " "\n" | sort)
@@ -147,8 +164,8 @@ function hcp_service_start {
 		echo "Error, HCP service $1 already has a PID file ($pidfile)"
 		return 1
 	fi
-	HCP_INSTANCE="${hcp_entity[$1]}" \
-		/hcp/common/launcher.sh > $logfile 2>&1 &
+	HCP_INSTANCE="${hcp_entity[$1]}" /hcp/common/launcher.sh \
+		"${hcp_entity_cmd[$1]}" > $logfile 2>&1 &
 	echo $! > $pidfile
 	echo "Started HCP service $1 (PID=$(cat $pidfile))"
 }
@@ -197,7 +214,8 @@ function hcp_setup_run {
 		return 1
 	fi
 	echo "Starting HCP setup $1"
-	HCP_INSTANCE="${hcp_entity[$1]}" /hcp/common/launcher.sh
+	HCP_INSTANCE="${hcp_entity[$1]}" /hcp/common/launcher.sh \
+		"${hcp_entity_cmd[$1]}"
 	touch $pidfile
 	echo "Completed HCP setup $1"
 }
@@ -208,7 +226,8 @@ function hcp_setup_run {
 
 function hcp_util_run {
 	hcp_entity_must_type $1 util || return 1
-	HCP_INSTANCE="${hcp_entity[$1]}" /hcp/common/launcher.sh
+	HCP_INSTANCE="${hcp_entity[$1]}" /hcp/common/launcher.sh \
+		"${hcp_entity_cmd[$1]}"
 }
 
 ###########
