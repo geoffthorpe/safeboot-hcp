@@ -2,8 +2,6 @@
 
 source /hcp/common/hcp.sh
 
-hcp_pre_launch
-
 retries=0
 pause=1
 VERBOSE=0

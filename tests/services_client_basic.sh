@@ -7,13 +7,16 @@ echo "SERVICES_TEST: waiting for emgmt to come up"
 $DCOMPOSE exec emgmt /hcp/tools/emgmt_healthcheck.sh -R 9999
 
 echo "SERVICES_TEST: running orchestrator"
-$DCOMPOSE run orchestrator /hcp/tools/run_orchestrator.sh aclient
+$DCOMPOSE run orchestrator -c -e
 
 echo "SERVICES_TEST: waiting for ahcp to come up"
 $DCOMPOSE exec ahcp /hcp/tools/ahcp_healthcheck.sh -R 9999
 
+echo "SERVICES_TEST: waiting for swtpm to come up"
+$DCOMPOSE exec aclient_tpm /hcp/tools/swtpm_healthcheck.sh -R 9999
+
 echo "SERVICES_TEST: running attestation client"
-$DCOMPOSE run aclient /hcp/tools/run_client.sh -R 9999
+$DCOMPOSE run aclient -R 9999
 
 echo "SERVICES_TEST: stopping all services"
 # The trap in wrapper.sh takes care of stopping things

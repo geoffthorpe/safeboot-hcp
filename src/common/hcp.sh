@@ -5,6 +5,13 @@
 # with a non-zero status code. It's good discipline for scripts though.
 [[ -z $PS1 ]] && set -e
 
+# Always call log(), it'll decide whether to print or not
+log() {
+	if [[ -n $VERBOSE ]]; then
+		echo -E "$1" >&2
+	fi
+}
+
 function add_env_path {
 	if [[ -n $1 ]]; then
 		echo "$1:$2"
@@ -57,26 +64,27 @@ function export_hcp_env {
 		sed -e "s/\"/\\\"/" | sed -e "s/=/=\"/" | sed -e "s/$/\"/"
 }
 
-function hcp_pre_launch {
-	if [[ -z $HCP_INSTANCE ]]; then
-		echo "Error, HCP_INSTANCE not defined" >&2
-		return 1
-	fi
+# Load instance-specific environment settings based on the HCP_INSTANCE
+# environment variable. Ie. when starting the container, if HCP_INSTANCE is set
+# then we source the file it points to (and if there is a common.env in the
+# same directory, we source that too).
+if [[ -n $HCP_INSTANCE ]]; then
+	log "HCP: processing HCP_INSTANCE=$HCP_INSTANCE"
 	if [[ ! -f $HCP_INSTANCE ]]; then
-		echo "Error, HCP_INSTANCE ($HCP_INSTANCE) not found" >&2
+		echo "Error, $HCP_INSTANCE not found" >&2
 		return 1
 	fi
 	HCP_LAUNCH_DIR=$(dirname "$HCP_INSTANCE")
 	HCP_LAUNCH_ENV=$(basename "$HCP_INSTANCE")
-	cd $HCP_LAUNCH_DIR
-	if [[ -f common.env ]]; then
-		source common.env
+	if [[ -f "$HCP_LAUNCH_DIR/common.env" ]]; then
+		log "HCP: source common.env"
+		source "$HCP_LAUNCH_DIR/common.env"
 	fi
-	source "$HCP_LAUNCH_ENV"
-	# If we're supposed to launch any background tasks (eg. FQDN
-	# discovery), use this opportunity.
-	/hcp/common/init.sh
-}
+	log "HCP: source $HCP_LAUNCH_ENV"
+	source "$HCP_LAUNCH_DIR/$HCP_LAUNCH_ENV"
+else
+	log "HCP: no HCP_INSTANCE"
+fi
 
 # The following is flexible support for (re)creating a role account with an
 # associated UID file, which is typically in persistent storage. It generalises

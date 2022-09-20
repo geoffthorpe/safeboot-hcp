@@ -1,6 +1,11 @@
 #!/bin/bash
 
-set -e
+source /hcp/common/hcp.sh
+log "HCP init: sourced /hcp/common/hcp.sh"
+
+##########
+# PURGER #
+##########
 
 # The containers produce relevant operational logging to stderr (stdout is
 # generally IO between processes so we don't rely on it ever making it all the
@@ -13,14 +18,12 @@ set -e
 # Solution: run a background process that will periodically inspect a
 # registered set of directories for debugging files that are older than some
 # specified lapse of time and delete them.
-ps ax | grep python3 | grep purger.py | grep -v grep > /dev/null 2>&1 ||
-	if [[ -n $HCP_PURGER_JSON ]]; then
-		nohup python3 /hcp/common/purger.py \
-			> /.purger.output 2>&1 &
-	elif [[ -n $HCP_PURGER_JSON_PATH ]]; then
-		nohup python3 /hcp/common/purger.py "$(cat $HCP_PURGER_JSON_PATH)" \
-			> /.purger.output 2>&1 &
-	fi
+if [[ -n $HCP_PURGER_JSON ]]; then
+	nohup python3 /hcp/common/purger.py > /.purger.output 2>&1 &
+elif [[ -n $HCP_PURGER_JSON_PATH ]]; then
+	nohup python3 /hcp/common/purger.py "$(cat $HCP_PURGER_JSON_PATH)" \
+		> /.purger.output 2>&1 &
+fi
 
 # The following is only relevant when running a closed system inside a docker
 # network, usually to test use-cases/scenarios. If you're deploying a production
@@ -28,6 +31,10 @@ ps ax | grep python3 | grep purger.py | grep -v grep > /dev/null 2>&1 ||
 # you don't want this.
 
 [[ -z $HCP_NO_INIT ]] || exit 0
+
+################
+# FQDN UPDATER #
+################
 
 # Force all inter-container comms to use our explicitly orchestrated FQDNs.
 # Turns out there's a lot of "history" (and some bad feeling) around docker
@@ -69,13 +76,6 @@ ps ax | grep python3 | grep purger.py | grep -v grep > /dev/null 2>&1 ||
 #  - we launch /hcp/common/fqdn-updater.sh as a background task to take care
 #    of the other requirements. Details of how it works are outlined in
 #    fqdn-updater.sh itself.
-#
-#  - note, docker can be ... odd ... in terms of the lifetime of a container
-#    itself versus its processes. E.g. if we use a touchfile in the FS to
-#    indicate that fqdn-updater.sh has started, and the container gets stopped,
-#    the touchfile will disappear when the container is restarted if _and only
-#    if_ the container _image_ has changed. Instead, we crudely scan the
-#    process list looking to see if it is literally running.
 
 [[ -d $HCP_FQDN_PATH ]] || exit 0
 # If running a CABOODLE_ALONE-style environment, you explicitly do NOT want to
@@ -86,6 +86,6 @@ if [[ -n $HCP_CABOODLE_ALONE ]]; then
 	export HCP_FQDN_PATH=/caboodle-fqdn-bus
 	mkdir -p $HCP_FQDN_PATH
 fi
-ps ax | grep fqdn-updater.sh | grep bash | grep -v grep > /dev/null 2>&1 && exit 0
 test -x /hcp/common/fqdn-updater.sh &&
 	nohup /hcp/common/fqdn-updater.sh > /.fqdn-updater.output 2>&1 &
+true

@@ -25,7 +25,7 @@ if ! /hcp/tools/run_client.sh 2> $attestlog; then
 	echo "Warning: suppressing error output from future attestation attempts" >&2
 	attestation_done=
 	until [[ -n $attestation_done ]]; do
-		echo "Warning: waiting 10 seconds before retring attestation" >&2
+		echo "Warning: waiting 10 seconds before retrying attestation" >&2
 		sleep 10
 		echo "Retrying attestation" >&2
 		/hcp/tools/run_client.sh 2> /dev/null && attestation_done=yes

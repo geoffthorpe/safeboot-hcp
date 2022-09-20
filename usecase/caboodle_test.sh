@@ -14,6 +14,8 @@ if [[ -n $HCP_CABOODLE_ALONE ]]; then
 	hcp_util_run wait_ahcp
 fi
 
+echo "CABOODLE_TEST: waiting for swtpm to come up"
+hcp_util_run wait_aclient_tpm
 echo "CABOODLE_TEST: running attestation client"
 hcp_util_run aclient
 

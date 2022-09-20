@@ -22,7 +22,7 @@ $(eval $(call app_image,tools,common,tools,,))
 $(eval $(call app_image,enrollsvc,tools,enrollsvc swtpmsvc,,))
 $(eval $(call app_image,attestsvc,tools,attestsvc,,))
 $(eval $(call app_image,policysvc,common,policysvc,,[\"/hcp/policysvc/run_policy.sh\"]))
-$(eval $(call app_image,swtpmsvc,common,swtpmsvc,,[\"/hcp/swtpmsvc/run_swtpm.sh\"]))
+$(eval $(call app_image,swtpmsvc,tools,swtpmsvc,,[\"/hcp/swtpmsvc/run_swtpm.sh\"]))
 $(eval $(call app_image,kdcsvc,tools,kdcsvc,,[\"/hcp/kdcsvc/run_kdc.sh\"]))
 else
 $(eval $(call app_alias,tools,caboodle))

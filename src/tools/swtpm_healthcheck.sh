@@ -5,15 +5,7 @@ source /hcp/common/hcp.sh
 retries=0
 pause=1
 VERBOSE=0
-URL=${HCP_EMGMT_HOSTNAME}.${HCP_FQDN_DEFAULT_DOMAIN}
-CERTARG="-f -g"
-if [[ -n $HCP_EMGMT_ENABLE_NGINX ]]; then
-	URL=https://$URL:8443
-	CERTARG="$CERTARG --cert /etc/ssl/hostcerts/hostcert-default-https-client-key.pem"
-else
-	URL=http://$URL:5000
-fi
-URL=$URL/healthcheck
+TPM2TOOLS_TCTI=swtpm:path=$HCP_SWTPMSVC_TPMSOCKET
 
 usage() {
 	((${1:-1} == 0)) || exec 1>&2
@@ -30,10 +22,8 @@ usage() {
 	$pager <<EOF
 Usage: $PROG [OPTIONS]
 
-  Queries the "/healthcheck" API of an HCP enrollsvc "mgmt" instance. This is
-  used to determine if the service is alive, e.g. if a startup script needs to
-  wait for the service to come up before initializing and, once it has, will
-  treat any subsequent error as fatal.
+  Tests whether the given TPM instance responds to a basic query, as a
+  healthcheck.
 
   Options:
 
@@ -43,21 +33,18 @@ Usage: $PROG [OPTIONS]
         (default: $retries)
     -P <seconds>     Time between retries
         (default: $pause)
-    -U <url>         URL for healthcheck the API
-        (default: $URL)
-    -A <curl args>   Pre-URL arguments to 'curl'
-        (default: $CERTARG)
+    -T <tcti>        TCTI (for tpm2-tss) string, path to TPM
+        (default: $TPM2TOOLS_TCTI)
 
 EOF
 	exit "${1:-1}"
 }
 
-while getopts +:R:P:U:A:hv opt; do
+while getopts +:R:P:T:hv opt; do
 case "$opt" in
 R)	retries="$OPTARG";;
 P)	pause="$OPTARG";;
-U)	URL="$OPTARG";;
-A)	CERTARG="$OPTARG";;
+T)	TPM2TOOLS_TCTI="$OPTARG";;
 h)	usage 0;;
 v)	((VERBOSE++)) || true;;
 *)	echo >&2 "Unknown option: $opt"; usage;;
@@ -80,17 +67,18 @@ Starting $PROG:
  - retries=$retries
  - pause=$pause
  - VERBOSE=$VERBOSE
- - CERTARG=$CERTARG
- - URL=$URL
+ - TPM2TOOLS_TCTI=$TPM2TOOLS_TCTI
  - Temp stdout=$tout
  - Temp stderr=$terr
 EOF
 fi
 
+export TPM2TOOLS_TCTI
+
 while :; do
-	((VERBOSE > 0)) && echo >&2 "Running: curl -f -G $CERTARG $URL"
+	((VERBOSE > 0)) && echo >&2 "Running: tpm2_pcrread (TCTI=$TPM2TOOLS_TCTI)"
 	res=0
-	curl -f -G $CERTARG $URL >$tout 2>$terr || res=$?
+	tpm2_pcrread >$tout 2>$terr || res=$?
 	if [[ $res == 0 ]]; then
 		((VERBOSE > 0)) && echo >&2 "Success"
 		exit 0

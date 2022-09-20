@@ -70,18 +70,19 @@ mkdir -p /pids /logs
 
 # Declare service existence and corresponding .env file
 declare -A hcp_entity=( \
-	[pol]=./pol.env \
-	[emgmt]=./emgmt.env \
-	[erepl]=./erepl.env \
-	[arepl]=./arepl.env \
-	[ahcp]=./ahcp.env \
-	[orchestrator]=./orchestrator.env \
-	[kdc1]=./kdc1.env \
-	[kdc1_tpm]=./kdc1_tpm.env \
-	[aclient]=./aclient.env \
-	[aclient_tpm]=./aclient_tpm.env \
-	[wait_emgmt]=./emgmt.env \
-	[wait_ahcp]=./ahcp.env \
+	[pol]=/usecase/pol.env \
+	[emgmt]=/usecase/emgmt.env \
+	[erepl]=/usecase/erepl.env \
+	[arepl]=/usecase/arepl.env \
+	[ahcp]=/usecase/ahcp.env \
+	[orchestrator]=/usecase/orchestrator.env \
+	[kdc1]=/usecase/kdc1.env \
+	[kdc1_tpm]=/usecase/kdc1_tpm.env \
+	[aclient]=/usecase/aclient.env \
+	[aclient_tpm]=/usecase/aclient_tpm.env \
+	[wait_emgmt]=/usecase/emgmt.env \
+	[wait_ahcp]=/usecase/ahcp.env \
+	[wait_aclient_tpm]=/usecase/aclient_tpm.env \
         )
 # Declare what type of service it is (lifetime)
 declare -A hcp_entity_type=( \
@@ -97,6 +98,7 @@ declare -A hcp_entity_type=( \
 	[aclient_tpm]=service \
 	[wait_emgmt]=util \
 	[wait_ahcp]=util \
+	[wait_aclient_tpm]=util \
 	)
 # Declare the commands to run
 declare -A hcp_entity_cmd=( \
@@ -105,13 +107,14 @@ declare -A hcp_entity_cmd=( \
 	[erepl]=/hcp/enrollsvc/run_repl.sh \
 	[arepl]=/hcp/attestsvc/run_repl.sh \
 	[ahcp]=/hcp/attestsvc/run_hcp.sh \
-	[orchestrator]="/hcp/tools/run_orchestrator.sh aclient" \
+	[orchestrator]="/hcp/tools/run_orchestrator.sh -c -e" \
 	[kdc1]=/hcp/kdcsvc/run_kdc.sh \
 	[kdc1_tpm]=/hcp/swtpmsvc/run_swtpm.sh \
 	[aclient]="/hcp/tools/run_client.sh -R 9999" \
 	[aclient_tpm]=/hcp/swtpmsvc/run_swtpm.sh \
 	[wait_emgmt]="/hcp/tools/emgmt_healthcheck.sh -R 9999" \
 	[wait_ahcp]="/hcp/tools/ahcp_healthcheck.sh -R 9999" \
+	[wait_aclient_tpm]="/hcp/tools/swtpm_healthcheck.sh -R 9999" \
 	)
 # Ordered list of entities
 hcp_entities=$(echo "${!hcp_entity[@]}" | tr " " "\n" | sort)
@@ -165,7 +168,7 @@ function hcp_service_start {
 		return 1
 	fi
 	HCP_INSTANCE="${hcp_entity[$1]}" /hcp/common/launcher.sh \
-		"${hcp_entity_cmd[$1]}" > $logfile 2>&1 &
+		${hcp_entity_cmd[$1]} > $logfile 2>&1 &
 	echo $! > $pidfile
 	echo "Started HCP service $1 (PID=$(cat $pidfile))"
 }
@@ -215,7 +218,7 @@ function hcp_setup_run {
 	fi
 	echo "Starting HCP setup $1"
 	HCP_INSTANCE="${hcp_entity[$1]}" /hcp/common/launcher.sh \
-		"${hcp_entity_cmd[$1]}"
+		${hcp_entity_cmd[$1]}
 	touch $pidfile
 	echo "Completed HCP setup $1"
 }
@@ -227,7 +230,7 @@ function hcp_setup_run {
 function hcp_util_run {
 	hcp_entity_must_type $1 util || return 1
 	HCP_INSTANCE="${hcp_entity[$1]}" /hcp/common/launcher.sh \
-		"${hcp_entity_cmd[$1]}"
+		${hcp_entity_cmd[$1]}
 }
 
 ###########

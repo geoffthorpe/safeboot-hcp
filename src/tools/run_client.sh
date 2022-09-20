@@ -115,13 +115,6 @@ tmp_key=`mktemp`
 tmp_extract=`mktemp -d`
 trap 'rm -rf $tmp_pcrread $tmp_secrets $tmp_attest $tmp_key $tmp_extract' EXIT ERR
 
-# Check that our TPM is configured and alive
-if ! tpm2_pcrread >> "$tmp_pcrread" 2>&1; then
-	echo "Error, TPM not available;" >&2
-	cat $tmp_pcrread >&2
-	exit 1
-fi
-
 # TODO: this is a temporary and bad fix. The swtpm assumes that connections
 # that are set up (tpm2_startup) but not gracefully terminated (tpm2_shutdown)
 # are suspicious, and if it happens enough (3 or 4 times, it seems) the TPM

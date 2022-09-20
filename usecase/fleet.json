@@ -1,9 +1,7 @@
 {
 	"defaults": {
 		"tpm_create": true,
-		"tpm_recreate": false,
-		"enroll": true,
-		"enroll_always": false,
+		"tpm_enroll": true,
 		"enroll_api": "https://emgmt.hcphacking.xyz:8443",
 		"enroll_profile": {
 			"__env": {

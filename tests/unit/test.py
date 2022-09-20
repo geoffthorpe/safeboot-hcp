@@ -2,6 +2,7 @@
 
 import json
 import sys
+import os
 
 # If there's trouble, uncomment the following two lines and use;
 #   pp.pprint(anydatastructure)
@@ -9,8 +10,9 @@ import sys
 #pp = pprint.PrettyPrinter(indent=4)
 
 sys.path.insert(1, '/hcp/xtra')
-
 import HcpEnvExpander
+
+os.chdir('/unit')
 
 c_pairs1_input = open('c_pairs1_input.json', 'r').read()
 c_pairs1_unexpanded = HcpEnvExpander.loads(c_pairs1_input, autoexpand=False)

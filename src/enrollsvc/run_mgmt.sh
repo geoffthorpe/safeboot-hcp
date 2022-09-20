@@ -19,11 +19,11 @@ if [[ -n $HCP_ENROLLSVC_ENABLE_SWTPM ]]; then
 { "fleet": [ {
 	"name": "emgmt",
 	"tpm_create": true,
-	"tpm_path": "$HCP_SWTPMSVC_STATE",
-	"enroll": false
+	"tpm_enroll": false,
+	"tpm_path": "$HCP_SWTPMSVC_STATE"
 } ] }
 EOF
-		/hcp/tools/run_orchestrator.sh
+		/hcp/tools/run_orchestrator.sh -c -e
 		rm $HCP_ORCHESTRATOR_JSON
 	fi
 
@@ -60,7 +60,7 @@ if [[ -n $HCP_ENROLLSVC_ENABLE_ATTEST ]]; then
 		rm $attestlog
 		attestation_done=
 		until [[ -n $attestation_done ]]; do
-			echo "Warning: waiting 10 seconds before retring attestation" >&2
+			echo "Warning: waiting 10 seconds before retrying attestation" >&2
 			sleep 10
 			echo "Retrying attestation" >&2
 			/hcp/tools/run_client.sh 2> /dev/null && attestation_done=yes
