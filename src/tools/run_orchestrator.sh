@@ -6,6 +6,7 @@ option_create=
 option_destroy=
 option_enroll=
 option_unenroll=
+option_janitor=
 VERBOSE=0
 URL=
 JSONPATH="$HCP_ORCHESTRATOR_JSON"
@@ -32,6 +33,7 @@ Usage: $PROG [OPTIONS] [names ...]
   'fleet.json' will be processed, otherwise all entries are processed.
   If -e, -c, -u, or -d are provided, they stipulate the action(s) that should
   take place.
+  If -j is provided, the enrollment service's "janitor" API will be called.
 
   Options:
 
@@ -41,6 +43,7 @@ Usage: $PROG [OPTIONS] [names ...]
     -d               Destroy TPM instance if it exists
     -e               Enroll TPM if it isn't enrolled
     -u               Unenroll TPM if it is enrolled
+    -j               Request that the enrollsvc run its 'janitor'
     -R <num>         Number of retries before failure
         (default: $retries)
     -P <seconds>     Time between retries
@@ -53,7 +56,7 @@ EOF
 	exit "${1:-1}"
 }
 
-while getopts +:R:P:U:J:hvcdeu opt; do
+while getopts +:R:P:U:J:hvcdeuj opt; do
 case "$opt" in
 R)	retries="$OPTARG";;
 P)	pause="$OPTARG";;
@@ -65,6 +68,7 @@ c)	option_create=1;;
 d)	option_destroy=1;;
 e)	option_enroll=1;;
 u)	option_unenroll=1;;
+j)	option_janitor=1;;
 *)	echo >&2 "Unknown option: $opt"; usage;;
 esac
 done
@@ -225,18 +229,17 @@ raw_tpm_destroy()
 	echo "raw_tpm_destroy: done" > $out2
 }
 
-enroll_prerequisites()
+api_prerequisites()
 {
-	echo "enroll_prerequisites: starting" > $out2
+	echo "api_prerequisites: starting" > $out2
+	if [[ -n $api_cmd ]]; then
+		echo "api_prerequisites: cached, already done" > $out2
+	fi
 	if [[ -z $enroll_api ]]; then
 		echo "Error, no API endpoint to enroll TPM '$name'" >&2
 		return 1
 	fi
-	if [[ ! -f "$tpm_path/tpm/ek.pub" ]]; then
-		echo "Error, no TPM found for '$name'" >&2
-		return 1
-	fi
-	echo "enroll_prerequisites: building api_cmd" > $out2
+	echo "api_prerequisites: building api_cmd" > $out2
 	api_cmd="python3 /hcp/tools/enroll_api.py --api $enroll_api"
 	api_cmd="$api_cmd --retries $retries"
 	api_cmd="$api_cmd --pause $pause"
@@ -253,19 +256,14 @@ enroll_prerequisites()
 	if [[ -n HCP_CLIENTCERT ]]; then
 		api_cmd="$api_cmd --clientcert $HCP_CLIENTCERT"
 	fi
-	echo "enroll_prerequisites: api_cmd=$api_cmd" > $out2
-	# Calculate the ekpubhash
-	ekpubhash=$(openssl sha256 "$tpm_path/tpm/ek.pub" | \
-		sed -e "s/^.*= //" | cut -c 1-32)
-	echo "enroll_prerequisites: ekpubhash=$ekpubhash" > $out2
-	echo "enroll_prerequisites: done" > $out2
+	echo "api_prerequisites: api_cmd=$api_cmd" > $out2
 }
 
 # Similar semantics to raw_tpm_exists()
 raw_tpm_enrolled()
 {
 	echo "raw_tpm_enrolled: starting" > $out2
-	enroll_prerequisites
+	api_prerequisites
 	# We're going to be talking to the Enrollment Service
 	echo "raw_tpm_enrolled: api_cmd: $api_cmd query $ekpubhash" > $out2
 	# Query to see if this TPM is already enrolled
@@ -289,7 +287,7 @@ raw_tpm_enrolled()
 raw_tpm_enroll()
 {
 	echo "raw_tpm_enroll: starting" > $out2
-	enroll_prerequisites
+	api_prerequisites
 	# Enroll
 	echo "Enrolling TPM '$name'"
 	if [[ -z $enroll_hostname ]]; then
@@ -311,7 +309,7 @@ raw_tpm_enroll()
 raw_tpm_unenroll()
 {
 	echo "raw_tpm_unenroll: starting" > $out2
-	enroll_prerequisites
+	api_prerequisites
 	echo "Unenrolling TPM '$name'"
 	echo "raw_tpm_unenroll: api_cmd: $api_cmd delete $ekpubhash" > $out2
 	if ! myresult=$($api_cmd delete $ekpubhash); then
@@ -321,6 +319,21 @@ raw_tpm_unenroll()
 	echo "raw_tpm_unenroll: result: $myresult" > $out2
 	echo "TPM '$name' unenrolled"
 	echo "raw_tpm_unenroll: done" > $out2
+}
+
+raw_janitor()
+{
+	echo "raw_janitor: starting" > $out2
+	api_prerequisites
+	echo "Running enrollsvc's 'janitor'"
+	echo "raw_janitor: api_cmd: $api_cmd janitor" > $out2
+	if ! myresult=$($api_cmd janitor); then
+		echo "Error, janitor failure ($myresult)" >&2
+		return 1
+	fi
+	echo "raw_janitor: result: $myresult" > $out2
+	echo "'janitor' completed"
+	echo "raw_janitor: done" > $out2
 }
 
 # This is the function that operates on each item of the fleet
@@ -376,6 +389,11 @@ EOF
 		desc="doesn't exist"
 	fi
 	if $check_exists; then
+		# Pre-compute the ekpubhash for this TPM
+		ekpubhash=$(openssl sha256 "$tpm_path/tpm/ek.pub" | \
+			sed -e "s/^.*= //" | cut -c 1-32)
+		echo "do_item: ekpubhash=$ekpubhash" > $out2
+		# If know how to hit the emgmt API, see if the TPM is enrolled
 		if [[ -n $enroll_api ]]; then
 			check_enrolled=$(raw_tpm_enrolled)
 			echo " - check_enrolled=$check_enrolled" > $out2
@@ -395,14 +413,13 @@ EOF
 			echo "    create: TPM already exists"
 		else
 			echo "do_item: creating TPM;" > $out2
-			if raw_tpm_create > $out2 2>&1; then
-				echo "    create: TPM created successfully"
-				check_exists=true
-				check_enrolled=false
-			else
+			if ! raw_tpm_create > $out2 2>&1; then
 				echo "Error, failed to create TPM" >&2
 				return 1
 			fi
+			echo "    create: TPM created successfully"
+			check_exists=true
+			check_enrolled=false
 		fi
 	fi
 	if [[ -n $option_enroll && -n $enroll_api ]] && $check_exists; then
@@ -410,13 +427,12 @@ EOF
 			echo "    enroll: TPM already enrolled"
 		else
 			echo "do_item: enrolling TPM;" > $out2
-			if raw_tpm_enroll > $out2 2>&1; then
-				echo "    enroll: TPM enrolled successfully"
-				check_enrolled=true
-			else
+			if ! raw_tpm_enroll > $out2 2>&1; then
 				echo "Error, failed to enroll TPM" >&2
 				return 1
 			fi
+			echo "    enroll: TPM enrolled successfully"
+			check_enrolled=true
 		fi
 	fi
 	if [[ -n $option_unenroll && -n $enroll_api ]] && $check_exists; then
@@ -424,13 +440,12 @@ EOF
 			echo "    unenroll: TPM not enrolled"
 		else
 			echo "do_item: unenrolling TPM;" > $out2
-			if raw_tpm_unenroll > $out2 2>&1; then
-				echo "    unenroll: TPM unenrolled successfully"
-				check_enrolled=false
-			else
+			if ! raw_tpm_unenroll > $out2 2>&1; then
 				echo "Error, failed to unenroll TPM" >&2
 				return 1
 			fi
+			echo "    unenroll: TPM unenrolled successfully"
+			check_enrolled=false
 		fi
 	fi
 	if [[ -n $option_destroy ]]; then
@@ -438,13 +453,12 @@ EOF
 			echo "    destroy: TPM doesn't exist"
 		else
 			echo "do_item: destroying TPM;" > $out2
-			if raw_tpm_destroy > $out2 2>&1; then
-				echo "    destroy: TPM destroyed successfully"
-				check_exists=false
-			else
+			if ! raw_tpm_destroy > $out2 2>&1; then
 				echo "Error, failed to destroy TPM" >&2
 				return 1
 			fi
+			echo "    destroy: TPM destroyed successfully"
+			check_exists=false
 		fi
 	fi
 }
@@ -462,6 +476,15 @@ else
 	do
 		do_item "$item"
 	done
+fi
+
+if [[ -n $option_janitor ]]; then
+	echo "running 'janitor';" > $out2
+	if ! raw_janitor > $out2 2>&1; then
+		echo "Error, failed to run enrollsvc 'janitor'" >&2
+		exit 1
+	fi
+	echo "    janitor ran successfully"
 fi
 
 exit 0

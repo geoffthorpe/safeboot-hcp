@@ -52,6 +52,11 @@ case $cmd in
 		exec python3 /hcp/enrollsvc/db_find.py "$1"
 		;;
 
+	janitor)
+		check_arg_num $# 0
+		exec python3 /hcp/enrollsvc/db_janitor.py
+		;;
+
 	*)
 		echo "ERROR: unrecognized command!" >&2
 		exit 1

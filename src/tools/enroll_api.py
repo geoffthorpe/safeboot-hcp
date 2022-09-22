@@ -17,6 +17,8 @@
 # find:    curl -v -G -d hostname_regex=<hostname_regex> \
 #               <enrollsvc-URL>/v1/find
 #
+# janitor: curl -v -G <enrollsvc-URL>/v1/janitor
+#
 # get-asset-signer:  curl -v -G <enrollsvc-URL>/v1/get-asset-signer
 
 import json
@@ -200,6 +202,27 @@ def enroll_find(args):
     debug(f" - jr: {jr}")
     return True, jr
 
+def enroll_janitor(args):
+    debug("'janitor' handler about to call API")
+    debug(f" - url: {args.api + '/v1/janitor'}")
+    myrequest = lambda: requests.get(args.api + '/v1/janitor',
+                            auth=auth,
+                            verify=args.requests_verify,
+                            cert=args.requests_cert)
+    response = requester_loop(args, myrequest)
+    debug(f" - response: {response}")
+    debug(f" - response.content: {response.content}")
+    if response.status_code != 200:
+        log(f"Error, 'janitor' response status code was {response.status_code}")
+        return False, None
+    try:
+        jr = json.loads(response.content)
+    except Exception as e:
+        log("Error, JSON decoding of 'janitor' response failed: {e}")
+        return False, None
+    debug(f" - jr: {jr}")
+    return True, jr
+
 def enroll_getAssetSigner(args):
     debug("'getAssetSigner' handler about to call API")
     debug(f" - url: {args.api + '/v1/get-asset-signer'}")
@@ -346,6 +369,17 @@ if __name__ == '__main__':
     parser_f = subparsers.add_parser('find', help=find_help, epilog=find_epilog)
     parser_f.add_argument('hostname_regex', help=find_help_regex)
     parser_f.set_defaults(func=enroll_find)
+
+    janitor_help = 'Scrub the enrollment DB to fix known issues, and rebuild hn2ek'
+    janitor_epilog = """
+    The 'janitor' subcommand invokes the '/v1/janitor' handler of the Enrollment
+    Service's management API, to clean up known glitches that may be present in the
+    enrollment DB (usually created by enrollment bugs
+    that have since been fixed). It also rebuilds the reverse-lookup table, hn2ek,
+    from first principles.
+    """
+    parser_j = subparsers.add_parser('janitor', help=janitor_help, epilog=janitor_epilog)
+    parser_j.set_defaults(func=enroll_janitor)
 
     getAssetSigner_help = 'Retrieve trust anchor for asset-signing'
     getAssetSigner_epilog = """

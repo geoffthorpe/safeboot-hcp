@@ -226,6 +226,14 @@ def my_find():
                        text=True)
     return check_status_code(c)
 
+@app.route('/v1/janitor', methods=['GET'])
+def my_janitor():
+    log(f"my_janitor: request={request}")
+    c = subprocess.run(sudoargs + [ 'janitor' ],
+                       stdout=subprocess.PIPE,
+                       text=True)
+    return check_status_code(c)
+
 @app.route('/v1/get-asset-signer', methods=['GET'])
 def assetSigner():
     log(f"assetSigner: request={request}")

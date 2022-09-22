@@ -122,12 +122,15 @@ def handler5():
 @app.route(f"/emgmt/v1/find", methods=['POST'])
 def handler6():
     return my_emgmt('/v1/find')
-@app.route(f"/emgmt/v1/get-asset-signer", methods=['POST'])
+@app.route(f"/emgmt/v1/janitor", methods=['POST'])
 def handler7():
+    return my_emgmt('/v1/janitor')
+@app.route(f"/emgmt/v1/get-asset-signer", methods=['POST'])
+def handler8():
     return my_emgmt('/v1/get-asset-signer')
 
 @app.route(f"/emgmt/gencert-hxtool", methods=['POST'])
-def handler8():
+def handler9():
     return my_genprog('gencert-hxtool')
 
 if __name__ == "__main__":
