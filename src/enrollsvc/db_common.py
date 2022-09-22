@@ -104,12 +104,19 @@ def repo_unlock():
 # them back in.) Instead, we use an array, where each entry is a dict having
 # exactly two key-value pairs - one for "ekpubhash", another for "hostname".
 # Order is irrelevant, but we can't make it vanish.
+def hn2ek_new():
+	return []
+def __hn2ek_sort_cb(entry):
+	return entry['hostname']
+def hn2ek_sort(data):
+	data.sort(key = __hn2ek_sort_cb)
+	return data
 def hn2ek_read():
 	with open(hn2ek_path, 'r') as f:
 		return json.load(f)
 def hn2ek_write(data):
 	with open(hn2ek_path, 'w') as f:
-		return json.dump(data, f)
+		return json.dump(hn2ek_sort(data), f)
 def hn2ek_query(data, hostname_regex):
 	hostname_prog = re.compile(hostname_regex)
 	results = []
@@ -118,20 +125,17 @@ def hn2ek_query(data, hostname_regex):
 			results += [i]
 	return results
 def hn2ek_add(data, hostname, ekpubhash):
-	data += [ { 'hostname': hostname, 'ekpubhash': ekpubhash } ]
+	return data + [ { 'hostname': hostname, 'ekpubhash': ekpubhash } ]
 def hn2ek_delete(data, hostname, ekpubhash):
 	x = { 'hostname': hostname, 'ekpubhash': ekpubhash }
-	newdata = [i for i in data if i != x]
+	return [i for i in data if i != x]
 def hn2ek_xquery(hostname_regex):
-	data = hn2ek_read()
-	return hn2ek_query(data, hostname_regex)
+	return hn2ek_query(hn2ek_read(), hostname_regex)
 def hn2ek_xadd(hostname, ekpubhash):
-	data = hn2ek_read()
-	hn2ek_add(data, hostname, ekpubhash)
+	data = hn2ek_add(hn2ek_read(), hostname, ekpubhash)
 	hn2ek_write(data)
 def hn2ek_xdelete(hostname, ekpubhash):
-	data = hn2ek_read()
-	hn2ek_delete(data, hostname, ekpubhash)
+	data = hn2ek_delete(hn2ek_read(), hostname, ekpubhash)
 	hn2ek_write(data)
 
 # Code shared by "add" and "delete". Send any stdout to stderr
@@ -145,3 +149,4 @@ def run_git_cmd(args):
 	if c.returncode != 0:
 		log(f"{c.stdout}")
 		raise HcpErrorChildProcess(f"Failed: {expanded}")
+	return c

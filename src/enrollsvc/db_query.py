@@ -5,7 +5,11 @@ import json
 import glob
 
 sys.path.insert(1, '/hcp/common')
-from hcp_common import log
+import hcp_tracefile
+tfile = hcp_tracefile.tracefile("dbquerydelete")
+sys.stderr = tfile
+import hcp_common
+log = hcp_common.log
 
 sys.path.insert(1, '/hcp/enrollsvc')
 import db_common
@@ -28,25 +32,30 @@ if len(sys.argv) != 2:
 	bail(f"Wrong number of arguments: {len(sys.argv)}")
 
 clientjson = sys.argv[1]
+log(f"db_querydelete: using clientjson={clientjson}")
 if len(clientjson) == 0:
 	bail(f"Empty JSON")
 # Don't error-check this, let the exceptions fly if there's anything wrong.
 clientdata = json.loads(clientjson)
+log(f"db_querydelete: clientdata={clientdata}")
 
 # Extract the (possibly-empty) ekpubhash prefix
 req_ekpubhash = clientdata['ekpubhash']
+log(f"db_querydelete: req_ekpubhash={req_ekpubhash}")
 if not valid_ekpubhash_prefix_prog.fullmatch(req_ekpubhash):
 	raise HcpEkpubhashPrefixError(
 		f"HCP, invalid ekpubhash prefix: {req_ekpubhash}")
 
 # Option on whether (or not) file-lists should be returned in the query response
 no_files = clientdata['nofiles']
+log(f"db_querydelete: no_files={no_files}")
 
 # Change working directory to the git repo
 os.chdir(db_common.repo_path)
 
 # Get a wildcard pattern for all matching entries
 fpath = db_common.fpath_mask(req_ekpubhash)
+log(f"db_querydelete: fpath={fpath}")
 
 # The array of matches that gets returned to the client (in JSON form)
 entries = []
@@ -57,21 +66,23 @@ if is_delete:
 	cmdname = 'delete'
 else:
 	cmdname = 'query'
+log(f"db_{cmdname}: cmdname={cmdname}")
 
 # Critical section, same basic idea as in db_add.py
 db_common.repo_lock()
 caught = None
 try:
 	matches = glob.glob(fpath)
-	if is_delete:
-		hn2ek_data = db_common.hn2ek_read()
+	log(f"db_{cmdname}: matches={matches}")
 	for path in matches:
-		ekpubhash = open(f"{path}/ekpubhash", 'r').read()
-		hostname = open(f"{path}/hostname", 'r').read()
+		log(f"db_{cmdname}: loop start, path={path}")
+		ekpubhash = open(f"{path}/ekpubhash", 'r').read().strip('\n')
+		hostname = open(f"{path}/hostname", 'r').read().strip('\n')
 		entry = {
 			'ekpubhash': ekpubhash,
 			'hostname': hostname
 		}
+		log(f"db_{cmdname}: entry={entry}")
 		if not no_files:
 			files = [ x[len(path)+1:] for x in glob.glob(f"{path}/*") ]
 			files.sort()
@@ -81,32 +92,31 @@ try:
 			# Remove the ekpubhash directory (and all its files)
 			run_git_cmd(['rm', '-r', db_common.fpath_to_git(path)])
 			# Remove the corresponding hn2ek entry
-			db_common.hn2ek_delete(hn2ek_data,
-					       hostname,
-					       ekpubhash)
+			log(f"db_{cmdname}: delete, hostname={hostname}, ekpubhash={ekpubhash}")
+			log(f"db_{cmdname}:  pre: hn2ek={db_common.hn2ek_read()}")
+			db_common.hn2ek_xdelete(hostname, ekpubhash)
+			log(f"db_{cmdname}: post: hn2ek={db_common.hn2ek_read()}")
 	if is_delete and len(matches) > 0:
-		# Write the updated hn2ek data and add include it in the
-		# impending commit
-		db_common.hn2ek_write(hn2ek_data)
+		log(f"db_{cmdname}: 'git add hn2ek' and commit")
 		run_git_cmd(['add', db_common.hn2ek_basename])
 		# Commit the accumulated changes
 		run_git_cmd(['commit', '-m', f"delete {req_ekpubhash}"])
 except Exception as e:
 	caught = e
-	log(f"Failed: enrollment DB '{cmdname}': {caught}")
+	log(f"db_{cmdname}: failed enrollment DB '{cmdname}': {caught}")
 	# recover the git repo before we release the lock
 	try:
 		run_git_cmd(['reset', '--hard'])
 		run_git_cmd(['clean', '-f', '-d', '-x'])
 	except Exception as e:
-		log(f"Failed: enrollment DB rollback: {e}")
+		log(f"db_{cmdname}: failed to recover!: {e}")
 		bail(f"CATASTROPHIC! DB stays locked for manual intervention")
-	log(f"Enrollment DB rollback complete")
+	log(f"db_{cmdname}: enrollment DB rollback complete")
 
 # Remove the lock, then reraise any exception we intercepted
 db_common.repo_unlock()
 if caught:
-	log(f"Enrollment DB exception continuation: {caught}")
+	log(f"db_{cmdname}: enrollment DB exception continuation: {caught}")
 	raise caught
 
 # The point of this entire file: produce a JSON to stdout that confirms the
@@ -115,8 +125,7 @@ if caught:
 # inside a dict, but that would involve going back in time (or changing any/all
 # affected client code). Maybe later, if/when we need to change the API for
 # some other reason.
-result = {
-	'entries': entries
-}
-print(json.dumps(result))
+result = json.dumps({ 'entries': entries }, sort_keys = True)
+log(f"db_{cmdname}: emitting result={result}")
+print(result)
 sys.exit(200)
