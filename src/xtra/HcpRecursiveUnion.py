@@ -19,8 +19,9 @@ import json
 #        obtained by a recursive call to this union function.
 #     Exception: if noDictUnion=True, the right dict is the resulting value.
 #   - if both values are lists, the resulting value is the list "+"
-#     (concatenation) of the two lists. Exception: if noListUnion=True, the
-#     right list is the resulting value.
+#     (concatenation) of the two lists.
+#      - Exception: if noListUnion=True, the right list is the resulting value.
+#      - if listDedup=True, the resulting list is de-duplicated.
 #   - if both values are sets, the resulting value is the set "|" (union) of
 #     the two sets. Exception: if noSetUnion=True, the right set is the
 #     resulting value.
@@ -31,7 +32,8 @@ class HcpUnion(Exception):
 
 # TODO: this should be turned into one of those "class-factory"-like Python
 # classes.
-def union(a, b, noDictUnion=False, noListUnion=False, noSetUnion=False):
+def union(a, b, noDictUnion=False, noListUnion=False, noSetUnion=False,
+		listDedup=True):
 	ta = type(a)
 	tb = type(b)
 	if ta != tb:
@@ -45,7 +47,13 @@ def union(a, b, noDictUnion=False, noListUnion=False, noSetUnion=False):
 				result[i] = b[i]
 		return result
 	if ta == list and not noListUnion:
-		return a + b
+		c = a + b
+		if listDedup:
+			# trick: convert list to a dict - which doesn't
+			# tolerate duplicate keys - then convert it back to a
+			# list.
+			c = list(dict.fromkeys(c))
+		return c
 	if ta == set and not noSetUnion:
 		return a | b
 	return b
