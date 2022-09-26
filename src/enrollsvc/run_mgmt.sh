@@ -75,6 +75,15 @@ if [[ -n $HCP_ENROLLSVC_ENABLE_NGINX ]]; then
 	nginx
 fi
 
+if [[ -n $HCP_ENROLLSVC_ENABLE_REENROLLER ]]; then
+	echo "enrollsvc::mgmt, starting reenroller"
+	if [[ -z $HCP_ENROLLSVC_REENROLLER_PERIOD ]]; then
+		echo "Error, HCP_ENROLLSVC_REENROLLER_PERIOD isn't defined" >&2
+		exit 1
+	fi
+	drop_privs_db /hcp/enrollsvc/reenroller.sh &
+fi
+
 # Do common.sh-style things that are specific to the management sub-service.
 if [[ ! -f $SIGNING_KEY_PUB || ! -f $SIGNING_KEY_PRIV ]]; then
 	echo "Error, SIGNING_KEY_{PUB,PRIV} ($SIGNING_KEY_PUB,$SIGNING_KEY_PRIV) do not contain valid creds" >&2

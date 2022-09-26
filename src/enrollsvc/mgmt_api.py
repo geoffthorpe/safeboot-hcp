@@ -77,12 +77,26 @@ def home():
 <input type="submit" value="Delete">
 </form>
 
+<h2>To reenroll a host entry;</h2>
+<form method="post" action="/v1/reenroll">
+<table>
+<tr><td>ekpubhash</td><td><input type=text name=ekpubhash></td></tr>
+</table>
+<input type="submit" value="Reenroll">
+</form>
+
 <h2>To find host entries by hostname regex;</h2>
 <form method="get" action="/v1/find">
 <table>
 <tr><td>hostname regex</td><td><input type=text name=hostname_regex></td></tr>
 </table>
 <input type="submit" value="Find">
+</form>
+
+<h2>To trigger the janitor (looks for known issues, regenerates the
+hn2ek table, etc);</h2>
+<form method="get" action="/v1/janitor">
+<input type="submit" value="Janitor">
 </form>
 
 <h2>To retrieve the asset-signing trust anchor;</h2>
@@ -189,7 +203,7 @@ def my_query():
         request_data['nofiles'] = False
     request_json = json.dumps(request_data)
     log(f"my_query: request_json={request_json}")
-    c = subprocess.run(sudoargs + [ 'query', request_json],
+    c = subprocess.run(sudoargs + [ 'query', request_json ],
                        stdout=subprocess.PIPE, stderr = tfile,
                        text=True)
     return check_status_code(c)
@@ -207,7 +221,21 @@ def my_delete():
         request_data['nofiles'] = False
     request_json = json.dumps(request_data)
     log(f"my_delete: request_json={request_json}")
-    c = subprocess.run(sudoargs + [ 'delete', request_json],
+    c = subprocess.run(sudoargs + [ 'delete', request_json ],
+                       stdout=subprocess.PIPE, stderr = subprocess.PIPE,
+                       text=True)
+    return check_status_code(c)
+
+@app.route('/v1/reenroll', methods=['POST'])
+def my_reenroll():
+    log(f"my_reenroll: request={request}")
+    if 'ekpubhash' not in request.form:
+        return { "error": "ekpubhash not in request" }
+    request_data = get_request_data('/v1/reenroll')
+    request_data['ekpubhash'] = request.form['ekpubhash']
+    request_json = json.dumps(request_data)
+    log(f"my_reenroll: request_json={request_json}")
+    c = subprocess.run(sudoargs + [ 'reenroll', request_json ],
                        stdout=subprocess.PIPE, stderr = subprocess.PIPE,
                        text=True)
     return check_status_code(c)

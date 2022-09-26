@@ -33,7 +33,7 @@ case $cmd in
 
 	add)
 		check_arg_num $# 3
-		exec python3 /hcp/enrollsvc/db_add.py "$1" "$2" "$3"
+		exec python3 /hcp/enrollsvc/db_add.py add "$1" "$2" "$3"
 		;;
 
 	query | delete)
@@ -44,11 +44,13 @@ case $cmd in
 		exec python3 /hcp/enrollsvc/db_query.py "$1"
 		;;
 
+	reenroll)
+		check_arg_num $# 1
+		exec python3 /hcp/enrollsvc/db_add.py reenroll "$1"
+		;;
+
 	find)
 		check_arg_num $# 1
-		if [[ $cmd == "delete" ]]; then
-			export QUERY_PLEASE_ALSO_DELETE=1
-		fi
 		exec python3 /hcp/enrollsvc/db_find.py "$1"
 		;;
 

@@ -5,6 +5,7 @@ pause=1
 option_create=
 option_destroy=
 option_enroll=
+option_reenroll=
 option_unenroll=
 option_janitor=
 VERBOSE=0
@@ -31,9 +32,10 @@ Usage: $PROG [OPTIONS] [names ...]
   'fleet.json' (though the real file name can be anything). If 'names'
   arguments are provided, then only the correspondingly-named entries from the
   'fleet.json' will be processed, otherwise all entries are processed.
-  If -e, -c, -u, or -d are provided, they stipulate the action(s) that should
-  take place.
-  If -j is provided, the enrollment service's "janitor" API will be called.
+  If -e, -c, -u, -r, or -d are provided, they stipulate the action(s) that
+  should take place for each of the fleet entries they apply to.
+  If -j is provided, the enrollment service's "janitor" API will be called,
+  it is not specific to any fleet entry.
 
   Options:
 
@@ -42,6 +44,7 @@ Usage: $PROG [OPTIONS] [names ...]
     -c               Create TPM instance if it doesn't exist
     -d               Destroy TPM instance if it exists
     -e               Enroll TPM if it isn't enrolled
+    -r               Re-enroll TPM if it is enrolled
     -u               Unenroll TPM if it is enrolled
     -j               Request that the enrollsvc run its 'janitor'
     -R <num>         Number of retries before failure
@@ -56,7 +59,7 @@ EOF
 	exit "${1:-1}"
 }
 
-while getopts +:R:P:U:J:hvcdeuj opt; do
+while getopts +:R:P:U:J:hvcderuj opt; do
 case "$opt" in
 R)	retries="$OPTARG";;
 P)	pause="$OPTARG";;
@@ -67,6 +70,7 @@ v)	((VERBOSE++)) || true;;
 c)	option_create=1;;
 d)	option_destroy=1;;
 e)	option_enroll=1;;
+r)	option_reenroll=1;;
 u)	option_unenroll=1;;
 j)	option_janitor=1;;
 *)	echo >&2 "Unknown option: $opt"; usage;;
@@ -306,6 +310,21 @@ raw_tpm_enroll()
 	echo "raw_tpm_enroll: done" > $out2
 }
 
+raw_tpm_reenroll()
+{
+	echo "raw_tpm_reenroll: starting" > $out2
+	api_prerequisites
+	echo "Re-enrolling TPM '$name'"
+	echo "raw_tpm_reenroll: api_cmd: $api_cmd reenroll $ekpubhash" > $out2
+	if ! myresult=$($api_cmd reenroll $ekpubhash); then
+		echo "Error, re-enrollment failure ($myresult)" >&2
+		return 1
+	fi
+	echo "raw_tpm_reenroll: result: $myresult" > $out2
+	echo "TPM '$name' re-enrolled"
+	echo "raw_tpm_reenroll: done" > $out2
+}
+
 raw_tpm_unenroll()
 {
 	echo "raw_tpm_unenroll: starting" > $out2
@@ -391,7 +410,7 @@ EOF
 	if $check_exists; then
 		# Pre-compute the ekpubhash for this TPM
 		ekpubhash=$(openssl sha256 "$tpm_path/tpm/ek.pub" | \
-			sed -e "s/^.*= //" | cut -c 1-32)
+			sed -e "s/^.*= //")
 		echo "do_item: ekpubhash=$ekpubhash" > $out2
 		# If know how to hit the emgmt API, see if the TPM is enrolled
 		if [[ -n $enroll_api ]]; then
@@ -433,6 +452,18 @@ EOF
 			fi
 			echo "    enroll: TPM enrolled successfully"
 			check_enrolled=true
+		fi
+	fi
+	if [[ -n $option_reenroll && -n $enroll_api ]] && $check_exists; then
+		if ! $check_enrolled; then
+			echo "    re-enroll: TPM not enrolled"
+		else
+			echo "do_item: re-enrolling TPM;" > $out2
+			if ! raw_tpm_reenroll > $out2 2>&1; then
+				echo "Error, failed to re-enroll TPM" >&2
+				return 1
+			fi
+			echo "    re-enroll: TPM re-enrolled successfully"
 		fi
 	fi
 	if [[ -n $option_unenroll && -n $enroll_api ]] && $check_exists; then

@@ -92,9 +92,9 @@ def my_genprog(uri):
     return my_common(uri, 'enrollsvc::mgmt::asset_check')
 
 # Is there a way to generate the handlers from an array like this?
-#     uri_list = [ '/', '/healthcheck',
-#                  '/v1/add', '/v1/query', '/v1/delete',
-#                  '/v1/find', '/v1/get-asset-signer' ]
+#     uri_list = [ '/', '/healthcheck', '/v1/add', '/v1/query',
+#                  '/v1/delete', '/v1/reenroll', '/v1/find',
+#                  '/v1/janitor', '/v1/get-asset-signer' ]
 #     for uri in uri_list:
 #         @app.route(f"/emgmt{uri}", methods=['POST'])
 #         def _():
@@ -107,30 +107,41 @@ def my_genprog(uri):
 @app.route(f"/emgmt/", methods=['POST'])
 def handler1():
     return my_emgmt('/')
+
 @app.route(f"/emgmt/healthcheck", methods=['POST'])
 def handler2():
     return my_emgmt('/healthcheck')
+
 @app.route(f"/emgmt/v1/add", methods=['POST'])
 def handler3():
     return my_emgmt('/v1/add')
+
 @app.route(f"/emgmt/v1/query", methods=['POST'])
 def handler4():
     return my_emgmt('/v1/query')
+
 @app.route(f"/emgmt/v1/delete", methods=['POST'])
 def handler5():
     return my_emgmt('/v1/delete')
-@app.route(f"/emgmt/v1/find", methods=['POST'])
+
+@app.route(f"/emgmt/v1/reenroll", methods=['POST'])
 def handler6():
-    return my_emgmt('/v1/find')
-@app.route(f"/emgmt/v1/janitor", methods=['POST'])
+    return my_emgmt('/v1/reenroll')
+
+@app.route(f"/emgmt/v1/find", methods=['POST'])
 def handler7():
-    return my_emgmt('/v1/janitor')
-@app.route(f"/emgmt/v1/get-asset-signer", methods=['POST'])
+    return my_emgmt('/v1/find')
+
+@app.route(f"/emgmt/v1/janitor", methods=['POST'])
 def handler8():
+    return my_emgmt('/v1/janitor')
+
+@app.route(f"/emgmt/v1/get-asset-signer", methods=['POST'])
+def handler9():
     return my_emgmt('/v1/get-asset-signer')
 
 @app.route(f"/emgmt/gencert-hxtool", methods=['POST'])
-def handler9():
+def handler10():
     return my_genprog('gencert-hxtool')
 
 if __name__ == "__main__":

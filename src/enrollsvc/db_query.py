@@ -3,6 +3,7 @@ import os
 import re
 import json
 import glob
+import shutil
 
 sys.path.insert(1, '/hcp/common')
 import hcp_tracefile
@@ -13,13 +14,9 @@ log = hcp_common.log
 
 sys.path.insert(1, '/hcp/enrollsvc')
 import db_common
-run_git_cmd = db_common.run_git_cmd
+git_commit = db_common.git_commit
+git_reset = db_common.git_reset
 bail = db_common.bail
-
-valid_ekpubhash_prefix_re = '[a-f0-9_-]*'
-valid_ekpubhash_prefix_prog = re.compile(valid_ekpubhash_prefix_re)
-class HcpEkpubhashPrefixError(Exception):
-	pass
 
 # Usage:
 # db_query.py <clientjson>
@@ -42,9 +39,7 @@ log(f"db_querydelete: clientdata={clientdata}")
 # Extract the (possibly-empty) ekpubhash prefix
 req_ekpubhash = clientdata['ekpubhash']
 log(f"db_querydelete: req_ekpubhash={req_ekpubhash}")
-if not valid_ekpubhash_prefix_prog.fullmatch(req_ekpubhash):
-	raise HcpEkpubhashPrefixError(
-		f"HCP, invalid ekpubhash prefix: {req_ekpubhash}")
+db_common.valid_ekpubhash_prefix(req_ekpubhash)
 
 # Option on whether (or not) file-lists should be returned in the query response
 no_files = clientdata['nofiles']
@@ -90,24 +85,19 @@ try:
 		entries += [ entry ]
 		if is_delete:
 			# Remove the ekpubhash directory (and all its files)
-			run_git_cmd(['rm', '-r', db_common.fpath_to_git(path)])
+			shutil.rmtree(path)
 			# Remove the corresponding hn2ek entry
 			log(f"db_{cmdname}: delete, hostname={hostname}, ekpubhash={ekpubhash}")
 			log(f"db_{cmdname}:  pre: hn2ek={db_common.hn2ek_read()}")
 			db_common.hn2ek_xdelete(hostname, ekpubhash)
 			log(f"db_{cmdname}: post: hn2ek={db_common.hn2ek_read()}")
-	if is_delete and len(matches) > 0:
-		log(f"db_{cmdname}: 'git add hn2ek' and commit")
-		run_git_cmd(['add', db_common.hn2ek_basename])
-		# Commit the accumulated changes
-		run_git_cmd(['commit', '-m', f"delete {req_ekpubhash}"])
+	git_commit(f"delete {req_ekpubhash}")
 except Exception as e:
 	caught = e
 	log(f"db_{cmdname}: failed enrollment DB '{cmdname}': {caught}")
 	# recover the git repo before we release the lock
 	try:
-		run_git_cmd(['reset', '--hard'])
-		run_git_cmd(['clean', '-f', '-d', '-x'])
+		git_reset()
 	except Exception as e:
 		log(f"db_{cmdname}: failed to recover!: {e}")
 		bail(f"CATASTROPHIC! DB stays locked for manual intervention")

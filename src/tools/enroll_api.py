@@ -14,6 +14,9 @@
 # delete:  curl -v -F ekpubhash=<hexstring> \
 #               <enrollsvc-URL>/v1/delete
 #
+# reenroll: curl -v -F ekpubhash=<hexstring> \
+#               <enrollsvc-URL>/v1/reenroll
+#
 # find:    curl -v -G -d hostname_regex=<hostname_regex> \
 #               <enrollsvc-URL>/v1/find
 #
@@ -122,14 +125,34 @@ def enroll_add(args):
         return False, None
     try:
         jr = json.loads(response.content)
-        rcode = jr['returncode']
     except Exception as e:
         err(f"Error, JSON decoding of 'add' response failed: {e}")
-        rcode = -1
+        return False, None
     debug(f" - jr: {jr}")
-    debug(f" - rcode: {rcode}")
-    if rcode != 0:
-        return False, jr
+    return True, jr
+
+def enroll_reenroll(args):
+    form_data = { 'ekpubhash': (None, args.ekpubhash) }
+    debug("'reenroll' handler about to call API")
+    debug(f" - url: {args.api + '/v1/reenroll'}")
+    debug(f" - files: {form_data}")
+    myrequest = lambda: requests.post(args.api + '/v1/reenroll',
+                             files=form_data,
+                             auth=auth,
+                             verify=args.requests_verify,
+                             cert=args.requests_cert)
+    response = requester_loop(args, myrequest)
+    debug(f" - response: {response}")
+    debug(f" - response.content: {response.content}")
+    if response.status_code != 201:
+        err(f"Error, 'reenroll' response status code was {response.status_code}")
+        return False, None
+    try:
+        jr = json.loads(response.content)
+    except Exception as e:
+        err(f"Error, JSON decoding of 'add' response failed: {e}")
+        return False, None
+    debug(f" - jr: {jr}")
     return True, jr
 
 def do_query_or_delete(args, is_delete):
@@ -316,6 +339,16 @@ if __name__ == '__main__':
     parser_a.add_argument('hostname', help=add_help_hostname)
     parser_a.add_argument('--profile', help=add_help_profile, required=False)
     parser_a.set_defaults(func=enroll_add)
+
+    reenroll_help = 'Re-enroll a TPM/host based on hash(EKpub)'
+    reenroll_epilog = """
+    The 'reenroll' subcommand invokes the '/v1/reenroll' handler of the Enrollment
+    Service's management API, to reenroll an existing enrollment.
+    """
+    reenroll_help_ekpubhash = 'hexidecimal "ekpubhash" of the TPM'
+    parser_d = subparsers.add_parser('reenroll', help=reenroll_help, epilog=reenroll_epilog)
+    parser_d.add_argument('ekpubhash', help=reenroll_help_ekpubhash)
+    parser_d.set_defaults(func=enroll_reenroll)
 
     query_help = 'Query (and list) enrollments based on prefix-search of hash(EKpub)'
     query_epilog = """

@@ -42,7 +42,8 @@
 		"genprogs_pre": "genhostname genrootfskey",
 		"genprogs_post": "gencert-issuer genmetadata genreenroll",
 		"genreenroll": {
-			"hours": 5
+			"_": "(artificially low for devel purposes)",
+			"minutes": 2
 		},
 		"gencert-hxtool": {
 			"<common>": {

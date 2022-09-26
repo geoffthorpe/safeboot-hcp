@@ -12,8 +12,9 @@ log = hcp_common.log
 
 sys.path.insert(1, '/hcp/enrollsvc')
 import db_common
-run_git_cmd = db_common.run_git_cmd
 bail = db_common.bail
+git_commit = db_common.git_commit
+git_reset = db_common.git_reset
 
 if len(sys.argv) != 1:
 	bail(f"Wrong number of arguments: {len(sys.argv)}")
@@ -54,20 +55,13 @@ try:
 		ekpubhash, hostname = scrub_entry(path)
 		hn2ek += [ { 'hostname': hostname, 'ekpubhash': ekpubhash } ]
 	db_common.hn2ek_write(hn2ek)
-	# If the janitor changed (or added) anything, commit it
-	c = run_git_cmd(['status', '--porcelain'])
-	log(f"db_janitor: len(git status --porcelain); {len(c.stdout)}")
-	if len(c.stdout) > 0:
-		log("db_janitor: git add and commit")
-		run_git_cmd(['add', '.'])
-		run_git_cmd(['commit', '-m', "Janitor"])
+	git_commit("Janitor")
 except Exception as e:
 	caught = e
 	log(f"db_janitor: failed enrollment DB update: {caught}")
 	# recover the git repo before we release the lock
 	try:
-		run_git_cmd(['reset', '--hard'])
-		run_git_cmd(['clean', '-f', '-d', '-x'])
+		git_reset()
 	except Exception as e:
 		log(f"db_janitor: failed to recover!: {e}")
 		bail(f"CATASTROPHIC! DB stays locked for manual intervention")

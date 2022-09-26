@@ -49,7 +49,7 @@ function try_self_enroll {
 	# we're not careful they always appear to be failing (0 isn't a valid
 	# http status code). We are expecting 201 for an "add" operation.
 	myret=0
-	python3 /hcp/enrollsvc/db_add.py \
+	python3 /hcp/enrollsvc/db_add.py add \
 			"$HCP_SWTPMSVC_STATE/tpm/ek.pub" \
 			"$HCP_ENROLLSVC_SELFENROLL_HOSTNAME" \
 			"$MYPROFILE" > "$MYOUT" 2>&1 || myret=$?

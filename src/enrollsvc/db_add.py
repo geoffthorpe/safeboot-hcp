@@ -24,8 +24,9 @@ import HcpEnvExpander
 
 sys.path.insert(1, '/hcp/enrollsvc')
 import db_common
-run_git_cmd = db_common.run_git_cmd
 bail = db_common.bail
+git_commit = db_common.git_commit
+git_reset = db_common.git_reset
 
 # IMPORTANT: this file must send any miscellaneous output to stderr _only_.
 # This process is launched (by mgmt_sudo.sh) behind a 'sudo' call from the
@@ -37,27 +38,23 @@ class HcpErrorChildProcess(Exception):
 	pass
 class HcpErrorTPMalreadyEnrolled(Exception):
 	pass
+class HcpErrorTPMnotEnrolled(Exception):
+	pass
 
-# Usage:
-# db_add.py <path-to-ekpub> <hostname> <clientjson>
+# Usage: either
+#     db_add.py add <path-to-ekpub> <hostname> <clientjson>
+# or
+#     db_add.py reenroll <ekpubhash>
 
-if len(sys.argv) != 4:
-	bail(f"Wrong number of arguments: {len(sys.argv)}")
+if len(sys.argv) < 2 or (sys.argv[1] != 'add' and
+			sys.argv[1] != 'reenroll'):
+	bail("First argument must be 'add' or 'reenroll")
 
-path_ekpub = sys.argv[1]
-if not os.path.exists(path_ekpub):
-	bail(f"No file at ekpub path: {path_ekpub}")
+cmdname = sys.argv[1]
+log(f"db_add: starting '{cmdname}'")
+z = f"db_{cmdname}"
 
-hostname = sys.argv[2]
-valid_hostname(hostname)
-
-clientjson = sys.argv[3]
-if len(clientjson) == 0:
-	bail(f"Empty JSON")
-# Don't error-check this, let the exceptions fly if there's anything wrong.
-clientdata = json.loads(clientjson)
-
-# We also expect these env-vars to point to things
+# We expect these env-vars to point to things
 signing_key_dir = hcp_common.env_get_dir('SIGNING_KEY_DIR')
 signing_key_pub = hcp_common.env_get_file('SIGNING_KEY_PUB')
 signing_key_priv = hcp_common.env_get_file('SIGNING_KEY_PRIV')
@@ -75,9 +72,10 @@ os.environ['PATH']=genprogspath
 ephemeral_dir_obj = TemporaryDirectory()
 ephemeral_dir = ephemeral_dir_obj.name
 os.environ['EPHEMERAL_ENROLL'] = ephemeral_dir
+log(f"{z}: ephemeral_dir={ephemeral_dir}")
 
 # Load the server's config and extract the "preclient" and "postclient"
-# profiles. Again, we let exceptions do our error-checking
+# profiles. Let exceptions do our error-checking.
 serverprofile = {}
 if 'HCP_ENROLLSVC_JSON' in os.environ:
 	configpath = os.environ['HCP_ENROLLSVC_JSON']
@@ -85,11 +83,57 @@ if 'HCP_ENROLLSVC_JSON' in os.environ:
 serverprofile_pre = serverprofile.pop('preclient', {})
 serverprofile_post = serverprofile.pop('postclient', {})
 
+# Initialization that differs between enroll/reenroll
+if cmdname == 'add':
+	if len(sys.argv) != 5:
+		bail(f"{z}: wrong number of arguments: {len(sys.argv)}")
+	log(f"{z}: args [{sys.argv[2]},{sys.argv[3]},{sys.argv[4]}]")
+
+	path_ekpub = sys.argv[2]
+	if not os.path.exists(path_ekpub):
+		bail(f"No file at ekpub path: {path_ekpub}")
+
+	hostname = sys.argv[3]
+	valid_hostname(hostname)
+
+	clientjson = sys.argv[4]
+	if len(clientjson) == 0:
+		bail(f"Empty JSON")
+else: # cmdname == 'reenroll'
+	if len(sys.argv) != 3:
+		bail(f"{z}: wrong number of arguments: {len(sys.argv)}")
+	log(f"{z}: args [{sys.argv[2]}]")
+
+	clientjson = sys.argv[2]
+	log(f"{z}: using clientjson={clientjson}")
+	if len(clientjson) == 0:
+		bail(f"Empty JSON")
+	clientdata = json.loads(clientjson)
+	log(f"{z}: clientdata={clientdata}")
+	ekpubhash = clientdata['ekpubhash']
+	log(f"{z}: ekpubhash={ekpubhash}")
+	db_common.valid_ekpubhash(ekpubhash)
+
+	# 'enroll' has to figure out fpath after attest-enroll runs,
+	# 'reenroll' has to figure it out long before that.
+	fpath = db_common.fpath(ekpubhash)
+	log(f"{z}: fpath={fpath}")
+	check = open(f"{fpath}/ekpubhash", 'r').read().strip('\n')
+	if ekpubhash != check:
+		bail(f"{z}: fail, ekpubhash={ekpubhash}, check={check}")
+	clientjson = open(f"{fpath}/clientprofile", 'r').read().strip('\n')
+	hostname = open(f"{fpath}/hostname", 'r').read().strip('\n')
+	log(f"{z}: found hostname={hostname}")
+	path_ekpub = f"{fpath}/ek.pub"
+
 # Now merge with the client. Basically this is a non-shallow merge, in which
 # the client's (requested) profile is overlaid on the server's "preclient"
 # profile, and then the server's "postclient" profile is overlaid on top of
 # that.
+clientdata = json.loads(clientjson)
+log(f"{z}: clientdata={clientdata}")
 resultprofile = union(union(serverprofile_pre, clientdata), serverprofile_post)
+log(f"db_add: client-adjusted resultprofile={resultprofile}")
 
 # Need to add some "env" elements to support expansion
 # - force the ENROLL_HOSTNAME variable from our inputs
@@ -119,6 +163,7 @@ xtra_env = {
 	}
 }
 resultprofile=union(resultprofile, xtra_env)
+log(f"{z}: env-adjusted resultprofle={resultprofile}")
 
 # Now we need to perform parameter-expansion
 origenv = resultprofile.pop('__env', {})
@@ -129,6 +174,7 @@ data_no_env = HcpEnvExpander.env_expand(data_no_env, env)
 resultprofile = json.loads(data_no_env)
 resultprofile['__env'] = origenv
 os.environ['ENROLL_JSON'] = json.dumps(resultprofile)
+log(f"{z}: param-expanded resultprofle={resultprofile}")
 
 # The JSON profile is now fully curated. (The only thing left to do is generate
 # the enroll.conf that safeboot's 'attest-enroll' requires, but that's only
@@ -144,13 +190,15 @@ if policy_url:
 		'request_uid': (None, uuid),
 		'params': (None, json.dumps(resultprofile))
 	}
-	url = f"{policy_url}/emgmt/v1/add"
+	url = f"{policy_url}/emgmt/v1/{cmdname}"
+	log(f"{z}: sending policy request={form_data}")
 	response = requests.post(url, files=form_data)
+	log(f"{z}: policy response={response}")
 	if response.status_code != 200:
 		log(f"policy-checker refused enrollment: {response.status_code}")
 		sys.exit(403)
 
-# Prepare that enroll.conf that safeboot feeds on
+# Prepare the enroll.conf that safeboot feeds on
 genprogs_pre = ""
 genprogs_post = ""
 genprogs = ""
@@ -162,10 +210,12 @@ if 'genprogs' in resultprofile:
 	genprogs = resultprofile['genprogs']
 genprogs = f"{genprogs_pre} {genprogs} {genprogs_post}"
 shutil.copy('/install-safeboot/enroll.conf', ephemeral_dir)
+log(f"db_add: adding GENPROGS=({genprogs})")
 with open(f"{ephemeral_dir}/enroll.conf", 'a') as fenroll:
 	fenroll.write(f"export GENPROGS=({genprogs})")
 
 # and give attest-enroll trust-roots for validating EKcerts
+log(f"db_add: setting TPM_VENDORS={db_common.enrollsvc_state}/tpm_vendors")
 os.environ['TPM_VENDORS'] = f"{db_common.enrollsvc_state}/tpm_vendors"
 
 # Safeboot's 'attest-enroll' evolved when we were doing things differently, now
@@ -192,29 +242,30 @@ c = subprocess.run(
 	stdout = subprocess.PIPE,
 	stderr = tfile,
 	text = True)
+log(f"{z}: attest-enroll returned c={c}")
 if c.returncode != 0:
-	bail(f"safeboot 'attest-enroll' failed: {c.returncode}")
+	bail(f"{z}: safeboot 'attest-enroll' failed: {c.returncode}")
 
 # Enrollment performed, so assets are in 'ephemeral_dir'. Now we need to add it
 # to the git-repo.
 
-# ek.pub may not have existed prior to attest-enroll (if the client passes a
-# different form, this form gets derived), so we hash it here. NB, db_common
-# provides much of the hash/path handling for the git repo, we just calculate
-# our own "halfhash" for logging and commit messages.
-ekpubhash = hashlib.sha256(open(f"{ephemeral_dir}/ek.pub", 'rb').read()).hexdigest()
+# For 'add', ek.pub may have first been produced during attest-enroll (if
+# the client passed us the EK in a different form, attest-enroll converts
+# it), so in that case we hash it here. By dependency, the same is true of
+# fpath.
+if cmdname == 'add':
+	ekpubhash = hashlib.sha256(open(f"{ephemeral_dir}/ek.pub",
+				'rb').read()).hexdigest()
+	fpath = db_common.fpath(ekpubhash)
+	log(f"{z}: ekpubhash={ekpubhash}")
+	log(f"{z}: fpath={fpath}")
 halfhash = ekpubhash[:16]
 
 # Change working directory to the git repo
 os.chdir(db_common.repo_path)
 
-# Calculate paths to use in the DB for this ekpubhash
-fpath = db_common.fpath(ekpubhash)
-fpath_base = db_common.fpath_base(ekpubhash)
-fpath_parent = db_common.fpath_parent(ekpubhash)
-
 # The critical section begins
-log("Enrollment critical section beginning")
+log("{z}: critical section beginning")
 db_common.repo_lock()
 
 # From here on in, we should not allow any error to prevent us from unlocking. Of course,
@@ -222,39 +273,55 @@ db_common.repo_lock()
 # coded for, but we should at least control what we can.
 caught = None
 try:
-	# Create the TPM's path in the DB or fail if it already exists
-	if os.path.isdir(fpath):
-		raise HcpErrorTPMalreadyEnrolled(f"existing ekpub: {halfhash}")
-	os.makedirs(fpath_parent, exist_ok = True)
-	# Copy all the generated assets (from attest-enroll)
+	if cmdname == 'add':
+		# For 'add', the TPM must _not_ already be enrolled
+		if os.path.isdir(fpath):
+			raise HcpErrorTPMalreadyEnrolled(f"existing ekpub: {halfhash}")
+		# Add the hostname-to-ekpub entry to hn2ek, it's new
+		log("{z}: add hn2ek entry")
+		db_common.hn2ek_xadd(hostname, ekpubhash)
+	else: # cmdname == 'reenroll'
+		# For 'reenroll', the TPM _must_ already be enrolled
+		if not os.path.isdir(fpath):
+			raise HcpErrorTPMnotEnrolled(f"unknown ekpub: {halfhash}")
+		# Remove the existing tree. If anything goes wrong, the
+		# exception handler's 'git reset --hard' will restore what was
+		# removed. Also we hold the lock, so the tree-deletion never
+		# gets committed to git, so it goes unseen, unreplicated, etc.
+		shutil.rmtree(fpath)
+	# Copy the ephemeral enrollment dir into place. I could have moved it
+	# instead, but (a) TemporaryDirectory() garbage-collects the ephemeral
+	# dir and I don't want any surprises from that, and (b) it could be
+	# that umasks or sticky-bits or group-ids or mount options differ
+	# between the ephemeral dir and the git repo, and because 'cp' creates
+	# all the destination dirs and files, it would seem less prone to
+	# oddity than 'mv'.
+	log(f"{z}: move enrollment to DB at {fpath}")
+	import glob
 	shutil.copytree(ephemeral_dir, fpath)
-	# Add the hostname-to-ekpub entry to hn2ek.
-	db_common.hn2ek_xadd(hostname, ekpubhash)
-	# Write the 'ekpubhash' file
+	# Add 'ekpubhash' and 'clientprofile' files
+	log("{z}: adding ekpubhash and clientprofile")
 	open(f"{fpath}/ekpubhash", 'w').write(f"{ekpubhash}")
-	# Store the client's requested profile
 	open(f"{fpath}/clientprofile", 'w').write(f"{clientjson}")
 	# Close the transaction
-	run_git_cmd(['add', '.'])
-	run_git_cmd(['commit', '-m', f"map {halfhash} to {hostname}"])
+	git_commit(f"map {halfhash} to {hostname}")
 except Exception as e:
 	caught = e
-	log(f"Failed: enrollment DB 'add': {caught}")
+	log(f"{z}: caught exception: {caught}")
 	# recover the git repo before we release the lock
 	try:
-		run_git_cmd(['reset', '--hard'])
-		run_git_cmd(['clean', '-f', '-d', '-x'])
+		git_reset()
 	except Exception as e:
-		log(f"Failed: enrollment DB rollback: {e}")
+		log(f"{z}: rollback failed!! {e}")
 		bail(f"CATASTROPHIC! DB stays locked for manual intervention")
-	log(f"Enrollment DB rollback complete")
+	log("{z}: rollback complete")
 
 # Remove the lock, then reraise any exception we intercepted
 db_common.repo_unlock()
 if caught:
-	log(f"Enrollment DB exception continuation: {caught}")
+	log(f"{z}: exception continuation: {caught}")
 	raise caught
-log("Enrollment critical section complete")
+log("{z}: critical section complete")
 
 # The point of this entire file: produce a JSON to stdout that confirms the
 # transaction. This gets returned to the client.
@@ -265,5 +332,5 @@ result = {
 	'profile': clientdata
 }
 print(json.dumps(result, sort_keys = True))
-log("JSON output produced, exiting with code 201")
+log("{z}: JSON output produced, exiting with code 201")
 sys.exit(201)

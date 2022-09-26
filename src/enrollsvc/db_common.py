@@ -21,6 +21,22 @@ ek_basename = 'ekpubhash'
 ek_path = f"{repo_path}/{ek_basename}"
 hn2ek_basename = 'hn2ek'
 hn2ek_path = f"{repo_path}/{hn2ek_basename}"
+valid_ekpubhash_re = '[a-f0-9_-]{64}'
+valid_ekpubhash_prefix_re = '[a-f0-9_-]*'
+valid_ekpubhash_prog = re.compile(valid_ekpubhash_re)
+valid_ekpubhash_prefix_prog = re.compile(valid_ekpubhash_prefix_re)
+class HcpEkpubhashError(Exception):
+	pass
+
+def valid_ekpubhash(ekpubhash):
+	if not valid_ekpubhash_prog.fullmatch(ekpubhash):
+		raise HcpEkpubhashError(
+			f"HCP, invalid ekpubhash: {ekpubhash}")
+
+def valid_ekpubhash_prefix(ekpubhash):
+	if not valid_ekpubhash_prefix_prog.fullmatch(ekpubhash):
+		raise HcpEkpubhashError(
+			f"HCP, invalid ekpubhash prefix: {ekpubhash}")
 
 def halfhash(ekpubhash):
 	return ekpubhash[:16]
@@ -35,15 +51,6 @@ def fpath_base(ekpubhash):
 
 def fpath(ekpubhash):
 	return f"{fpath_parent(ekpubhash)}/{fpath_base(ekpubhash)}"
-
-# When doing 'git rm -r <dir>' (during a delete), we want <dir> relative to the
-# git repo top-level, not an absolute path in the filesystem. We could
-# construct this from 'ekpubhash', but by the time this function is called,
-# we've already done a bunch of ekpubhash->plyX stuff, so instead we do a
-# prefix replacement on the already-known absolute path. Ie. we chop off the
-# path to the git repo and replace it with "./".
-def fpath_to_git(current_fpath):
-	return f".{current_fpath[len(repo_path):]}"
 
 # Given a prefix, figure out a wildcard to match on all matching fpaths
 def fpath_mask(prefix):
@@ -138,8 +145,7 @@ def hn2ek_xdelete(hostname, ekpubhash):
 	data = hn2ek_delete(hn2ek_read(), hostname, ekpubhash)
 	hn2ek_write(data)
 
-# Code shared by "add" and "delete". Send any stdout to stderr
-def run_git_cmd(args):
+def __git_cmd(args):
 	args = ['git'] + args
 	expanded = ' '.join(map(str, args))
 	log(f"Running '{expanded}'")
@@ -150,3 +156,16 @@ def run_git_cmd(args):
 		log(f"{c.stdout}")
 		raise HcpErrorChildProcess(f"Failed: {expanded}")
 	return c
+
+def git_commit(msg):
+	c = __git_cmd(['status', '--porcelain'])
+	if len(c.stdout) > 0:
+		log('git_commit(): committing changes')
+		__git_cmd(['add', '.'])
+		__git_cmd(['commit', '-a', '-m', msg])
+	else:
+		log('git_commit(): no changes to commit')
+
+def git_reset():
+	__git_cmd(['reset', '--hard'])
+	__git_cmd(['clean', '-f', '-d', '-x'])
