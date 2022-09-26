@@ -1,4 +1,5 @@
 import os
+import sys
 import datetime
 
 from hcp_common import env_get_dir_or_none
@@ -16,4 +17,5 @@ def tracefile(name, dirpath = None):
 	if not dirpath:
 		raise HcpErrorTracefile(f"Can't find HCP_TRACEFILE/HOME directory")
 	tracefile = open(f"{dirpath}/debug-{name}-{suffix}", 'a')
+	print(f"{name}: tracefile going to {tracefile.name}", file = sys.stderr)
 	return tracefile
