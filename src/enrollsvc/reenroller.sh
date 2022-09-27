@@ -17,7 +17,17 @@ S_OK=$HCP_ENROLLSVC_REENROLLER_PERIOD
 S_ERR=$HCP_ENROLLSVC_REENROLLER_BACKOFF
 
 while : ; do
-	python3 /hcp/enrollsvc/reenroller_sub.py && sleep $S_OK ||
+	# NB: as with all python files that use hcp_tracefile, this will cause
+	# a line of logging to be written to the _current_ stderr that tells it
+	# about the tracefile being opened, after which that tracefile will
+	# replace stderr for subsequent processing and logging. Fine. However
+	# this means that for each iteration of this loop, the top-level
+	# console stderr gets a message saying that reenroller_sub.py has
+	# opened a tracefile. _That_ is why we redirect stderr to /dev/null
+	# here - it suppresses that one message to stderr, otherwise all the
+	# subsequent logging goes to the tracefile(s).
+	python3 /hcp/enrollsvc/reenroller_sub.py > /dev/null 2>&1 &&
+		sleep $S_OK ||
 		(echo "Warning: reenroller encountered error: sleep $S_ERR" &&
 			sleep $S_ERR)
 done
