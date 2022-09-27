@@ -1,77 +1,81 @@
 {
-	"preclient": {
-		"__env": {
-			"ENROLL_ISSUERCERT": "/usr/share/ca-certificates/HCP/certissuer.pem",
-			"ENROLL_CERTPREFIX": "hostcert-"
-		},
-		"genprogs": "gencert-hxtool",
-		"gencert-hxtool": {
-			"list": [ "default-https-client" ],
-			"prefix": "{ENROLL_CERTPREFIX}",
-			"<common>": {
-				"generate-key": "rsa",
-				"key-bits": "2048"
-			},
-			"default-pkinit-kdc": {
-				"type": "pkinit-kdc",
-				"name": "pkinit-kdc",
-				"pk-init-principal": "krbtgt/{ENROLL_REALM}@{ENROLL_REALM}"
-			},
-			"default-pkinit-client": {
-				"type": "pkinit-client",
-				"pk-init-principal": "host/{ENROLL_HOSTNAME}@{ENROLL_REALM}",
-				"subject": "CN=host,{ENROLL_HOSTNAME2DC}"
-			},
-			"default-https-server": {
-				"type": "https-server",
-				"hostname": "{ENROLL_HOSTNAME}"
-			},
-			"default-https-client": {
-				"type": "https-client",
-				"subject": "UID=host,{ENROLL_HOSTNAME2DC}",
-				"hostname": "{ENROLL_HOSTNAME}"
-			}
-		}
-	},
-	"postclient": {
-		"__env": {
-			"ENROLL_CA_ISSUER_PRIV": "{GENCERT_CA_PRIV}",
-			"ENROLL_REALM": "HCPHACKING.XYZ",
-			"ENROLL_DOMAIN": "hcphacking.xyz"
-		},
-		"genprogs_pre": "genhostname genrootfskey",
-		"genprogs_post": "gencert-issuer genmetadata genreenroll",
-		"genreenroll": {
-			"_": "(artificially low for devel purposes)",
-			"minutes": 2
-		},
-		"gencert-hxtool": {
-			"<common>": {
-				"ca-certificate": "{ENROLL_CA_ISSUER_PRIV}"
-			}
-		},
-		"gencert-issuer": {
-			"source": "{ENROLL_CA_ISSUER_PRIV}",
-			"dest": "certissuer.pem"
-		},
-		"genconf-krb5": {
-			"libdefaults": {
-				"default_realm": "{ENROLL_REALM}"
-			},
-			"appdefaults": {
-				"pkinit_anchors": "FILE:{ENROLL_ISSUERCERT}"
-			},
-			"realms": {
-				"{ENROLL_REALM}": {
-					"kdc": "kdc1.{ENROLL_DOMAIN}",
-					"kpasswd_server": "kdc1.{ENROLL_DOMAIN}",
-					"admin_server": "kdc1.{ENROLL_DOMAIN}",
-					"pkinit_require_eku": "true",
-					"pkinit_require_krbtgt_otherName": "true",
-					"pkinit_win2k": "no",
-					"pkinit_win2k_require_binding": "yes"
-				}
-			}
-		}
-	}
+    "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
+
+    "db_add": {
+        "preclient": {
+            "__env": {
+                "ENROLL_ISSUERCERT": "/usr/share/ca-certificates/HCP/certissuer.pem",
+                "ENROLL_CERTPREFIX": "hostcert-"
+            },
+            "genprogs": "gencert-hxtool",
+            "gencert-hxtool": {
+                "list": [ "default-https-client" ],
+                "prefix": "{ENROLL_CERTPREFIX}",
+                "<common>": {
+                    "generate-key": "rsa",
+                    "key-bits": "2048"
+                },
+                "default-pkinit-kdc": {
+                    "type": "pkinit-kdc",
+                    "name": "pkinit-kdc",
+                    "pk-init-principal": "krbtgt/{ENROLL_REALM}@{ENROLL_REALM}"
+                },
+                "default-pkinit-client": {
+                    "type": "pkinit-client",
+                    "pk-init-principal": "host/{ENROLL_HOSTNAME}@{ENROLL_REALM}",
+                    "subject": "CN=host,{ENROLL_HOSTNAME2DC}"
+                },
+                "default-https-server": {
+                    "type": "https-server",
+                    "hostname": "{ENROLL_HOSTNAME}"
+                },
+                "default-https-client": {
+                    "type": "https-client",
+                    "subject": "UID=host,{ENROLL_HOSTNAME2DC}",
+                    "hostname": "{ENROLL_HOSTNAME}"
+                }
+            }
+        },
+        "postclient": {
+            "__env": {
+                "ENROLL_CA_ISSUER_PRIV": "{GENCERT_CA_PRIV}",
+                "ENROLL_REALM": "HCPHACKING.XYZ",
+                "ENROLL_DOMAIN": "hcphacking.xyz"
+            },
+            "genprogs_pre": "genhostname genrootfskey",
+            "genprogs_post": "gencert-issuer genmetadata genreenroll",
+            "genreenroll": {
+                "_": "(artificially low for devel purposes)",
+                "minutes": 2
+            },
+            "gencert-hxtool": {
+                "<common>": {
+                    "ca-certificate": "{ENROLL_CA_ISSUER_PRIV}"
+                }
+            },
+            "gencert-issuer": {
+                "source": "{ENROLL_CA_ISSUER_PRIV}",
+                "dest": "certissuer.pem"
+            },
+            "genconf-krb5": {
+                "libdefaults": {
+                    "default_realm": "{ENROLL_REALM}"
+                },
+                "appdefaults": {
+                    "pkinit_anchors": "FILE:{ENROLL_ISSUERCERT}"
+                },
+                "realms": {
+                    "{ENROLL_REALM}": {
+                        "kdc": "kdc1.{ENROLL_DOMAIN}",
+                        "kpasswd_server": "kdc1.{ENROLL_DOMAIN}",
+                        "admin_server": "kdc1.{ENROLL_DOMAIN}",
+                        "pkinit_require_eku": "true",
+                        "pkinit_require_krbtgt_otherName": "true",
+                        "pkinit_win2k": "no",
+                        "pkinit_win2k_require_binding": "yes"
+                    }
+                }
+            }
+        }
+    }
 }

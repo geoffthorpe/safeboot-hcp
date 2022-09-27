@@ -79,7 +79,7 @@ log(f"{z}: ephemeral_dir={ephemeral_dir}")
 serverprofile = {}
 if 'HCP_ENROLLSVC_JSON' in os.environ:
 	configpath = os.environ['HCP_ENROLLSVC_JSON']
-	serverprofile = json.load(open(configpath, 'r'))
+	serverprofile = json.load(open(configpath, 'r')).pop('db_add', {})
 serverprofile_pre = serverprofile.pop('preclient', {})
 serverprofile_post = serverprofile.pop('postclient', {})
 
