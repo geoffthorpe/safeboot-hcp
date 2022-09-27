@@ -59,12 +59,12 @@ for entry in matches:
 	hint = entry['hint']
 	ekpubhash = entry['ekpubhash']
 	shorthash = ekpubhash[0:16]
-	s = f"reenroller: ekpubhash={shorthash}, hint={hint}"
+	s = f"ekpubhash={shorthash}, hint={hint}"
 
 	if hintnow < hint:
 		log(f"reenroller: stopping on {s}")
 		break
-	log("reenroller: reenrolling {s}")
+	log(f"reenroller: reenrolling {s}")
 
 	clientdata = {
 		'ekpubhash': ekpubhash
