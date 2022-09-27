@@ -10,6 +10,12 @@ expect_root
 
 echo "Running 'enrollsvc-mgmt' service"
 
+if [[ -z $HCP_ENROLLSVC_JSON || ! -f $HCP_ENROLLSVC_JSON ]]; then
+	echo "Error, HCP_ENROLLSVC_JSON ('$HCP_ENROLLSVC_JSON') missing" >&2
+	exit 1
+fi
+reenroller=$(jq -r '.reenroller // empty' $HCP_ENROLLSVC_JSON)
+
 if [[ -n $HCP_ENROLLSVC_ENABLE_SWTPM ]]; then
 
 	if [[ ! -f "$HCP_SWTPMSVC_STATE/tpm/ek.pub" ]]; then
@@ -75,12 +81,8 @@ if [[ -n $HCP_ENROLLSVC_ENABLE_NGINX ]]; then
 	nginx
 fi
 
-if [[ -n $HCP_ENROLLSVC_ENABLE_REENROLLER ]]; then
+if [[ -n $reenroller ]]; then
 	echo "enrollsvc::mgmt, starting reenroller"
-	if [[ -z $HCP_ENROLLSVC_REENROLLER_PERIOD ]]; then
-		echo "Error, HCP_ENROLLSVC_REENROLLER_PERIOD isn't defined" >&2
-		exit 1
-	fi
 	drop_privs_db /hcp/enrollsvc/reenroller.sh &
 fi
 

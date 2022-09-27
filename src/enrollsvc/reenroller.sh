@@ -13,8 +13,27 @@ source /hcp/enrollsvc/common.sh
 
 expect_db_user
 
-S_OK=$HCP_ENROLLSVC_REENROLLER_PERIOD
-S_ERR=$HCP_ENROLLSVC_REENROLLER_BACKOFF
+# When we finally get rid of our dependence on env-vars for startup (and
+# base everything off the JSON input instead), this bash script and a few
+# others could be converted to python, in which case we'd use hcp_tracefile
+# and add a bunch of debug-logging about the JSON processing. But for now,
+# especially given that our stderr is the top-level/console stderr, we
+# stay relatively quiet.
+
+if [[ -z $HCP_ENROLLSVC_JSON || ! -f $HCP_ENROLLSVC_JSON ]]; then
+	echo "Error, reenroller has no HCP_ENROLLSVC_JSON" >&2
+	exit 1
+fi
+jsonpath=$HCP_ENROLLSVC_JSON
+
+# We're bash, not python, so we can't use hcp_common.py::dict_timedelta.
+# We use hcp.sh::dict_timedelta instead.
+jperiod=$(jq -r '.reenroller.period // {}' $jsonpath)
+jretry=$(jq -r '.reenroller.retry // {}' $jsonpath)
+
+S_OK=$(dict_timedelta "$jperiod")
+S_ERR=$(dict_timedelta "$jretry")
+echo "reenroller running with period=$S_OK, retry=$S_ERR"
 
 while : ; do
 	# NB: as with all python files that use hcp_tracefile, this will cause

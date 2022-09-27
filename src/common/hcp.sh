@@ -179,3 +179,30 @@ function add_trust_root {
 		update-ca-certificates
 	fi
 }
+
+# The hcp_common.py function 'dict_timedelta' parses a time period out of a
+# JSON struct so that it can be expressed using any of 'years', 'months',
+# 'weeks', 'days', 'hours', 'minutes', and/or 'seconds'. This bash version is
+# similar except;
+# - it takes the JSON string in $1, whereas the python version takes a python
+#   dict (already converted from JSON),
+# - it returns an integer number of seconds, whereas the python version
+#   returns a datetime.timedelta object.
+function dict_timedelta {
+	thejson=$1
+	# for get_element;
+	#  $1 = name
+	function get_element {
+		x=$(echo "$thejson" | jq -r ".$1 // 0")
+		echo "$x"
+	}
+	val=0
+	val=$((val + $(get_element "years") * 365 * 24 * 60 * 60))
+	val=$((val + $(get_element "months") * 28 * 24 * 60 * 60))
+	val=$((val + $(get_element "weeks") * 7 * 24 * 60 * 60))
+	val=$((val + $(get_element "days") * 24 * 60 * 60))
+	val=$((val + $(get_element "hours") * 60 * 60))
+	val=$((val + $(get_element "minutes") * 60))
+	val=$((val + $(get_element "seconds")))
+	echo "$val"
+}
