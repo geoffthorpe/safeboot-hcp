@@ -30,8 +30,8 @@ unset WARNED_DBADD
 
 function try_self_enroll {
 	# If the policy service isn't available, better to figure that out from
-	# a healthcheck directly from the policysvc, rather than having
-	# db_add.py fail policy checks only after doing some heavy-lifting.
+	# a healthcheck rather than having db_add.py fail policy checks only
+	# after doing some heavy-lifting.
 	if [[ -n $HCP_ENROLLSVC_POLICY ]] && ! curl -f -s -G \
 			$HCP_ENROLLSVC_POLICY/healthcheck > /dev/null 2>&1; then
 		if [[ -z $WARNED_HEALTHCHECK ]]; then

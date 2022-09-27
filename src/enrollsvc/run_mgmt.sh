@@ -16,6 +16,11 @@ if [[ -z $HCP_ENROLLSVC_JSON || ! -f $HCP_ENROLLSVC_JSON ]]; then
 fi
 reenroller=$(jq -r '.reenroller // empty' $HCP_ENROLLSVC_JSON)
 
+# The most convenient thing for self-enrollment would be to use orchestrator,
+# but that talks to the very emgmt interface that can't run until we have
+# successfully enrolled... So, we use orchestrator only to create the swtpm
+# instance, then self_enroll.sh invokes the db_add.sh operation directly to
+# handle enrollment.
 if [[ -n $HCP_ENROLLSVC_ENABLE_SWTPM ]]; then
 
 	if [[ ! -f "$HCP_SWTPMSVC_STATE/tpm/ek.pub" ]]; then
@@ -29,7 +34,7 @@ if [[ -n $HCP_ENROLLSVC_ENABLE_SWTPM ]]; then
 	"tpm_path": "$HCP_SWTPMSVC_STATE"
 } ] }
 EOF
-		/hcp/tools/run_orchestrator.sh -c -e
+		/hcp/tools/run_orchestrator.sh -c
 		rm $HCP_ORCHESTRATOR_JSON
 	fi
 
