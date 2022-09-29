@@ -42,12 +42,28 @@
 			}
 		},
 		{
-			"name": "kdc1",
-			"tpm_path": "/tpm_kdc1",
-			"enroll_hostname": "kdc1.hcphacking.xyz",
+			"name": "kdc_primary",
+			"tpm_path": "/tpm_kdc_primary",
+			"enroll_hostname": "primary.kdc.hcphacking.xyz",
 			"enroll_profile": {
+				"__env": {
+					"ENROLL_KDC": "primary.kdc"
+				},
 				"gencert-hxtool": {
 					"list": [ "default-pkinit-kdc", "default-https-server" ]
+				}
+			}
+		},
+		{
+			"name": "kdc_secondary",
+			"tpm_path": "/tpm_kdc_secondary",
+			"enroll_hostname": "secondary.kdc.hcphacking.xyz",
+			"enroll_profile": {
+				"__env": {
+					"ENROLL_KDC": "primary.kdc"
+				},
+				"gencert-hxtool": {
+					"list": [ "default-pkinit-kdc", "pkinit-iprop" ]
 				}
 			}
 		}

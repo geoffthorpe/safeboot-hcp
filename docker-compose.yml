@@ -30,12 +30,15 @@ volumes:
     fqdn:
     enrolldb:
     attestdb:
-    kdc1:
+    kdc_primary:
+    kdc_secondary:
     tpm_emgmt:
     tpm_aclient:
     tpmsocket_aclient:
-    tpm_kdc1:
-    tpmsocket_kdc1:
+    tpm_kdc_primary:
+    tpmsocket_kdc_primary:
+    tpm_kdc_secondary:
+    tpmsocket_kdc_secondary:
 
 networks:
     hcpnetwork:
@@ -143,7 +146,8 @@ services:
           - ${HCP_TESTCREDS_ENROLLCLIENT}:${HCP_ORCH_CLIENTCERT}:ro
           - tpm_emgmt:${HCP_ORCH_TPM_EMGMT}
           - tpm_aclient:${HCP_ORCH_TPM_ACLIENT}
-          - tpm_kdc1:${HCP_ORCH_TPM_KDC1}
+          - tpm_kdc_primary:${HCP_ORCH_TPM_KDC_PRIMARY}
+          - tpm_kdc_secondary:${HCP_ORCH_TPM_KDC_SECONDARY}
         environment:
           - HCP_INSTANCE=/usecase/orchestrator.env
           - HCP_ENTRYPOINT=/hcp/tools/run_orchestrator.sh
@@ -204,29 +208,58 @@ services:
         volumes:
           - ${HCP_TOP}/tests/unit:/unit
 
-    kdc1:
+# Kerberos Domain Controller - Primary
+    kdc_primary:
         extends: common
         image: ${HCP_IMAGE_kdcsvc}
         volumes:
-          - kdc1:${HCP_KDC1_STATE}
-          - tpmsocket_kdc1:${HCP_KDC1_ATTEST_TCTI_SOCKDIR}
-          - ${HCP_TESTCREDS_ENROLLVERIFIER}:${HCP_KDC1_ATTEST_CREDS_VERIFIER}:ro
+          - kdc_primary:${HCP_KDC_PRIMARY_STATE}
+          - tpmsocket_kdc_primary:${HCP_KDC_PRIMARY_ATTEST_TCTI_SOCKDIR}
+          - ${HCP_TESTCREDS_ENROLLVERIFIER}:${HCP_KDC_PRIMARY_ATTEST_CREDS_VERIFIER}:ro
         networks:
           - hcpnetwork
         environment:
-          - HCP_INSTANCE=/usecase/kdc1.env
+          - HCP_INSTANCE=/usecase/kdc_primary.env
           - HCP_ENTRYPOINT=/hcp/kdcsvc/run_kdc.sh
-    kdc1_tpm:
+    kdc_primary_tpm:
         extends: common
         image: ${HCP_IMAGE_swtpmsvc}
         network_mode: "none"
         volumes:
-          - tpm_kdc1:${HCP_KDC1TPM_STATE}
-          - tpmsocket_kdc1:${HCP_KDC1TPM_SOCKDIR}
+          - tpm_kdc_primary:${HCP_KDC_PRIMARY_TPM_STATE}
+          - tpmsocket_kdc_primary:${HCP_KDC_PRIMARY_TPM_SOCKDIR}
         environment:
-          - HCP_INSTANCE=/usecase/kdc1_tpm.env
+          - HCP_INSTANCE=/usecase/kdc_primary_tpm.env
           - HCP_ENTRYPOINT=/hcp/swtpmsvc/run_swtpm.sh
         healthcheck:
-            test: /hcp/swtpmsvc/healthcheck.sh
+            test: /hcp/tools/swtpm_healthcheck.sh
+            timeout: 1s
+            interval: 2s
+
+# Kerberos Domain Controller - Secondary
+    kdc_secondary:
+        extends: common
+        image: ${HCP_IMAGE_kdcsvc}
+        volumes:
+          - kdc_secondary:${HCP_KDC_SECONDARY_STATE}
+          - tpmsocket_kdc_secondary:${HCP_KDC_SECONDARY_ATTEST_TCTI_SOCKDIR}
+          - ${HCP_TESTCREDS_ENROLLVERIFIER}:${HCP_KDC_SECONDARY_ATTEST_CREDS_VERIFIER}:ro
+        networks:
+          - hcpnetwork
+        environment:
+          - HCP_INSTANCE=/usecase/kdc_secondary.env
+          - HCP_ENTRYPOINT=/hcp/kdcsvc/run_kdc.sh
+    kdc_secondary_tpm:
+        extends: common
+        image: ${HCP_IMAGE_swtpmsvc}
+        network_mode: "none"
+        volumes:
+          - tpm_kdc_secondary:${HCP_KDC_SECONDARY_TPM_STATE}
+          - tpmsocket_kdc_secondary:${HCP_KDC_SECONDARY_TPM_SOCKDIR}
+        environment:
+          - HCP_INSTANCE=/usecase/kdc_secondary_tpm.env
+          - HCP_ENTRYPOINT=/hcp/swtpmsvc/run_swtpm.sh
+        healthcheck:
+            test: /hcp/tools/swtpm_healthcheck.sh
             timeout: 1s
             interval: 2s

@@ -61,7 +61,7 @@
 		"result": "accept"
 	},
 	{
-		"name": "Accept unmodified 'default-pkinit-kdc' requests only for kdc1",
+		"name": "Accept unmodified 'default-pkinit-kdc' requests for primary.kdc",
 		"if-equal": [ {
 			"path": ".default-pkinit-kdc",
 			"value": {
@@ -74,7 +74,25 @@
 			}
 		} , {
 			"path": ".__env.ENROLL_HOSTNAME",
-			"value": "kdc1.hcphacking.xyz"
+			"value": "primary.kdc.{ENROLL_DOMAIN}"
+		} ],
+		"result": "accept"
+	},
+	{
+		"name": "Accept unmodified 'default-pkinit-kdc' requests for secondary.kdc",
+		"if-equal": [ {
+			"path": ".default-pkinit-kdc",
+			"value": {
+				"generate-key": "rsa",
+				"key-bits": "2048",
+				"name": "pkinit-kdc",
+				"type": "pkinit-kdc",
+				"pk-init-principal": "krbtgt/{ENROLL_REALM}@{ENROLL_REALM}",
+				"ca-certificate": "{ENROLL_CA_ISSUER_PRIV}"
+			}
+		} , {
+			"path": ".__env.ENROLL_HOSTNAME",
+			"value": "secondary.kdc.{ENROLL_DOMAIN}"
 		} ],
 		"result": "accept"
 	},
