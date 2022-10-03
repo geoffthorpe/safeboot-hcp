@@ -42,6 +42,7 @@ services:
         volumes:
           - fqdn:/fqdn-bus:rw
           - ${HCP_TOP}/usecase:/usecase:ro
+          - ${HCP_TOP}/ext-heimdal:/src-heimdal:ro
         environment:
           - HCP_NOTRACEFILE=1
 #          - VERBOSE=2
