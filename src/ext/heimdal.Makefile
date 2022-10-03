@@ -20,7 +20,7 @@ $(eval $(call builder_add_codebase,\
 	.,\
 	autogen.sh,\
 	./autogen.sh,\
-	MAKEINFO=true ./configure --prefix=$(HCP_HEIMDAL_INSTALL_DEST) --disable-texinfo,\
+	MAKEINFO=true ./configure --prefix=$(HCP_HEIMDAL_INSTALL_DEST) --disable-texinfo CFLAGS=\"-O0 -g -ggdb3\",\
 	MAKEINFO=true make $(HCP_BUILDER_MAKE_PARALLEL),\
 	MAKEINFO=true make $(HCP_BUILDER_MAKE_PARALLEL) install))
 
