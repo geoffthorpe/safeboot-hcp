@@ -32,7 +32,7 @@ now = datetime.now(timezone.utc)
 conf_enroll = json.loads(env_get('ENROLL_JSON'))
 conf_issuer = dict_val_or(conf_enroll, 'genreenroll', {})
 td = dict_timedelta(conf_issuer)
-if td.seconds == 0:
+if not td > timedelta():
 	bail("Non-zero time period must be provided to genreenroll")
 
 later = now + td
