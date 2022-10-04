@@ -12,7 +12,7 @@ import requests
 
 sys.path.insert(1, '/hcp/common')
 from hcp_tracefile import tracefile
-tfile = tracefile("mgmtapi")
+tfile = tracefile("enrollsvc-mgmt")
 sys.stderr = tfile
 from hcp_common import log
 

@@ -5,7 +5,8 @@
         "preclient": {
             "__env": {
                 "ENROLL_ISSUERCERT": "/usr/share/ca-certificates/HCP/certissuer.pem",
-                "ENROLL_CERTPREFIX": "hostcert-"
+                "ENROLL_CERTPREFIX": "hostcert-",
+                "ENROLL_KDC": "secondary.kdc"
             },
             "genprogs": "gencert-hxtool",
             "gencert-hxtool": {
@@ -46,7 +47,7 @@
             "genprogs_post": "gencert-issuer genmetadata genreenroll",
             "genreenroll": {
                 "_": "(artificially low for devel purposes)",
-                "minutes": 2
+                "days": 2
             },
             "gencert-hxtool": {
                 "<common>": {
@@ -58,17 +59,23 @@
                 "dest": "certissuer.pem"
             },
             "genconf-krb5": {
+                "logging": {
+                    "default": "STDERR"
+                },
                 "libdefaults": {
-                    "default_realm": "{ENROLL_REALM}"
+                    "default_realm": "{ENROLL_REALM}",
+                    "dns_lookup_kdc": "no",
+                    "dns_lookup_realm": "no"
                 },
                 "appdefaults": {
                     "pkinit_anchors": "FILE:{ENROLL_ISSUERCERT}"
                 },
+                "domain_realm": {
+                    ".hcphacking.xyz": "HCPHACKING.XYZ"
+                },
                 "realms": {
                     "{ENROLL_REALM}": {
-                        "kdc": "kdc_primary.{ENROLL_DOMAIN}",
-                        "kpasswd_server": "kdc_primary.{ENROLL_DOMAIN}",
-                        "admin_server": "kdc_primary.{ENROLL_DOMAIN}",
+                        "kdc": "{ENROLL_KDC}.{ENROLL_DOMAIN}",
                         "pkinit_require_eku": "true",
                         "pkinit_require_krbtgt_otherName": "true",
                         "pkinit_win2k": "no",

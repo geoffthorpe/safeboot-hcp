@@ -5,22 +5,27 @@
 		"enroll_api": "https://emgmt.hcphacking.xyz:8443",
 		"enroll_profile": {
 			"__env": {
-				"ENROLL_PKINIT_CLIENT_USER": "nobody",
-				"ENROLL_HTTPS_CLIENT_USER": "nobody"
+				"ENROLL_PKINIT_CLIENT_PRINC": "nobody",
+				"ENROLL_HTTPS_CLIENT_PRINC": "nobody"
 			},
 			"genprogs": "genconf-krb5 gencert-hxtool",
 			"gencert-hxtool": {
 				"list": [ "default-pkinit-client", "default-https-client" ],
 				"pkinit-client-user": {
 					"type": "pkinit-client",
-					"pk-init-principal": "{ENROLL_PKINIT_CLIENT_USER}/admin@{ENROLL_REALM}",
-					"subject": "CN={ENROLL_PKINIT_CLIENT_USER},{ENROLL_HOSTNAME2DC}"
+					"pk-init-principal": "{ENROLL_PKINIT_CLIENT_PRINC}@{ENROLL_REALM}",
+					"subject": "CN={ENROLL_PKINIT_CLIENT_PRINC},{ENROLL_HOSTNAME2DC}"
 				},
 				"https-client-user": {
 					"type": "https-client",
-					"name": "https-client-{ENROLL_HTTPS_CLIENT_USER}",
-					"subject": "UID={ENROLL_HTTPS_CLIENT_USER},{ENROLL_DOMAIN2DC}",
-					"email": "{ENROLL_HTTPS_CLIENT_USER}@{ENROLL_DOMAIN}"
+					"name": "https-client-{ENROLL_HTTPS_CLIENT_PRINC}",
+					"subject": "UID={ENROLL_HTTPS_CLIENT_PRINC},{ENROLL_DOMAIN2DC}",
+					"email": "{ENROLL_HTTPS_CLIENT_PRINC}@{ENROLL_DOMAIN}"
+				},
+				"pkinit-iprop": {
+					"type": "pkinit-client",
+					"pk-init-principal": "iprop/{ENROLL_HOSTNAME}@{ENROLL_REALM}",
+					"subject": "CN=iprop,{ENROLL_HOSTNAME2DC}"
 				}
 			}
 		}
@@ -32,8 +37,8 @@
 			"enroll_hostname": "aclient.hcphacking.xyz",
 			"enroll_profile": {
 				"__env": {
-					"ENROLL_PKINIT_CLIENT_USER": "alicia",
-					"ENROLL_HTTPS_CLIENT_USER": "robert"
+					"ENROLL_PKINIT_CLIENT_PRINC": "alicia/admin",
+					"ENROLL_HTTPS_CLIENT_PRINC": "barry"
 				},
 				"gencert-hxtool": {
 					"list": [ "default-pkinit-client", "default-https-client",
@@ -47,10 +52,12 @@
 			"enroll_hostname": "primary.kdc.hcphacking.xyz",
 			"enroll_profile": {
 				"__env": {
-					"ENROLL_KDC": "primary.kdc"
+					"ENROLL_KDC": "primary.kdc",
+					"ENROLL_PKINIT_CLIENT_PRINC": "foo"
 				},
 				"gencert-hxtool": {
-					"list": [ "default-pkinit-kdc", "default-https-server" ]
+					"list": [ "default-pkinit-kdc", "default-https-server",
+						  "pkinit-client-user" ]
 				}
 			}
 		},

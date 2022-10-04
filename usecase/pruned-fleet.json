@@ -21,6 +21,11 @@
 					"name": "https-client-{ENROLL_HTTPS_CLIENT_USER}",
 					"subject": "UID={ENROLL_HTTPS_CLIENT_USER},{ENROLL_DOMAIN2DC}",
 					"email": "{ENROLL_HTTPS_CLIENT_USER}@{ENROLL_DOMAIN}"
+				},
+				"pkinit-iprop": {
+					"type": "pkinit-client",
+					"pk-init-principal": "iprop/{ENROLL_HOSTNAME}@{ENROLL_REALM}",
+					"subject": "CN=iprop,{ENROLL_HOSTNAME2DC}"
 				}
 			}
 		}
