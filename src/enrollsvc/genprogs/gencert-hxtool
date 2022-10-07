@@ -108,7 +108,7 @@ for asset in certlist:
 		log(" - policy_check")
 		json_asset = json.dumps({ asset: copy_asset, '__env': conf_env })
 		form_data = {
-			'hookname': (None, 'enrollsvc::mgmt::asset_check'),
+			'hookname': (None, 'enrollsvc::asset_check'),
 			'request_uid': (None, request_uid),
 			'params': (None, json_asset)
 		}

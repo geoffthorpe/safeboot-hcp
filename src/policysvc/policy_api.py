@@ -77,7 +77,7 @@ def my_common(uri, required_hookname):
     paramsjson = json.dumps(params)
     policy_result = HcpJsonPolicy.run_with_env(policyjson, paramsjson,
                                                  includeEnv=True)
-    if policy_result['result'] != "accept":
+    if policy_result['action'] != "accept":
         bail(403, f"REJECT:\n{json.dumps(params)}\n{json.dumps(policy_result)}")
 
     # Success. Write something to the log that is not completely useless.
@@ -87,9 +87,9 @@ def my_common(uri, required_hookname):
     return params
 
 def my_emgmt(uri):
-    return my_common(uri, 'enrollsvc::mgmt::client_check')
+    return my_common(uri, 'enrollsvc::add_request')
 def my_genprog(uri):
-    return my_common(uri, 'enrollsvc::mgmt::asset_check')
+    return my_common(uri, 'enrollsvc::asset_check')
 
 # Is there a way to generate the handlers from an array like this?
 #     uri_list = [ '/', '/healthcheck', '/v1/add', '/v1/query',

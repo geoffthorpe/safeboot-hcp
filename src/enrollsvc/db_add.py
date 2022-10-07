@@ -186,7 +186,7 @@ if policy_url:
 	uuid = uuid4().urn
 	os.environ['HCP_REQUEST_UID'] = uuid
 	form_data = {
-		'hookname': (None, 'enrollsvc::mgmt::client_check'),
+		'hookname': (None, 'enrollsvc::add_request'),
 		'request_uid': (None, uuid),
 		'params': (None, json.dumps(resultprofile))
 	}

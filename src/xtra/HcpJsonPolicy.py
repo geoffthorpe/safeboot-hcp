@@ -1,161 +1,318 @@
 import json
 
-from HcpJsonPath import valid_path_node, valid_path, path_pop_node
+from HcpJsonPath import valid_path_node, valid_path, path_pop_node, extract_path, HcpJsonPathError
 import HcpEnvExpander
-
-autolabel = 0
 
 class HcpJsonPolicyError(Exception):
 	pass
 
-def verify_filter_name(name):
-	if not isinstance(name, str):
-		raise HcpJsonPolicyError("Policy JSON, 'name' field is not a string")
+# This is noisy even for autopurged debugging logs. You'll probably only want
+# to enable this if you have a unit test that reproduces your problem.
+if False:
+	import pprint
+	ppp = pprint.PrettyPrinter()
+	pp = ppp.pprint
+	def foo(s):
+		print(s)
+else:
+	def foo(s):
+		pass
+	pp = foo
 
-def verify_filter_result(result):
-	if not isinstance(result, str):
-		raise HcpJsonPolicyError("Policy JSON, 'result' field is not a string")
-	if result != "accept" and result != "reject":
+# Condition-handling for "if" filters. 'condbase' defines the set of
+# conditions, that can be evaluated, together with functions to (a) confirm
+# that the condition is well-formed, and (b) evaluate the condition against an
+# input. The 'is_valid' function raises a HcpJsonPolicyError if the condition
+# structure is malformed. The 'run' function returns a boolean to indicate the
+# result of the condition operating on the input.
+def is_valid_exist(c, x, n):
+	if len(c) != 1 or not isinstance(c[n], str):
+		raise HcpJsonPolicyError(f"{x}: invalid '{n}' condition")
+	try:
+		valid_path(c[n])
+	except HcpJsonPathError as e:
+		raise HcpJsonPolicyError(f"{x}: invalid '{n}' path\n{e}")
+def is_valid_equal(c, x, n):
+	if len(c) != 2 or not isinstance(c[n], str) or 'value' not in c:
+		raise HcpJsonPolicyError(f"{x}: invalid '{n}' condition")
+	try:
+		valid_path(c[n])
+	except HcpJsonPathError as e:
+		raise HcpJsonPolicyError(f"{x}: invalid '{n}' path\n{e}")
+def run_exist(c, x, n, data):
+	path = c[n]
+	ok, _ = extract_path(data, path)
+	return ok
+def run_equal(c, x, n, data):
+	path = c[n]
+	ok, data = extract_path(data, path)
+	if not ok:
+		return False
+	foo("run_equal;")
+	pp(c['value'])
+	pp(data)
+	if not c['value'] == data:
+		foo("which apparently don't match")
+	return c['value'] == data
+condbase = {
+	'exist': { 'is_valid': is_valid_exist, 'run': run_exist },
+	'equal': { 'is_valid': is_valid_equal, 'run': run_equal }
+}
+# Create negated versions of the base conditions
+condneg = {
+	f"not-{k}": {
+		'is_valid': lambda c, x, n: v['is_valid'](c, x, n),
+		'run': lambda c, x, n, d: not v['run'](c, x, n, d)
+	} for (k, v) in condbase.items()
+}
+conds = condbase | condneg
+
+# Shorthand
+accrej = [ 'accept', 'reject' ]
+accrejret = accrej + [ 'return' ]
+
+# Check for top-level problems in a parsed policy that aren't detected during
+# parsing. Ie. that references between filters are resolved.
+def check_policy(policy):
+	fs = policy['filters']
+	s = policy['start']
+	if s and s not in fs:
 		raise HcpJsonPolicyError(
-			f"Policy JSON, neither 'accept' nor 'reject': {result}")
+			f"'start' ({s}) doesn't match a valid filter")
+	for x in fs:
+		f = fs[x]
+		action = f['action']
+		if action in [ 'jump', 'call' ]:
+			dest = f[action]
+			if dest not in fs:
+				raise HcpJsonPolicyError(
+					f"{x}: invalid {action} ({dest})")
+			if action == 'call' and 'on-return' in f and \
+					f['on-return'] not in accrej:
+				raise HcpJsonPolicyError(
+					f"{x}: invalid 'on-return'")
+		elif action not in accrejret:
+			raise HcpJsonPolicyError(
+				f"{x}: invalid 'action' ({action})")
+		if 'next' in f and f['next'] not in fs:
+			raise HcpJsonPolicyError(
+				f"{x}: invalid 'next' ({f['next']})")
 
-def parse_filter_pvpair(pvpair):
-	if not isinstance(pvpair, dict):
-		raise HcpJsonPolicyError("Policy JSON, condition is not a dict")
-	if len(pvpair.keys()) != 2 or 'path' not in pvpair or 'value' not in pvpair:
-		raise HcpJsonPolicyError("Policy JSON, condition is not 'path'+'value'")
-	valid_path(pvpair['path'])
-	return {
-		'path': pvpair['path'],
-		'value': pvpair['value']
-	}
+# Parse a filter entry. This function is called for key-value pairs in the
+# 'filters' dict, and by itself (recursively).
+#
+# If the value is a dict, the given kv pair forms a single filter entry in the
+# output policy. In this case, the key serves as the default name for the
+# filter entry unless it's overriden by a 'name' field.
+#
+# If the value is a list, then each of the list entries is itself parsed as a
+# filter entry (recursion). But these entries are not kv pairs, so a key is
+# created by using the original key (for the parent filter entry) and an
+# incrementing suffix. Again, that will be the default name for the resulting
+# filter entry unless it has a 'name' field to override it.
+#
+# Note that dict entries have no ordering, which has implications if a filter
+# entry doesn't match: how do you continue to the next filter if there is no
+# concept of 'next'? This is why lists are useful, as all but the final entry
+# will have 'next' fields injected, connecting them. If filtering encounters a
+# no-match-and-no-next condition, it can flag that as a filtering bug. (If you
+# need 'next' behavior from a filter entry that is not in a list, or is at the
+# end of a list, you must add the 'next' field yourself.)
+def parse_filter(key, value, output_filters):
+	if isinstance(value, list):
+		# The key-value pair describes a _sequence_ of filter entries,
+		# not a single filter entry per se. So we iterate that list,
+		# recursing for each entry, and the 'key' we pass in will be
+		# derived from the current one, suffixed by an incrementing
+		# counter.
+		suffix = 0
+		lastf = None
+		foo(f"parse_filter({key}) is a list")
+		for rf in value:
+			newf = parse_filter(f"{key}_{suffix}", rf,
+						output_filters)
+			if lastf:
+				if 'next' not in lastf:
+					lastf['next'] = newf['name']
+			else:
+				output_filters[f"{key}"] = newf
+			lastf = newf
+			suffix += 1
+		return lastf
+	# The key-value pair describes a single filter entry, so construct the
+	# filter using key+value then insert it into 'output_filters'.
+	# - the key becomes the filter name, unless overriden
+	foo(f"parse_filter({key}) is a struct")
+	if 'name' not in value:
+		value['name'] = key
+	x = value['name']
+	if not isinstance(x, str):
+		raise HcpJsonPolicyError(f"{key}: 'name' isn't a string")
+	# - action must be specified
+	if 'action' not in value or not isinstance(value['action'], str):
+		raise HcpJsonPolicyError(f"{x}: 'action' field invalid")
+	action = value['action']
+	# - if it's jump/call, sanity-check, but we can't confirm if
+	#   the destination exists, that's check_policy().
+	if action in [ 'jump', 'call' ]:
+		if action not in value or not isinstance(value[action], str):
+			raise HcpJsonPolicyError(f"{x}: invalid {action}")
+	elif action not in accrejret:
+		raise HcpJsonPolicyError(f"{x}: unknown 'action' ({action})")
+	if action == 'call' and 'on-return' in value and \
+			value['on-return'] not in accrejret:
+		raise HcpJsonPolicyError(
+			f"{x}: invalid 'on-return' ({value['on-return']})")
+	# - if there's a 'next', it should be a string, but we can't
+	#   confirm the destination exists, that's check_policy().
+	if 'next' in value and not isinstance(value['next'], str):
+		raise HcpJsonPolicyError(
+			f"{x}: invalid 'next' ({value['next']})")
+	# - if there's a condition, process it
+	if 'if' in value:
+		vif = value['if']
+		# The following could become "check_condition(vif)"
+		# - it has to be a struct
+		if not isinstance(vif, dict):
+			raise HcpJsonPolicyError(f"{x}: 'if' isn't a dict")
+		# - it must have exactly one condition type in it
+		m = set(conds.keys()).intersection(vif.keys())
+		if len(m) != 1:
+			raise HcpJsonPolicyError(f"{x}: 'if' must have one " +
+					f"condition (not {len(m)})")
+		m = m.pop()
+		cond = conds[m]
+		# - and that condition has to like what it sees
+		cond['is_valid'](vif, x, m)
+		# Cache the info required to run the evaluation
+		vif['cond'] = m
+	# - add the filter entry, but it must not collide
+	if x in output_filters:
+		raise HcpJsonPolicyError(f"{x}: conflict on filter")
+	output_filters[x] = value
+	return value
 
-def parse_filter_equality(pvlist, key):
-	if not isinstance(pvlist, list):
-		raise HcpJsonPolicyError(f"Policy JSON, '{key}' is not a list")
-	if len(pvlist) == 0:
-		raise HcpJsonPolicyError(f"Policy JSON, '{key}' list is empty")
-	cond = {
-		'type': key,
-		'pvpairs': []
-	}
-	for pvpair in pvlist:
-		cond['pvpairs'].append(parse_filter_pvpair(pvpair))
-	return cond
-
-def parse_filter_entry(entry):
-	if not isinstance(entry, dict):
-		raise HcpJsonPolicyError("Policy JSON, 'filters' entry is not a dict")
-	if len(entry.keys()) == 0:
-		raise HcpJsonPolicyError("Policy JSON, 'filters' entry is empty")
-	filterentry = {
-		"conditions": [],
-		"result": "continue"
-	}
-	for key in entry:
-		value = entry[key]
-		if key == "name":
-			verify_filter_name(value)
-			filterentry['name'] = value
-		elif key == "label":
-			filterentry['label'] = value
-		elif key == "if-equal" or key == "unless-equal":
-			filterentry['conditions'].append(
-				parse_filter_equality(value, key))
-		elif key == "result":
-			verify_filter_result(value)
-			filterentry['result'] = value
-		else:
-			raise HcpJsonPolicyError(f"Policy JSON, unrecognized field: {key}")
-	if 'label' not in filterentry:
-		global autolabel
-		filterentry['label'] = f"label_{autolabel}"
-		autolabel += 1
-	return filterentry
-
-def parse_filters(data):
-	if not isinstance(data, list):
-		raise HcpJsonPolicyError("Policy JSON 'filters' is not a list")
-	outcome = { 'filters': [] }
-	for i in data:
-		outcome['filters'].append(parse_filter_entry(i))
-	return outcome
-
+# Return a policy object that we can trust, which is parsed and sanity-checked
+# from a JSON encoding. This will throw HcpJsonPolicyError if we find a
+# problem, otherwise JSONDecodingError if the JSON decoder hits something.
 def loads(jsonstr):
-	rawstruct = json.loads(jsonstr)
-	if 'filters' not in rawstruct:
-		raise HcpJsonPolicyError("Policy JSON: no 'filters'")
-	outcome = parse_filters(rawstruct['filters'])
-	if 'default' in rawstruct:
-		verify_filter_result(rawstruct['default'])
-		outcome['default'] = rawstruct['default']
+	policy = json.loads(jsonstr)
+	if not isinstance(policy, dict):
+		raise HcpJsonPolicyError(
+			f"Policy must be a 'dict' (not {type(policy)})")
+	# Check 'start' and 'default'
+	if 'start' in policy and not isinstance(policy['start'], str):
+		raise HcpJsonPolicyError(f"'start' must be a string")
+	if 'start' not in policy:
+		policy['start'] = None
+	if 'default' in policy:
+		if not isinstance(policy['default'], str):
+			raise HcpJsonPolicyError(f"'default' must be a string")
+		if policy['default'] not in accrej:
+			raise HcpJsonPolicyError(
+				f"'default' must be accept/reject (not {d})")
 	else:
-		outcome['default'] = "reject"
-	return outcome
+		policy['default'] = "reject"
+	# We pop the 'filters' _out_ of 'policy', build a list of
+	# "output_filters" via whatever parse_filter() produces while looking
+	# at those popped filters, then insert "output_filters" back _into_
+	# the policy.
+	if 'filters' not in policy:
+		raise HcpJsonPolicyError("Missing 'filters' field")
+	filters = policy.pop('filters')
+	if not isinstance(filters, dict):
+		raise HcpJsonPolicyError(
+			f"'filters' must be of type dict (not {type(filters)})")
+	output_filters = {}
+	for i in filters:
+		f = parse_filter(i, filters[i], output_filters)
+		if not policy['start']:
+			policy['start'] = f
+	policy['filters'] = output_filters
+	# This checks for things that we can't check during construction of
+	# 'output', particularly the cross-references between filters. It also
+	# optimizes the policy - eg. by replacing text condition names
+	# ("exist", "not-equal", etc) with the functions that implement them.
+	check_policy(policy)
+	return policy
 
 def load(jsonpath):
 	return loads(open(jsonpath, "r").read())
 
-def run_filter_pvpair(pvpair, data):
-	# The complexity is to drill into data as path of nested dicts using
-	# the 'path' in pvpair, as a "."-delimited sequence of key names. Once
-	# the path-identified property in the data has been found, the actual
-	# equality-checking is simply python's "==", which seems to do the
-	# right thing. (Checking the structure recursively, treating different
-	# types (dict, list, string, int) as automatically unequal, etc.)
-	obj = data
-	path = pvpair['path']
-	value = pvpair['value']
-	valid_path(path)
-	if path != ".":
-		while True:
-			node, path = path_pop_node(path)
-			if not isinstance(obj, dict):
-				return False
-			if node not in obj:
-				return False
-			obj = obj[node]
-			if len(path) == 0:
-				break
-	return obj == value
+# Pass the JSON data through the fully-formed policy object.
+def run_sub(filters, cursor, data):
+	foo(f"run_sub(,{cursor},) starting")
+	while True:
+		f = filters[cursor]
+		# This is the filter we act on _unless_ (a) there's an 'if'
+		# clause, and (b) the clause returns False.
+		action = f['action']
+		name = f['name']
+		foo(f"name={name}, action={action}")
+		pp(f)
+		if 'if' in f:
+			i = f['if']
+			c = i['cond']
+			foo(f"condition check, c={c}")
+			cond = conds[c]
+			b = cond['run'](i, name, c, data)
+			foo(f"check returned {b}")
+			if not b:
+				foo("doesn't match -> next")
+				action = 'next'
+			else:
+				foo(f"match -> {action}")
+		if action == 'return':
+			foo("returning None")
+			return None
+		if action == 'call':
+			# Call -> recurse
+			foo(f"calling {f['call']}")
+			suboutput = run_sub(filters, f['call'], data)
+			if suboutput:
+				foo(f"got output, passing it along")
+				pp(suboutput)
+				return suboutput
+			foo("got no output -> next")
+			action = 'next'
+			if 'on-return' in f:
+				action = f['on-return']
+				foo(f"got no ouput, on-return -> {action}")
 
-def run_filter_equality(pvlist, data):
-	for pvpair in pvlist:
-		if not run_filter_pvpair(pvpair, data):
-			return False
-	return True
-
-def run_filter_entry(entry, data):
-	for i in entry['conditions']:
-		if i['type'] == "if-equal":
-			condtype = True
-		elif i['type'] == "unless-equal":
-			condtype = False
-		else:
-			raise Exception("BUG in run_filter_entry")
-		allmatch = run_filter_equality(i['pvpairs'], data);
-		if (condtype and not allmatch) or (not condtype and allmatch):
-			return False
-	return True
-
-# Note: the policy must already have any/all parameter expansion performed
-# because it is no longer a JSON string, it's a python struct! Ie. parameter
-# expansion can only occur on JSON, _before_ it gets json.loads()ed.
+			else:
+				foo("got no output -> next")
+		if action == 'jump':
+			# Jump -> move cursor and restart the loop
+			cursor = f['jump']
+			foo(f"jumping to {cursor}")
+			continue
+		if action == 'next':
+			if not f['next']:
+				raise HcpJsonPolicyError(f"{name}: no next filter")
+			cursor = f['next']
+			foo(f"next -> {cursor}")
+			continue
+		if action not in accrej:
+			raise HcpJsonPolicyError(
+				f"{name}: unhandled 'action' ({action})")
+		foo(f"action -> {action}")
+		return {
+			'action': action,
+			'last_filter': name,
+			'reason': 'Filter match'
+		}
 def run(policy, data):
-	for i in policy['filters']:
-		label = i['label']
-		allmatch = run_filter_entry(i, data)
-		if allmatch:
-			result = i['result']
-			if result == "reject" or result == "accept":
-				return {
-					'result': result,
-					'label': label
-				}
-		# no filter made a decision, so keep looping
+	foo("run() starting, will call run_sub()")
+	pp(data)
+	output = run_sub(policy['filters'], policy['start'], data)
+	foo("run() back from run_sub()")
+	print(f"output={output}")
+	if output:
+		return output
 	return {
-		'result': policy['default'],
-		'label': '__default'
+		'action': policy['default'],
+		'last_filter': None,
+		'reason': 'Default filter action'
 	}
 
 # Wrapper function to deal with input that has embedded '__env'. That "env" is

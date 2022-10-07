@@ -1,131 +1,197 @@
 {
-	"filters": [
-	{
-		"name": "Only filter asset_check requests",
-		"unless-equal": [ {
-			"path": ".hookname",
-			"value": "enrollsvc::mgmt::asset_check"
-		} ],
-		"result": "accept"
-	},
-	{
-		"name": "Only accept gencert-hxtool requests",
-		"unless-equal": [ {
-			"path": ".uri",
-			"value": "gencert-hxtool"
-		} ],
-		"result": "reject"
-	},
-	{
-		"name": "Accept unmodified 'default-https-client' requests",
-		"if-equal": [ {
-			"path": ".default-https-client",
-			"value": {
-				"generate-key": "rsa",
-				"key-bits": "2048",
-				"type": "https-client",
-				"subject": "UID=host,{ENROLL_HOSTNAME2DC}",
-				"hostname": "{ENROLL_HOSTNAME}",
-				"ca-certificate": "{ENROLL_CA_ISSUER_PRIV}"
-			}
-		} ],
-		"result": "accept"
-	},
-	{
-		"name": "Accept unmodified 'default-https-server' requests",
-		"if-equal": [ {
-			"path": ".default-https-server",
-			"value": {
-				"generate-key": "rsa",
-				"key-bits": "2048",
-				"type": "https-server",
-				"hostname": "{ENROLL_HOSTNAME}",
-				"ca-certificate": "{ENROLL_CA_ISSUER_PRIV}"
-			}
-		} ],
-		"result": "accept"
-	},
-	{
-		"name": "Accept unmodified 'default-pkinit-client' requests",
-		"if-equal": [ {
-			"path": ".default-pkinit-client",
-			"value": {
-				"generate-key": "rsa",
-				"key-bits": "2048",
-				"type": "pkinit-client",
-				"pk-init-principal": "host/{ENROLL_HOSTNAME}@{ENROLL_REALM}",
-				"subject": "CN=host,{ENROLL_HOSTNAME2DC}",
-				"ca-certificate": "{ENROLL_CA_ISSUER_PRIV}"
-			}
-		} ],
-		"result": "accept"
-	},
-	{
-		"name": "Accept unmodified 'default-pkinit-kdc' requests for primary.kdc",
-		"if-equal": [ {
-			"path": ".default-pkinit-kdc",
-			"value": {
-				"generate-key": "rsa",
-				"key-bits": "2048",
-				"name": "pkinit-kdc",
-				"type": "pkinit-kdc",
-				"pk-init-principal": "krbtgt/{ENROLL_REALM}@{ENROLL_REALM}",
-				"ca-certificate": "{ENROLL_CA_ISSUER_PRIV}"
-			}
-		} , {
-			"path": ".__env.ENROLL_HOSTNAME",
-			"value": "primary.kdc.{ENROLL_DOMAIN}"
-		} ],
-		"result": "accept"
-	},
-	{
-		"name": "Accept unmodified 'default-pkinit-kdc' requests for secondary.kdc",
-		"if-equal": [ {
-			"path": ".default-pkinit-kdc",
-			"value": {
-				"generate-key": "rsa",
-				"key-bits": "2048",
-				"name": "pkinit-kdc",
-				"type": "pkinit-kdc",
-				"pk-init-principal": "krbtgt/{ENROLL_REALM}@{ENROLL_REALM}",
-				"ca-certificate": "{ENROLL_CA_ISSUER_PRIV}"
-			}
-		} , {
-			"path": ".__env.ENROLL_HOSTNAME",
-			"value": "secondary.kdc.{ENROLL_DOMAIN}"
-		} ],
-		"result": "accept"
-	},
-	{
-		"name": "Allow alicia/admin as pkinit-client-user only on 'aclient'",
-		"if-equal": [ {
-			"path": ".pkinit-client-user.pk-init-principal",
-			"value": "alicia/admin@{ENROLL_REALM}"
-		} , {
-			"path": ".pkinit-client-user.type",
-			"value": "pkinit-client"
-		} , {
-			"path": ".__env.ENROLL_HOSTNAME",
-			"value": "aclient.{ENROLL_DOMAIN}"
-		} ],
-		"result": "accept"
-	},
-	{
-		"name": "Allow robert a https-client-user only on 'aclient'",
-		"if-equal": [ {
-			"path": ".https-client-user.email",
-			"value": "robert@{ENROLL_DOMAIN}"
-		} , {
-			"path": ".https-client-user.type",
-			"value": "https-client"
-		} , {
-			"path": ".__env.ENROLL_HOSTNAME",
-			"value": "aclient.{ENROLL_DOMAIN}"
-		} ],
-		"result": "accept"
-	},
-	{
-		"name": "Reject anything else",
-		"result": "reject"
-	} ]
+    "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
+
+    "start": "dispatch_hookname",
+    "default": "reject",
+
+    "filters": {
+
+        "dispatch_hookname": [
+            { "if": { "equal": ".hookname", "value": "enrollsvc::add_request" },
+                "action": "jump", "jump": "do_enrollsvc::add_request" },
+            { "if": { "equal": ".hookname", "value": "enrollsvc::asset_check" },
+                "action": "jump", "jump": "do_enrollsvc::asset_check" },
+            { "action": "return" }
+        ],
+
+        "do_enrollsvc::add_request": { "action": "call",
+            "call": "check_caller_is_admin", "on-return": "accept" },
+
+        "check_caller_is_admin": {
+            "_": [
+                "This filter chain would check that the object had environment",
+                "variables set by the TLS/HTTPS front-end that indicate a",
+                "satisfactory client authentication. It should return 'reject'",
+                "if unsatisfactory, otherwise 'return'. (Don't 'accept' as",
+                "that terminates processing!)",
+                "Here, we are assuming that access to this interface already",
+                "implies that adequate authn/authz has been met." ],
+            "action": "return"
+        },
+
+        "do_enrollsvc::asset_check": [
+            { "if": { "not-equal": ".uri", "value": "gencert-hxtool" },
+                "name": "do_enrollsvc::asset_check, uri must be gencert-hxtool",
+                "action": "reject" },
+            { "if": { "exist": ".default-https-client" }, "action": "call",
+                "call": "hxtool-default-https-client", "on-return": "reject" },
+            { "if": { "exist": ".default-https-server" }, "action": "call",
+                "call": "hxtool-default-https-server", "on-return": "reject" },
+            { "if": { "exist": ".default-pkinit-client" }, "action": "call",
+                "call": "hxtool-default-pkinit-client", "on-return": "reject" },
+            { "if": { "exist": ".default-pkinit-kdc" }, "action": "call",
+                "call": "hxtool-default-pkinit-kdc", "on-return": "reject" },
+            { "if": { "exist": ".pkinit-client-user" }, "action": "call",
+                "call": "hxtool-pkinit-client-user", "on-return": "reject" },
+            { "if": { "exist": ".https-client-user" }, "action": "call",
+                "call": "hxtool-https-client-user", "on-return": "reject" },
+            { "action": "reject" } ],
+
+        "hxtool-default-https-client": [
+            {
+                "_": [
+                    "This rule (and others like it) enforce exact match over,",
+                    "the whole struct, so there's no wiggle room to modify or",
+                    "add fields. The values that the environment variables",
+                    "may take are not constrained here, the policy simply",
+                    "ensures that the requested profile is exactly what it",
+                    "should be given the HOSTNAME and CA_ISSER_PRIV settings",
+                    "in the environment. The enrollsvc will probably lock",
+                    "down the latter of the two in its 'postclient' profile",
+                    "to avoid it being overriden. (Unless the path to",
+                    "different issuer creds is shared with the orchestration",
+                    "layer to allow it to choose, in which case enrollsvc",
+                    "might set it in the 'preclient' profile.)" ],
+                "if": { "equal": ".default-https-client",
+                    "value": {
+                        "generate-key": "rsa",
+                        "key-bits": "2048",
+                        "type": "https-client",
+                        "subject": "UID=host,{ENROLL_HOSTNAME2DC}",
+                        "hostname": "{ENROLL_HOSTNAME}",
+                        "ca-certificate": "{ENROLL_CA_ISSUER_PRIV}" } },
+                "name": "enrollsvc::asset_check::default-https-client - legit",
+                "action": "accept"
+            }, {
+                "name": "enrollsvc::asset_check::default-https-client - bad",
+                "action": "reject" } ],
+
+        "hxtool-default-https-server": [
+            {
+                "_": "Exact match or fail",
+                "if": { "equal": ".default-https-server",
+                    "value": {
+                        "generate-key": "rsa",
+                        "key-bits": "2048",
+                        "type": "https-server",
+                        "hostname": "{ENROLL_HOSTNAME}",
+                        "ca-certificate": "{ENROLL_CA_ISSUER_PRIV}" } },
+                "name": "enrollsvc::asset_check::default-https-server - legit",
+                "action": "accept"
+            }, {
+                "name": "enrollsvc::asset_check::default-https-server - bad",
+                "action": "reject" } ],
+
+        "hxtool-default-pkinit-client": [
+            {
+                "_": "Exact match or fail",
+                "if": { "equal": ".default-pkinit-client",
+                    "value": {
+                        "generate-key": "rsa",
+                        "key-bits": "2048",
+                        "type": "pkinit-client",
+                        "pk-init-principal": "host/{ENROLL_HOSTNAME}@{ENROLL_REALM}",
+                        "subject": "CN=host,{ENROLL_HOSTNAME2DC}",
+                        "ca-certificate": "{ENROLL_CA_ISSUER_PRIV}" } },
+                "name": "enrollsvc::asset_check::default-pkinit-client - legit",
+                "action": "accept"
+            }, {
+                "name": "enrollsvc::asset_check::default-pkinit-client - bad",
+                "action": "reject" } ],
+
+        "hxtool-default-pkinit-kdc": [
+            { "_": [
+                "Exact match rule for all KDCs. And unlike the earlier rules,",
+                "we also impose constraints on what values the environment",
+                "variables may take, specifically ENROLL_HOSTNAME." ],
+                "if": {
+                    "not-equal": ".default-pkinit-kdc",
+                    "value": {
+                        "generate-key": "rsa",
+                        "key-bits": "2048",
+                        "type": "pkinit-kdc",
+                        "name": "pkinit-kdc",
+                        "pk-init-principal": "krbtgt/{ENROLL_REALM}@{ENROLL_REALM}",
+                        "ca-certificate": "{ENROLL_CA_ISSUER_PRIV}" } },
+                "name": "enrollsvc::asset_check::default-pkinit-kdc - bad profile",
+                "action": "reject" },
+            { "_": "This rule covers the primary KDC",
+                "if": {
+                    "equal": ".__env.ENROLL_HOSTNAME",
+                    "value": "primary.kdc.{ENROLL_DOMAIN}" },
+                "name": "enrollsvc::asset_check::default-pkinit-kdc - legit primary",
+                "action": "accept" },
+            { "_": "This rule covers the secondary KDC",
+                "if": {
+                    "equal": ".__env.ENROLL_HOSTNAME",
+                    "value": "secondary.kdc.{ENROLL_DOMAIN}" },
+                "name": "enrollsvc::asset_check::default-pkinit-kdc - legit secondary",
+                "action": "accept" },
+            {
+                "name": "enrollsvc::asset_check::default-pkinit-kdc - bad hostname",
+                "action": "reject" } ],
+
+        "hxtool-pkinit-client-user": [
+            { "_": [
+                "A flexible rule to allow the orchestration layer to issue",
+                "pkinit-client certificates without exact-matching the entire",
+                "profile, but we limit it to specific hostnames ('aclient')",
+                "and principals (alicia/admin)." ],
+                "if": {
+                    "not-equal": ".pkinit-client-user.type",
+                    "value": "pkinit-client" },
+                "name": "enrollsvc::asset_check::pkinit-client-user - bad type",
+                "action": "reject" },
+            {
+                "if": {
+                    "not-equal": ".__env.ENROLL_HOSTNAME",
+                    "value": "aclient.{ENROLL_DOMAIN}" },
+                "name": "enrollsvc::asset_check::pkinit-client-user - wrong host",
+                "action": "reject" },
+            {
+                "if": {
+                        "equal": ".pkinit-client-user.pk-init-principal",
+                        "value": "alicia/admin@{ENROLL_REALM}" },
+                "name": "enrollsvc::asset_check::pkinit-client-user - legit alicia",
+                "action": "accept" },
+            {
+                "name": "enrollsvc::asset_check::pkinit-client-user - unknown principal",
+                "action": "reject" } ],
+
+        "hxtool-https-client-user": [
+            { "_": [
+                "Similar to the hxtool-pkinit-client-user example above. Here,",
+                "the https client profile uses an email address, and we're",
+                "only accepting 'robert@{DOMAIN}'." ],
+                "if": {
+                    "not-equal": ".https-client-user.type",
+                    "value": "https-client" },
+                "name": "enrollsvc::asset_check::https-client-user - bad type",
+                "action": "reject" },
+            { "_": "Only issue https client certs to 'aclient'",
+                "if": {
+                    "not-equal": ".__env.ENROLL_HOSTNAME",
+                    "value": "aclient.{ENROLL_DOMAIN}" },
+                "name": "enrollsvc::asset_check::https-client-user - wrong host",
+                "action": "reject" },
+            { "_": "Allow 'robert' on 'aclient' host",
+                "if": {
+                    "equal": ".https-client-user.email",
+                    "value": "robert@{ENROLL_DOMAIN}" },
+                "name": "enrollsvc::asset_check::https-client-user - legit robert",
+                "action": "accept" },
+            {
+                "name": "enrollsvc::asset_check::pkinit-client-user - unknown",
+                "action": "reject" } ]
+    }
 }
