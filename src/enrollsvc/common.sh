@@ -160,7 +160,7 @@ if [[ ! -f $HCP_ENROLLSVC_STATE/initialized ]]; then
 
 	echo " - generating '$HCP_ENROLLSVC_STATE/sudoers'"
 	cat > "$HCP_ENROLLSVC_STATE/sudoers" <<EOF
-# sudo rules for enrollsvc-mgmt" > /etc/sudoers.d/hcp
+# sudo rules for enrollsvc-mgmt > /etc/sudoers.d/hcp
 Cmnd_Alias HCP = /hcp/enrollsvc/mgmt_sudo.sh
 Defaults !lecture
 Defaults !authenticate
