@@ -145,6 +145,9 @@ def hn2ek_xdelete(hostname, ekpubhash):
 	data = hn2ek_delete(hn2ek_read(), hostname, ekpubhash)
 	hn2ek_write(data)
 
+class HcpGitError(Exception):
+	pass
+
 def __git_cmd(args):
 	args = ['git'] + args
 	expanded = ' '.join(map(str, args))
@@ -154,7 +157,7 @@ def __git_cmd(args):
 		text = True)
 	if c.returncode != 0:
 		log(f"{c.stdout}")
-		raise HcpErrorChildProcess(f"Failed: {expanded}")
+		raise HcpGitError(f"Failed: {expanded}")
 	return c
 
 def git_commit(msg):

@@ -34,8 +34,6 @@ git_reset = db_common.git_reset
 # (unless we exit non-zero). Anything else that goes to stdout will likely
 # corrupt the JSON.
 
-class HcpErrorChildProcess(Exception):
-	pass
 class HcpErrorTPMalreadyEnrolled(Exception):
 	pass
 class HcpErrorTPMnotEnrolled(Exception):
