@@ -67,23 +67,33 @@ condneg = {
 }
 conds = condbase | condneg
 
-# Shorthand
+# Shorthand. 'accrej' is for things like the "default" action, where literally
+# only "accept" or "reject" are acceptable. 'noparam' is for secondary actions
+# in a filter entry, ie. things like "on-return" and "otherwise". If a
+# filter-entry has jump/call type fields, they are presumed to serve the
+# primary "action" of that entry, not any of the secondary treatments.
 accrej = [ 'accept', 'reject' ]
-accrejret = accrej + [ 'return' ]
+noparam = accrej + [ 'return', 'next' ]
 
 # Check for top-level problems in a parsed policy that aren't detected during
 # parsing. Ie. that references between filters are resolved.
 def check_policy(policy):
+	foo("check_policy() starting")
 	fs = policy['filters']
 	s = policy['start']
+	foo(f"start={s}")
+	foo(f"filters.keys()={fs.keys()}")
 	if s and s not in fs:
 		raise HcpJsonPolicyError(
 			f"'start' ({s}) doesn't match a valid filter")
 	for x in fs:
+		foo(f"processing {x}")
 		f = fs[x]
 		action = f['action']
 		if action in [ 'jump', 'call' ]:
+			foo(f"action={action}")
 			dest = f[action]
+			foo(f"{action}={dest}")
 			if dest not in fs:
 				raise HcpJsonPolicyError(
 					f"{x}: invalid {action} ({dest})")
@@ -91,7 +101,7 @@ def check_policy(policy):
 					f['on-return'] not in accrej:
 				raise HcpJsonPolicyError(
 					f"{x}: invalid 'on-return'")
-		elif action not in accrejret:
+		elif action not in noparam:
 			raise HcpJsonPolicyError(
 				f"{x}: invalid 'action' ({action})")
 		if 'next' in f and f['next'] not in fs:
@@ -157,10 +167,10 @@ def parse_filter(key, value, output_filters):
 	if action in [ 'jump', 'call' ]:
 		if action not in value or not isinstance(value[action], str):
 			raise HcpJsonPolicyError(f"{x}: invalid {action}")
-	elif action not in accrejret:
+	elif action not in noparam:
 		raise HcpJsonPolicyError(f"{x}: unknown 'action' ({action})")
 	if action == 'call' and 'on-return' in value and \
-			value['on-return'] not in accrejret:
+			value['on-return'] not in noparam:
 		raise HcpJsonPolicyError(
 			f"{x}: invalid 'on-return' ({value['on-return']})")
 	# - if there's a 'next', it should be a string, but we can't
@@ -186,6 +196,12 @@ def parse_filter(key, value, output_filters):
 		cond['is_valid'](vif, x, m)
 		# Cache the info required to run the evaluation
 		vif['cond'] = m
+	# - if there's an "otherwise", it must be parameter-less
+	if 'otherwise' in value:
+		vo = value['otherwise']
+		if not isinstance(vo, str) or vo not in noparam:
+			raise HcpJsonPolicyError(
+				f"{x}: invalid 'otherwise' ({vo})")
 	# - add the filter entry, but it must not collide
 	if x in output_filters:
 		raise HcpJsonPolicyError(f"{x}: conflict on filter")
@@ -244,8 +260,6 @@ def run_sub(filters, cursor, data):
 	foo(f"run_sub(,{cursor},) starting")
 	while True:
 		f = filters[cursor]
-		# This is the filter we act on _unless_ (a) there's an 'if'
-		# clause, and (b) the clause returns False.
 		action = f['action']
 		name = f['name']
 		foo(f"name={name}, action={action}")
@@ -258,8 +272,12 @@ def run_sub(filters, cursor, data):
 			b = cond['run'](i, name, c, data)
 			foo(f"check returned {b}")
 			if not b:
-				foo("doesn't match -> next")
-				action = 'next'
+				if 'otherwise' in f:
+					action = f['otherwise']
+					foo(f"doesn't match -> {action}")
+				else:
+					foo("doesn't match -> next")
+					action = 'next'
 			else:
 				foo(f"match -> {action}")
 		if action == 'return':
@@ -286,9 +304,23 @@ def run_sub(filters, cursor, data):
 			cursor = f['jump']
 			foo(f"jumping to {cursor}")
 			continue
+		# 'next' is a little special. It's an implicit target, used
+		# when the filter entry does _not_ match the input (and
+		# therefore the action doesn't depend on anything in that
+		# entry). And static checking (per check_policy() above) cannot
+		# generally "know" whether the set of potential inputs will or
+		# won't require 'next' attributes in places where they're not
+		# present. As such, we don't want to throw an exception when
+		# performing a 'next' action on an entry that doesn't have one,
+		# instead treat it like a rejection and set a 'reason' field
+		# that should alert someone to the bug in their JSON config
 		if action == 'next':
-			if not f['next']:
-				raise HcpJsonPolicyError(f"{name}: no next filter")
+			if 'next' not in f:
+				return {
+					'action': 'reject',
+					'last_filter': name,
+					'reason': "bug in policy.json - no 'next'"
+				}
 			cursor = f['next']
 			foo(f"next -> {cursor}")
 			continue
