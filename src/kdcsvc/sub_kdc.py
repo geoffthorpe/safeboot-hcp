@@ -15,7 +15,8 @@ if to_trace:
 	sys.stderr = tfile
 from hcp_common import log, bail
 
-env_etc = os.environ['MYETC']
+env_state = os.environ['HCP_KDC_STATE']
+env_etc = f"{env_state}/etc"
 
 cmd_args = [
 	'kdc',

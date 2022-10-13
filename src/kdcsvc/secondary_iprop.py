@@ -13,7 +13,9 @@ if to_trace:
 	sys.stderr = tfile
 from hcp_common import log, bail
 
-env_etc = os.environ['MYETC']
+env_state = os.environ['HCP_KDC_STATE']
+env_etc = f"{env_state}/etc"
+env_var = f"{env_state}/var"
 env_host = os.environ['HCP_HOSTNAME']
 env_domain = os.environ['HCP_FQDN_DEFAULT_DOMAIN']
 env_realm = os.environ['HCP_KDC_REALM']
