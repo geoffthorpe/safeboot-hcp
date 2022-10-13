@@ -58,9 +58,15 @@
                     "default": "STDERR"
                 },
                 "libdefaults": {
+                    "#1": "'default_realm' is obvious.",
+                    "#2": "The others are to suppress interference from 'hostname'",
+                    "#3": "and other name-resolution interferences.",
                     "default_realm": "{ENROLL_REALM}",
                     "dns_lookup_kdc": "no",
-                    "dns_lookup_realm": "no"
+                    "dns_lookup_realm": "no",
+                    "ignore_acceptor_hostname": "yes",
+                    "dns_canonicalize_hostname": "no",
+                    "rdns": "no"
                 },
                 "appdefaults": {
                     "pkinit_anchors": "FILE:{ENROLL_ISSUERCERT}"

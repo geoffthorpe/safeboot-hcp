@@ -204,6 +204,11 @@ classes = [
 		'name': 'gencert-issuer',
 		'glob': 'certissuer.pem',
 		'method': method_certissuer('HCP_ATTESTCLIENT_HOOK_CA')
+	}, {
+		'_': 'Covers the assets produced by genkrb5keytab',
+		'name': 'genkrb5keytab',
+		'glob': 'krb5.keytab',
+		'method': method_etc('HCP_ATTESTCLIENT_HOOK_KRB5KEYTAB')
 	}
 ]
 

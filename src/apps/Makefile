@@ -37,6 +37,8 @@ ifdef HCP_APPS_GRANULAR
 #   |      +--> hcp_swtpmsvc (default command)
 #   |      |
 #   |      +--> hcp_kdcsvc (default command)
+#   |      |
+#   |      +--> hcp_sshsvc (default command)
 #   |
 #   +--> hcp_policysvc (default command)
 $(eval $(call app_image,tools,common,tools,,))
@@ -45,6 +47,7 @@ $(eval $(call app_image,attestsvc,tools,attestsvc,,))
 $(eval $(call app_image,policysvc,common,policysvc,,[\"/hcp/policysvc/run_policy.sh\"]))
 $(eval $(call app_image,swtpmsvc,tools,swtpmsvc,,[\"/hcp/swtpmsvc/run_swtpm.sh\"]))
 $(eval $(call app_image,kdcsvc,tools,kdcsvc,,[\"/hcp/kdcsvc/run_kdc.sh\"]))
+$(eval $(call app_image,sshsvc,tools,sshsvc,,[\"/hcp/sshsvc/run_sshsvc.sh\"]))
 else
 # Otherwise, use the 'hcp_caboodle' image for any and all purposes.
 $(eval $(call app_alias,tools,caboodle))
@@ -53,6 +56,7 @@ $(eval $(call app_alias,attestsvc,caboodle))
 $(eval $(call app_alias,policysvc,caboodle))
 $(eval $(call app_alias,swtpmsvc,caboodle))
 $(eval $(call app_alias,kdcsvc,caboodle))
+$(eval $(call app_alias,sshsvc,caboodle))
 endif
 
 # Post-process now that all apps are registered
