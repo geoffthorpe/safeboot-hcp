@@ -4,6 +4,7 @@ import sys
 import os
 import json
 import subprocess
+import tempfile
 
 sys.path.insert(1, '/hcp/common')
 to_trace = 'HCP_NO_TRACE' not in os.environ
@@ -57,12 +58,29 @@ args = [ 'kadmin',
 if len(realm) > 0:
 	realm = f"@{realm}"
 
-def run_subprocess(cmd_args):
-	all_args = args + cmd_args
-	mylog(f"running: {all_args}")
-	c = subprocess.run(all_args,
-			stdout = subprocess.PIPE, stderr = tfile,
-			text = True)
+def run_subprocess(cmd_args, base64wrap = None):
+	if base64wrap:
+		with tempfile.TemporaryDirectory() as td:
+			tf = f"{td}/kt"
+			all_args = args + [ base64wrap, tf ] + cmd_args
+			mylog(f"running: {all_args}")
+			c = subprocess.run(all_args,
+				stdout = subprocess.PIPE, stderr = tfile,
+				text = True)
+			if c.returncode != 0:
+				mylog(f"FAIL, exitcode={c.returncode}")
+				sys.exit(500)
+			b64args = ['base64', '--wrap=0', tf]
+			mylog(f"running: {b64args}")
+			c = subprocess.run(b64args,
+				stdout = subprocess.PIPE, stderr = tfile,
+				text = True)
+	else:
+		all_args = args + cmd_args
+		mylog(f"running: {all_args}")
+		c = subprocess.run(all_args,
+				stdout = subprocess.PIPE, stderr = tfile,
+				text = True)
 	if c.returncode != 0:
 		mylog(f"FAIL, exitcode={c.returncode}")
 		sys.exit(500)
@@ -81,8 +99,9 @@ def run_subprocess(cmd_args):
 # Add args to "kadmin -l", run it, and process the output
 if cmd == "add":
 	# TODO: support user profile for options
-	add_args = [ '--use-defaults' ] + principals_args
+	add_args = [ '--use-defaults', '--random-key' ] + principals_args
 	print(json.dumps(run_subprocess(add_args)))
+
 elif cmd == "add_ns":
 	# TODO: support user profile for options
 	add_ns_args = [
@@ -93,6 +112,7 @@ elif cmd == "add_ns":
 		'--attributes='
 	] + principals_args
 	print(json.dumps(run_subprocess(add_ns_args)))
+
 elif cmd == "get":
 	get_args = [ '--long' ] + principals_args
 	# If no principals provided, we need to put a "*" on the cmd-line
@@ -147,6 +167,15 @@ elif cmd == "get":
 			current_fields[a] = v
 	res['principals'] = princs
 	print(json.dumps(res))
+
+elif cmd == 'del' or cmd == 'del_ns':
+	del_args = principals_args
+	print(json.dumps(run_subprocess(del_args)))
+
+elif cmd == 'ext_keytab':
+	# TODO: support user profile for options
+	kt_args = principals_args
+	print(json.dumps(run_subprocess(kt_args, base64wrap = '-k')))
 
 else:
 	mylog(f"Error, cmd={cmd} unrecognized")

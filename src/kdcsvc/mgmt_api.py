@@ -81,8 +81,8 @@ def home():
 {c_add}
 {c_add_ns}
 {c_get}
-{c_delete}
-{c_delete_ns}
+{c_del}
+{c_del_ns}
 {c_ext_keytab}
 '''.format(c_add = addcmd("/v1/add",
                             "To add (regular) principals",
@@ -95,10 +95,10 @@ def home():
                             "Query",
                             isPost = False,
                             checkbox = "verbose"),
-            c_delete = addcmd("/v1/delete",
+            c_del = addcmd("/v1/del",
                             "To delete (regular) principals",
                             "Delete"),
-            c_delete_ns = addcmd("/v1/delete_ns",
+            c_del_ns = addcmd("/v1/del_ns",
                             "To delete (virtual) namespace principals",
                             "Delete NS"),
             c_ext_keytab = addcmd("/v1/ext_keytab", "To export principals to a keytab",
@@ -213,13 +213,13 @@ def my_add_ns():
 def my_get():
     return my_cmd_handler('/v1/get', 'get', request, isPost = False)
 
-@app.route('/v1/delete', methods=['POST'])
-def my_delete():
-    return my_cmd_handler('/v1/delete', 'delete', request)
+@app.route('/v1/del', methods=['POST'])
+def my_del():
+    return my_cmd_handler('/v1/del', 'del', request)
 
-@app.route('/v1/delete_ns', methods=['POST'])
-def my_delete_ns():
-    return my_cmd_handler('/v1/delete_ns', 'delete_ns', request)
+@app.route('/v1/del_ns', methods=['POST'])
+def my_del_ns():
+    return my_cmd_handler('/v1/del_ns', 'del_ns', request)
 
 @app.route('/v1/ext_keytab', methods=['POST'])
 def my_ext_keytab():
