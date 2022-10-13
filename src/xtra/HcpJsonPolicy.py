@@ -1,3 +1,143 @@
+# This 'policy' abstraction interprets a JSON configuration file and, from it,
+# implements a filtering scheme that acts much like a set of packet-filter
+# rules. (As such, the terms 'rule' and 'filter' will be used interchangeably.)
+#
+# 'Policy' layout (ie. the top-level of 'policy.json');
+#
+#   {
+#     "start": <string matching a key in "filters">
+#         This names the top-level rule to "call" to perform filtering.
+#     "default": <"accept", or "reject" (the default)>
+#         The action to take if the control ever returns from the call.
+#     "filters": <struct of key-value pairs>
+#         Each key names a filter entry, and the corresponding value is a
+#         struct providing the details of that filter entry (see layout below).
+#         Note that this JSON file undergoes processing that can transform
+#         these filters. (See "chains".)
+#   }
+#
+# 'Filter entry' layout (ie. values in the 'filters' struct);
+#
+#   "filtername1": {
+#     "name": <string>
+#         Optional. If defined, will replace "filtername1" as the key/name of
+#         filter in the top-level "filters" struct. (Yes this _is_ a useful
+#         trick, in case you thought it pointless, though you"ll have to
+#         read further to find out how that might be. See "chains".)
+#
+#     "action": <"accept", "reject", "jump", "call", "return", or "next">
+#         The action associated with this rule. It will be performed if the
+#         rule has no conditional ("if") or the conditional evaluates true.
+#         If set to "call" or "jump", then the "call" or "jump" fields
+#         (respectively) must name the filter entry to pass control to.
+#
+#     "jump": <string naming the rule to pass control to>
+#         Only required if action==jump, as described for "action".
+#
+#     "call": <string naming the rule to pass control to>
+#         Only required if action==call, as described for "action". Note that
+#         it may or may not return, depending on the rules and the data being
+#         filtered. If it _does_ return, then "on-return" can specify a
+#         subsequent (but less-flexible) action to perform when control returns
+#         from the call, otherwise the "next" semantic is assumed.
+#
+#     "on-return": <"accept", "reject", "return", or "next" (the default)>
+#         Optional. Not used unless action==call and control returns from the
+#         call.
+#
+#     "next": <string naming the rule to pass control to>
+#         Only required if action==next (which is probably a silly thing to do)
+#         or if the rule has a conditional that sometimes evaluates false
+#         (which is less silly). This field can be supplied explicitly, but it
+#         is usually filled in by post-processing. Read on to find out when and
+#         why. (See "chains".)
+#
+#     "if": <struct containing one or two key-value pairs>
+#         Optional. Specifies a condition which must be true for the rule"s
+#         "action" to be performed. (If the condition evaluates false, the
+#         "otherwise" action will be taken, if defined, otherwise the "next"
+#         semantic is assumed.)
+#   }
+#
+# 'Conditional' layout (ie. value of the 'if' struct in filter entries);
+#
+#   A conditional can be one of the following types (more to come);
+#     'exist', 'not-exist':
+#       - these use a jq-style path into the JSON data and the conditional
+#         evaluates true iff the data being filtered does or does not
+#         (respectively) contain a field at the specified path. Eg.
+#         "if": {
+#             "exist": ".request.lookup.source"
+#         }
+#         "if": {
+#             "not-exist": ".peer.authenticated"
+#         }
+#     'equal', 'not-equal':
+#       - these also use a jq-style path into the JSON data, but supplement it
+#         with a 'value', so that 'equality' depends not only on the path
+#         existing in the filtered data, but also that its value be an exact
+#         match with the one specified in the conditional. The 'value' may be
+#         any valid JSON type ('null', numerals, strings, lists, sets) and
+#         equality assumes that the types match (obviously). Eg.
+#         "if": {
+#             "not-equal": ".request.user",
+#             "value": "root"
+#         }
+#         "if": {
+#             "equal": ".",
+#             "value": {
+#                 "field1": "in this example, we exact-match the entire input",
+#                 "field2": null,
+#                 "field3": [ "a", "list" ],
+#                 "field4": {
+#                     "a": "struct"
+#                 }
+#             }
+#         }
+#
+# 'Chains'
+#
+# In the event that a rule does not terminate processing ('accept' or
+# 'reject'), explicitly pass control to another rule ('jump' or 'call'), or
+# implicitly return control from a call ('return'), then control passes to the
+# 'next' rule. If no 'next' rule exists, a 'reject' action is taken and the
+# 'reason' field is filled in to indicate a bug in the policy file!  Observe
+# that the top-level 'filters' field provides all of the filter entries indexed
+# by name, so there is no implied order to them. Rather than chaining filter
+# entries together by explicitly providing "next" fields (which would be
+# horrible), the policy allows a special form of filter entry that define a
+# chain of filter entries.
+#
+# If an entry in 'filters' is a list/array type (rather than a struct) the
+# post-processor will assume that it contains an ordered sequence of filter
+# entries within it. The following example shows how the entries get
+# transformed;
+#   Before post-processing;
+#       "filters": {
+#           "regular1": { "action": "reject", "if": { ... } ... },
+#           "chain1": [
+#               { "action": "reject", "if": { ... } ... },
+#               { "action": "accept", "if": { ... } ... },
+#               { "name": "foo1", "action": "accept", "if": { ... } ... },
+#               { "action": "reject" },
+#           ]
+#       }
+#  After post-processing;
+#       "filters": {
+#           "regular1": { "action": "reject", "if": { ... } ... },
+#           "chain1":   { "action": "reject", "if": { ... } ..., "next": "chain1_1" },
+#           "chain1_0": { "action": "reject", "if": { ... } ..., "next": "chain1_1" },
+#           "chain1_1": { "action": "accept", "if": { ... } ..., "next": "foo" },
+#           "foo":      { "action": "accept", "if": { ... } ..., "next": "chain1_3" },
+#           "chain1_3": { "action": "reject" },
+#       }
+# - if an entry in a chain declares a 'name' field, that becomes the name of
+#   the filter entry after expansion, otherwise each entry in the chain gets a
+#   suffixed name based on the chain name.
+# - all entries in a chain _except the last one_(!) automatically get a 'next'
+#   field set, thus creating order. (If the entry already specified a 'next'
+#   field that will take precedence.)
+
 import json
 
 from HcpJsonPath import valid_path_node, valid_path, path_pop_node, extract_path, HcpJsonPathError
@@ -239,6 +379,7 @@ def loads(jsonstr):
 	if not isinstance(filters, dict):
 		raise HcpJsonPolicyError(
 			f"'filters' must be of type dict (not {type(filters)})")
+	# Build a new 'filters' set from the old one
 	output_filters = {}
 	for i in filters:
 		f = parse_filter(i, filters[i], output_filters)
