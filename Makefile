@@ -44,14 +44,12 @@ include src/Makefile
 # - settings not being newer
 # - this Makefile not being newer
 # - the testcreds Makefile not being newer
-# - the usecase not having changed
 # - no new activity in the apps output (this is where, for example, we learn
 #   about the split between APP_IMAGES/APP_ALIASES)
 $(HCP_OUT)/docker-compose.env: | $(HCP_OUT)
 $(HCP_OUT)/docker-compose.env: $(TOP)/settings.mk
 $(HCP_OUT)/docker-compose.env: $(TOP)/Makefile
 $(HCP_OUT)/docker-compose.env: $(HCP_SRC)/testcreds.Makefile
-$(HCP_OUT)/docker-compose.env: $(HCP_OUT)/usecase
 $(HCP_OUT)/docker-compose.env: $(HCP_APPS_OUT)
 $(foreach i,$(APP_IMAGES),\
 $(eval IMAGE_LIST_CMD += echo "HCP_IMAGE_$i=$(call HCP_IMAGE,$i)" >> $(HCP_OUT)/docker-compose.env;))
@@ -74,33 +72,6 @@ $(HCP_OUT)/docker-compose.env:
 	$Qcat $(TOP)/usecase/common.env | egrep -v "^#" | \
 		sed -e "s/^export //" >> $@
 ALL += $(HCP_OUT)/docker-compose.env
-
-################################
-# Manipulate "usecase" choices #
-################################
-
-USECASES := default pruned
-CHOSEN_USECASE ?= default
-$(HCP_OUT)/usecase: | $(HCP_OUT)
-$(HCP_OUT)/usecase:
-	$Qecho "Generating: usecase (=$(CHOSEN_USECASE))"
-	$Q(cd $(TOP)/usecase && rm -f common.env && ln -s $(CHOSEN_USECASE)-common.env common.env)
-	$Qecho "$(CHOSEN_USECASE)" > $@
-ALL += $(HCP_OUT)/usecase
-usecase: $(HCP_OUT)/usecase
-ifneq (,$(wildcard $(HCP_OUT)/usecase))
-clean_usecase:
-	$Qrm -f $(HCP_OUT)/usecase
-	$Qrm -f $(TOP)/usecase/common.env
-clean: clean_usecase
-endif
-define usecase_rule
-$(eval U := $(strip $1))
-usecase_$U:
-	$Qrm -f $(HCP_OUT)/usecase
-	$Q$(MAKE) --no-print-directory "$(HCP_OUT)/usecase" CHOSEN_USECASE=$U
-endef
-$(foreach i,$(USECASES),$(eval $(call usecase_rule,$i)))
 
 #########
 # Tests #
