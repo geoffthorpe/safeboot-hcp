@@ -74,7 +74,7 @@ def env_selfexpand(e, maxsize = 1000000):
 		s = env_expand(s, e)
 		if maxsize > 0 and len(s) > maxsize:
 			raise HcpEnvExpanderError(
-				f"HCP JSON, env decompression bomb?: {len(s)}")
+				f"HCP JSON, env decompression bomb?: {len(s)}")
 		newe = env_decode(s)
 		if (newe == e):
 			break;

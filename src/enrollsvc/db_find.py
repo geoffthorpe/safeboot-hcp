@@ -12,7 +12,7 @@ bail = db_common.bail
 # Usage:
 # db_find.py <clientjson>
 # where clientjson is;
-#   {
+#   {
 #       'hostname_regex': <regular expression>
 #   }
 
