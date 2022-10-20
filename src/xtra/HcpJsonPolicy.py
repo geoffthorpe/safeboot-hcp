@@ -1,6 +1,7 @@
-# This 'policy' abstraction interprets a JSON configuration file and, from it,
-# implements a filtering scheme that acts much like a set of packet-filter
-# rules. (As such, the terms 'rule' and 'filter' will be used interchangeably.)
+# This 'policy' abstraction implements a filtering scheme for JSON objects, and
+# a JSON layout for configuring it that works a little like iptables, with the
+# concept of filter rules, and chains thereof. (The terms 'rule' and 'filter'
+# are used interchangeably.)
 #
 # 'Policy' layout (ie. the top-level of 'policy.json');
 #
@@ -39,11 +40,23 @@
 #         it may or may not return, depending on the rules and the data being
 #         filtered. If it _does_ return, then "on-return" can specify a
 #         subsequent (but less-flexible) action to perform when control returns
-#         from the call, otherwise the "next" semantic is assumed.
+#         from the call, otherwise the "next" semantic is assumed. Note also
+#         that if "scope" is specified, it indicates a jq-style path into the
+#         data that the called filter(s) should see (instead of the original
+#         data).
 #
 #     "on-return": <"accept", "reject", "return", or "next" (the default)>
 #         Optional. Not used unless action==call and control returns from the
 #         call.
+#
+#     "scope": <string or list>
+#         Optional. Not used unless action==call. If provided, the called
+#         filter(s) will act on a modified data structure (according to the
+#         recipe specified in the "scope" attribute) - if and when control
+#         returns from the call, processing continues on the original data
+#         structure, ie. the modified data structure only exists for the
+#         "scope" of the call. See "scope" section below for details on how
+#         this field is constructed.
 #
 #     "next": <string naming the rule to pass control to>
 #         Only required if action==next (which is probably a silly thing to do)
@@ -52,11 +65,12 @@
 #         is usually filled in by post-processing. Read on to find out when and
 #         why. (See "chains".)
 #
-#     "if": <struct containing one or two key-value pairs>
+#     "if": <struct containing a condition, or array of such structs>
 #         Optional. Specifies a condition which must be true for the rule"s
 #         "action" to be performed. (If the condition evaluates false, the
 #         "otherwise" action will be taken, if defined, otherwise the "next"
-#         semantic is assumed.)
+#         semantic is assumed.) Note, if an array of conditions is provided,
+#         they are evaluated as a logical-AND ("&&") sequence.
 #   }
 #
 # 'Conditional' layout (ie. value of the 'if' struct in filter entries);
@@ -94,6 +108,36 @@
 #                 }
 #             }
 #         }
+#     'subset', 'not-subset':
+#       - these are similar to 'equal/not-equal' in that they use jq-style
+#         paths to identify what field of the data to compare, and a 'value'
+#         attribute to compare it against. The 'subset' comparison is true if
+#         and only if; (a) both the 'value' attribute and the path-identified
+#         data field are of type 'array', and (b) any and all elements of the
+#         data field are contained within the 'value' attribute.
+#     'elementof', 'not-elementof':
+#       - these are similar to 'subset/not-subset' except that the 'elementof'
+#         comparison is checking if the path-identified data field is an
+#         element of the 'value' array (rather than a subset of it). As such,
+#         the path-identified data field doesn't have to be of type 'array',
+#         but it must be (obviously) the same type as whatever element of the
+#         'value' array it matches against.
+#     'contains', 'not-contains':
+#       - the 'contains' comparison is true if and only if the given path is
+#         for a data field that is (a) of 'array' type, and (b) contains the
+#         'value' attribute as one of its elements.
+#     'isinstance', 'not-isinstance':
+#       - uses the python operator of the same name to return true if and only
+#         if the given path is for a data field that is of the type given by
+#         the 'type' attribute. Note, 'type' must be one of the following
+#         strings, which provide for JSON and python equivalent terms (and adds
+#         synthetic types for None/null);
+#             None, null,
+#             str, string,
+#             int, number,
+#             dict, object,
+#             list, array,
+#             bool, boolean
 #
 # 'Chains'
 #
@@ -114,7 +158,7 @@
 # transformed;
 #   Before post-processing;
 #       "filters": {
-#           "regular1": { "action": "reject", "if": { ... } ... },
+#           "regular1": { "action": "reject", "if": { ... } ... },
 #           "chain1": [
 #               { "action": "reject", "if": { ... } ... },
 #               { "action": "accept", "if": { ... } ... },
@@ -124,7 +168,7 @@
 #       }
 #  After post-processing;
 #       "filters": {
-#           "regular1": { "action": "reject", "if": { ... } ... },
+#           "regular1": { "action": "reject", "if": { ... } ... },
 #           "chain1":   { "action": "reject", "if": { ... } ..., "next": "chain1_1" },
 #           "chain1_0": { "action": "reject", "if": { ... } ..., "next": "chain1_1" },
 #           "chain1_1": { "action": "accept", "if": { ... } ..., "next": "foo" },
@@ -137,10 +181,102 @@
 # - all entries in a chain _except the last one_(!) automatically get a 'next'
 #   field set, thus creating order. (If the entry already specified a 'next'
 #   field that will take precedence.)
+#
+# 'Scopes'
+#
+# When a filter entry's "call" action gets triggered, control not only shifts
+# to the named filter, but a new "scope" will be entered that lasts up until a
+# corresponding "return" action, if at all. This is what distinguishes "call"
+# from "jump". (There may be multiple levels of "scope", if there are "calls
+# within calls", with the expected stack-like behavior. Ie. each call pushes a
+# new scope onto the top of the stack, and each return discards the top-most
+# scope and returns to the one underneath it.) Apart from the control-flow
+# functionality of the "call" (and "return") mechanism, there is also a
+# data-treatment capability built into it, which is where the "scope" attribute
+# comes in.
+#
+# By default, if no "scope" attribute is specified, the data structure being
+# acted on by the called filter(s) is the same as the one prior to the call
+# (and after the return). However, specifying a "scope" attribute allows a new
+# data structure to be crafted from the existing one, that will replace the
+# original data structure in filter processing for the duration of the
+# call(/return) scope. The syntax of the "scope" attribute takes two forms,
+# depending on whether it is specified as a string or list/array. We will
+# describe the latter first, as it is more general, then we will describe the
+# former as a degenerate case.
+#
+# The general form of "scope" consists of a array (list) of objects (dicts),
+# each of which contribute step-wise in constructing the new data structure,
+# which starts out as a new/empty JSON object (dict). Each object in the array
+# will specify exactly one method key ("set", "delete", "import", or "union")
+# to build on that JSON object. The value for the method key, whose value is a
+# jq-style path, specifies what path within the new object the method is being
+# applied to. The "import" method is the only operation that uses the existing
+# data structure (the "source" attribute indicates what path in the existing
+# data structure should be copied into the new one), the remaining methods all
+# act strictly within the new data structure.
+#
+# The following fictitous example shows the different methods and their
+# attributes;
+#     "scope": [
+#         { "set": ".tmp1", "value": [ 1, 2, { "a": "b" } ] },
+#         { "set": ".tmp2", "value": {
+#                 "name": "Blank",
+#                 "group": "Blank" } },
+#         { "import": ".tmp3", "source": ".details" },
+#         { "union": ".tmp3.headers", "source1": ".tmp3.headers",
+#             "source2": ".tmp2" },
+#         { "union": ".value", "source1": ".tmp1", "source2": ".tmp3.value" },
+#         { "delete": ".tmp3.do_not_care" },
+#         { "union": ".final", "source1": null, "source2": ".tmp3" },
+#         { "delete": ".tmp1" },
+#         { "delete": ".tmp2" },
+#         { "delete": ".tmp3" },
+#         { "delete": ".final.value" }
+#     ]
+# If the original data structure is;
+#     {
+#         "details": {
+#             "care": "something",
+#             "do_not_care": "something else",
+#             "value": [ 3, 4 ],
+#             "headers": {
+#                 "userid": 4015,
+#                 "name": "Nosferatu"
+#             }
+#         },
+#         "ignore_me": "ok"
+#     }
+# Then the "scope" example produces this new data structure;
+#     {
+#         "final": {
+#             "care": "something",
+#             "headers": {
+#                 "userid": 4015,
+#                 "name": "Blank",
+#                 "group": "Blank"
+#             },
+#         }
+#         "value": [ 1, 2, { "a": "b" }, 3, 4 ]
+#     }
+#
+# The simpler form of "scope", when it is just a string, is equivalent to a
+# single "import". Ie.
+#     "scope": ".foo"
+# is equivalent to;
+#     "scope": [ { "import": ".", "source": ".foo" } ]
+#
+# Specifying no "scope" attribute in a "call" action indicates that the called
+# filter(s) will operate on the same data as the caller. This is equivalent to
+# specifying;
+#     "scope": [ { "import": ".", "source": "." } ]
 
 import json
+import os
 
-from HcpJsonPath import valid_path_node, valid_path, path_pop_node, extract_path, HcpJsonPathError
+from HcpJsonPath import valid_path_node, valid_path, path_pop_node, \
+		extract_path, overwrite_path, delete_path, HcpJsonPathError
+from HcpRecursiveUnion import union
 import HcpEnvExpander
 
 class HcpJsonPolicyError(Exception):
@@ -148,16 +284,29 @@ class HcpJsonPolicyError(Exception):
 
 # This is noisy even for autopurged debugging logs. You'll probably only want
 # to enable this if you have a unit test that reproduces your problem.
-if False:
-	import pprint
-	ppp = pprint.PrettyPrinter()
-	pp = ppp.pprint
-	def foo(s):
+if 'HCP_POLICYSVC_DEBUG' in os.environ:
+	def log(s):
 		print(s)
 else:
-	def foo(s):
+	def log(s):
 		pass
-	pp = foo
+
+# Map of type strings for use in 'isinstance' conditionals
+typetable = {
+	'None': type(None),
+	'str': type('str'),
+	'int': type(42),
+	'dict': type({}),
+	'list': type([]),
+	'bool': type(True)
+}
+# Add aliases for JSON terms
+typetable['null'] = typetable['None']
+typetable['string'] = typetable['str']
+typetable['number'] = typetable['int']
+typetable['object'] = typetable['dict']
+typetable['array'] = typetable['list']
+typetable['boolean'] = typetable['bool']
 
 # Condition-handling for "if" filters. 'condbase' defines the set of
 # conditions, that can be evaluated, together with functions to (a) confirm
@@ -166,6 +315,7 @@ else:
 # structure is malformed. The 'run' function returns a boolean to indicate the
 # result of the condition operating on the input.
 def is_valid_exist(c, x, n):
+	log(f"FUNC is_valid_exist starting; {c},{x},{n}")
 	if len(c) != 1 or not isinstance(c[n], str):
 		raise HcpJsonPolicyError(f"{x}: invalid '{n}' condition")
 	try:
@@ -173,39 +323,227 @@ def is_valid_exist(c, x, n):
 	except HcpJsonPathError as e:
 		raise HcpJsonPolicyError(f"{x}: invalid '{n}' path\n{e}")
 def is_valid_equal(c, x, n):
+	log(f"FUNC is_valid_equal starting; {c},{x},{n}")
 	if len(c) != 2 or not isinstance(c[n], str) or 'value' not in c:
 		raise HcpJsonPolicyError(f"{x}: invalid '{n}' condition")
 	try:
 		valid_path(c[n])
 	except HcpJsonPathError as e:
 		raise HcpJsonPolicyError(f"{x}: invalid '{n}' path\n{e}")
+def is_valid_subset(c, x, n):
+	log(f"FUNC is_valid_subset starting; {c},{x},{n}")
+	is_valid_equal(c, x, n)
+	if not isinstance(c['value'], list):
+		raise HcpJsonPolicyError(f"{x}: value for '{n}' must be a list")
+def is_valid_elementof(c, x, n):
+	log(f"FUNC is_valid_elementof starting; {c},{x},{n}")
+	is_valid_subset(c, x, n)
+def is_valid_contains(c, x, n):
+	log(f"FUNC is_valid_contains starting; {c},{x},{n}")
+	is_valid_equal(c, x, n)
+def is_valid_isinstance(c, x, n):
+	log(f"FUNC is_valid_isinstance starting; {c},{x},{n}")
+	if len(c) != 2 or not isinstance(c[n], str) or 'type' not in c or \
+				not isinstance(c['type'], str):
+		raise HcpJsonPolicyError(f"{x}: invalid '{n}' condition")
+	try:
+		valid_path(c[n])
+	except HcpJsonPathError as e:
+		raise HcpJsonPolicyError(f"{x}: invalid '{n}' path\n{e}")
+	if c['type'] not in typetable:
+		raise HcpJsonPolicyError(f"{x}: unknown 'type' for '{n}'")
 def run_exist(c, x, n, data):
+	log(f"FUNC run_exist starting; {c},{x},{n}")
 	path = c[n]
 	ok, _ = extract_path(data, path)
+	log(f"FUNC run_exist ending; {ok}")
 	return ok
 def run_equal(c, x, n, data):
+	log("FUNC run_equal starting; {c},{x},{n}")
 	path = c[n]
 	ok, data = extract_path(data, path)
 	if not ok:
 		return False
-	foo("run_equal;")
-	pp(c['value'])
-	pp(data)
-	if not c['value'] == data:
-		foo("which apparently don't match")
-	return c['value'] == data
+	ok = c['value'] == data
+	if not ok:
+		log(f"{data} not-equal-to {c['value']}")
+	log(f"FUNC run_equal ending; {ok}")
+	return ok
+def run_subset(c, x, n, data):
+	log("FUNC run_subset starting; {c},{x},{n}")
+	path = c[n]
+	ok, data = extract_path(data, path)
+	if not ok:
+		return False
+	if not isinstance(data, list):
+		ok = False
+	else:
+		ok = set(data).issubset(c['value'])
+	if not ok:
+		log(f"{data} not-subset-of {c['value']}")
+	log(f"FUNC run_subset ending; {ok}")
+	return ok
+def run_elementof(c, x, n, data):
+	log("FUNC run_elementof starting; {c},{x},{n}")
+	path = c[n]
+	ok, data = extract_path(data, path)
+	if not ok:
+		return False
+	ok = data in c['value']
+	if not ok:
+		log(f"{data} not-element-of {c['value']}")
+	log(f"FUNC run_elementof ending; {ok}")
+	return ok
+def run_contains(c, x, n, data):
+	log("FUNC run_contains starting; {c},{x},{n}")
+	path = c[n]
+	ok, data = extract_path(data, path)
+	if not ok:
+		return False
+	if not isinstance(data, list):
+		ok = False
+	else:
+		ok = c['value'] in data
+	if not ok:
+		log(f"{data} does-not-contain {c['value']}")
+	log(f"FUNC run_elementof ending; {ok}")
+	return ok
+def run_isinstance(c, x, n, data):
+	log("FUNC run_isinstance starting; {c},{x},{n}")
+	path = c[n]
+	ok, data = extract_path(data, path)
+	if not ok:
+		return False
+	ok = typetable[c['type']] == type(data)
+	if not ok:
+		log(f"{data} not-instance-of {c['type']}")
+	log(f"FUNC run_isinstance ending; {ok}")
+	return ok
 condbase = {
 	'exist': { 'is_valid': is_valid_exist, 'run': run_exist },
-	'equal': { 'is_valid': is_valid_equal, 'run': run_equal }
+	'equal': { 'is_valid': is_valid_equal, 'run': run_equal },
+	'subset': { 'is_valid': is_valid_subset, 'run': run_subset },
+	'elementof': { 'is_valid': is_valid_elementof, 'run': run_elementof },
+	'contains': { 'is_valid': is_valid_contains, 'run': run_contains },
+	'isinstance': { 'is_valid': is_valid_isinstance, 'run': run_isinstance }
 }
-# Create negated versions of the base conditions
+
+# Supplement with negated versions of those base conditions
+def invert_run_fn(f):
+	return lambda c, x, n, d: not f(c, x, n, d)
 condneg = {
 	f"not-{k}": {
-		'is_valid': lambda c, x, n: v['is_valid'](c, x, n),
-		'run': lambda c, x, n, d: not v['run'](c, x, n, d)
+		'is_valid': v['is_valid'],
+		'run': invert_run_fn(v['run'])
 	} for (k, v) in condbase.items()
 }
+
 conds = condbase | condneg
+
+# This function burrows into structures looking for any dicts having a key
+# equal to '_' and removing them.
+def strip_comments(x):
+	if isinstance(x, dict):
+		if '_' in x:
+			x.pop('_')
+		for i in x:
+			strip_comments(x[i])
+	if isinstance(x, tuple) or isinstance(x, set) or isinstance(x, list):
+		for i in x:
+			strip_comments(i)
+
+# Method-handling for "scope" constructs.
+def scope_valid_common(s, x, n):
+	if not isinstance(s[n], str):
+		raise HcpJsonPolicyError(f"{x}: invalid '{n}' scope")
+	try:
+		valid_path(s[n])
+	except HcpJsonPathError as e:
+		raise HcpJsonPolicyError(f"{x}: invalid '{n}' path\n{e}")
+def scope_valid_set(s, x, n):
+	log(f"FUNC scope_valid_set running; {s},{x},{n}")
+	scope_valid_common(s, x, n)
+	if len(s) != 2 or 'value' not in s:
+		raise HcpJsonPolicyError(f"{x}: '{n}' must have (only) 'value'")
+def scope_valid_delete(s, x, n):
+	log(f"FUNC scope_valid_delete running; {s},{x},{n}")
+	scope_valid_common(s, x, n)
+	if len(s) != 1:
+		raise HcpJsonPolicyError(f"{x}: '{n}' expects no attributes")
+def scope_valid_import(s, x, n):
+	log(f"FUNC scope_valid_import running; {s},{x},{n}")
+	scope_valid_common(s, x, n)
+	if len(s) != 2 or 'source' not in s:
+		raise HcpJsonPolicyError(f"{x}: '{n}' must have (only) 'source'")
+	try:
+		valid_path(s['source'])
+	except HcpJsonPathError as e:
+		raise HcpJsonPolicyError(f"{x}: invalid '{n}' source\n{e}")
+def scope_valid_union(s, x, n):
+	log(f"FUNC scope_valid_union running; {s},{x},{n}")
+	scope_valid_common(s, x, n)
+	if len(s) != 3 or 'source1' not in s or 'source2' not in s:
+		raise HcpJsonPolicyError(
+			f"{x}: '{n}' requires (only) 'source1' and 'source2'")
+	try:
+		if s['source1']:
+			valid_path(s['source1'])
+		valid_path(s['source2'])
+	except HcpJsonPathError as e:
+		raise HcpJsonPolicyError(f"{x}: invalid '{n}' source(s)\n{e}")
+def scope_run_set(s, x, n, datanew, dataold):
+	log(f"FUNC scope_run_set starting; {s},{x},{n}")
+	path = s[n]
+	value = s['value']
+	log(f"path={path}, value={value}")
+	res = overwrite_path(datanew, path, value)
+	log(f"FUNC scope_run_set ending; {res}")
+	return res
+def scope_run_delete(s, x, n, datanew, dataold):
+	log(f"FUNC scope_run_delete starting; {s},{x},{n}")
+	path = s[n]
+	log(f"path={path}")
+	res = delete_path(datanew, path)
+	log(f"FUNC scope_run_delete ending; {res}")
+	return res
+def scope_run_import(s, x, n, datanew, dataold):
+	log(f"FUNC scope_run_import starting; {s},{x},{n}")
+	path = s[n]
+	source = s['source']
+	log(f"path={path}, source={source}")
+	ok, value = extract_path(dataold, source)
+	if not ok:
+		raise HcpJsonPolicyError(f"{x}: import: missing '{path}'")
+	res = overwrite_path(datanew, path, value)
+	log(f"FUNC scope_run_import ending; {res}")
+	return res
+def scope_run_union(s, x, n, datanew, dataold):
+	log(f"FUNC scope_run_union starting; {s},{x},{n}")
+	path = s[n]
+	source1 = s['source1']
+	source2 = s['source2']
+	log(f"path={path}, source1={source1}, source2={source2}")
+	ok, value2 = extract_path(datanew, source2)
+	if not ok:
+		raise HcpJsonPolicyError(f"{x}: union: missing '{source2}'")
+	if source1 is not None:
+		ok, value1 = extract_path(datanew, source1)
+		if not ok:
+			raise HcpJsonPolicyError(
+				f"{x}: union: missing '{source1}'")
+		value = union(value1, value2)
+	else:
+		value = value2
+	res = overwrite_path(datanew, path, value)
+	log(f"FUNC scope_run_union ending; {res}")
+	return res
+
+scopemeths = {
+	'set': { 'is_valid': scope_valid_set, 'run': scope_run_set },
+	'delete': { 'is_valid': scope_valid_delete, 'run': scope_run_delete },
+	'import': { 'is_valid': scope_valid_import, 'run': scope_run_import },
+	'union': { 'is_valid': scope_valid_union, 'run': scope_run_union }
+}
 
 # Shorthand. 'accrej' is for things like the "default" action, where literally
 # only "accept" or "reject" are acceptable. 'noparam' is for secondary actions
@@ -218,35 +556,74 @@ noparam = accrej + [ 'return', 'next' ]
 # Check for top-level problems in a parsed policy that aren't detected during
 # parsing. Ie. that references between filters are resolved.
 def check_policy(policy):
-	foo("check_policy() starting")
+	log("FUNC check_policy starting; {policy}")
 	fs = policy['filters']
 	s = policy['start']
-	foo(f"start={s}")
-	foo(f"filters.keys()={fs.keys()}")
 	if s and s not in fs:
 		raise HcpJsonPolicyError(
 			f"'start' ({s}) doesn't match a valid filter")
 	for x in fs:
-		foo(f"processing {x}")
 		f = fs[x]
+		log(f"processing filter: {x}, {f}")
 		action = f['action']
 		if action in [ 'jump', 'call' ]:
-			foo(f"action={action}")
 			dest = f[action]
-			foo(f"{action}={dest}")
 			if dest not in fs:
 				raise HcpJsonPolicyError(
-					f"{x}: invalid {action} ({dest})")
+					f"{x}: {action}: missing '{dest}'")
 			if action == 'call' and 'on-return' in f and \
 					f['on-return'] not in accrej:
 				raise HcpJsonPolicyError(
-					f"{x}: invalid 'on-return'")
+					f"{x}: {action}: on-return: " +
+					f"unknown '{f['on-return']}'")
 		elif action not in noparam:
 			raise HcpJsonPolicyError(
-				f"{x}: invalid 'action' ({action})")
+				f"{x}: action: unknown '{action}'")
 		if 'next' in f and f['next'] not in fs:
 			raise HcpJsonPolicyError(
-				f"{x}: invalid 'next' ({f['next']})")
+				f"{x}: next: unknown '{f['next']}'")
+	log("FUNC check_policy ending")
+
+# Parse a "scope" attribute in a filter entry whose action is "call".
+def parse_scope(s, x):
+	log("FUNC parse_scope starting; {scope}")
+	# We'll build an output scope and return it. This will be in the general
+	# form.
+	scope = []
+	# If 's' is a simple string, convert it to the general form.
+	if isinstance(s, str):
+		s = [ { "import": ".", "source": s } ]
+	if not isinstance(s, list):
+		raise HcpJsonPolicyError(f"{x}: scope: bad type '{type(s)}'")
+	# Iterate through the list of constructs for this scope
+	for c in s:
+		# Must have exactly one method. Note this logic closely follows
+		# the 'if' handling in parse_filter().
+		m = set(scopemeths.keys()).intersection(c.keys())
+		if len(m) == 0:
+			raise HcpJsonPolicyError(
+				f"{x}: scope: no method in {c}")
+		if len(m) != 1:
+			raise HcpJsonPolicyError(
+				f"{x}: scope: too many methods in {c} ({m})")
+		m = m.pop()
+		log(f"Processing method '{m}'")
+		meth = scopemeths[m]
+		meth['is_valid'](c, x, m)
+		c['meth'] = m
+	log("FUNC parse_scope ending")
+	return s
+
+# Run an already-parsed 'scope' against data, returning the transformed data
+def run_scope(data, scope, x):
+	log(f"FUNC run_scope starting; {x},{scope},{data}")
+	result = {}
+	for c in scope:
+		methkey = c['meth']
+		meth = scopemeths[methkey]
+		result = meth['run'](c, x, methkey, result, data)
+	log(f"FUNC run_scope ending")
+	return result
 
 # Parse a filter entry. This function is called for key-value pairs in the
 # 'filters' dict, and by itself (recursively).
@@ -269,6 +646,7 @@ def check_policy(policy):
 # need 'next' behavior from a filter entry that is not in a list, or is at the
 # end of a list, you must add the 'next' field yourself.)
 def parse_filter(key, value, output_filters):
+	log(f"FUNC parse_filter starting; {key},{value}")
 	if isinstance(value, list):
 		# The key-value pair describes a _sequence_ of filter entries,
 		# not a single filter entry per se. So we iterate that list,
@@ -276,8 +654,9 @@ def parse_filter(key, value, output_filters):
 		# derived from the current one, suffixed by an incrementing
 		# counter.
 		suffix = 0
+		firstf = None
 		lastf = None
-		foo(f"parse_filter({key}) is a list")
+		log(f"filter '{key}' is a list")
 		for rf in value:
 			newf = parse_filter(f"{key}_{suffix}", rf,
 						output_filters)
@@ -287,103 +666,143 @@ def parse_filter(key, value, output_filters):
 			else:
 				output_filters[f"{key}"] = newf
 			lastf = newf
+			if not firstf:
+				firstf = newf
 			suffix += 1
-		return lastf
+		log(f"FUNC parse_filter ending; '{firstf['name']}'")
+		return firstf
 	# The key-value pair describes a single filter entry, so construct the
 	# filter using key+value then insert it into 'output_filters'.
 	# - the key becomes the filter name, unless overriden
-	foo(f"parse_filter({key}) is a struct")
+	log(f"filter '{key}' is a struct")
 	if 'name' not in value:
+		log(f"setting name={key}")
 		value['name'] = key
 	x = value['name']
 	if not isinstance(x, str):
-		raise HcpJsonPolicyError(f"{key}: 'name' isn't a string")
+		raise HcpJsonPolicyError(
+			f"{key}: 'name' isn't a string ({type(x)})")
 	# - action must be specified
-	if 'action' not in value or not isinstance(value['action'], str):
-		raise HcpJsonPolicyError(f"{x}: 'action' field invalid")
+	if 'action' not in value:
+		raise HcpJsonPolicyError(f"{x}: action: missing")
+	if not isinstance(value['action'], str):
+		raise HcpJsonPolicyError(
+			f"{x}: action: '{type(value['action'])}' not a string")
 	action = value['action']
 	# - if it's jump/call, sanity-check, but we can't confirm if
 	#   the destination exists, that's check_policy().
 	if action in [ 'jump', 'call' ]:
-		if action not in value or not isinstance(value[action], str):
-			raise HcpJsonPolicyError(f"{x}: invalid {action}")
+		if action not in value:
+			raise HcpJsonPolicyError(f"{x}: {action}: missing")
+		if not isinstance(value[action], str):
+			raise HcpJsonPolicyError(
+				f"{x}: {action}: '{type(value[action])}' " +
+				"not a string")
 	elif action not in noparam:
-		raise HcpJsonPolicyError(f"{x}: unknown 'action' ({action})")
+		raise HcpJsonPolicyError(f"{x}: action: '{action}' unknown")
 	if action == 'call' and 'on-return' in value and \
 			value['on-return'] not in noparam:
 		raise HcpJsonPolicyError(
-			f"{x}: invalid 'on-return' ({value['on-return']})")
+			f"{x}: on-return: unknown '{value['on-return']}'")
+	if action == 'call' and 'scope' in value:
+		# Parsing "scope" deserves its own function
+		value['scope'] = parse_scope(value['scope'], x)
 	# - if there's a 'next', it should be a string, but we can't
 	#   confirm the destination exists, that's check_policy().
 	if 'next' in value and not isinstance(value['next'], str):
 		raise HcpJsonPolicyError(
-			f"{x}: invalid 'next' ({value['next']})")
+			f"{x}: next: '{value['next']}' not a string")
 	# - if there's a condition, process it
 	if 'if' in value:
 		vif = value['if']
-		# The following could become "check_condition(vif)"
-		# - it has to be a struct
-		if not isinstance(vif, dict):
-			raise HcpJsonPolicyError(f"{x}: 'if' isn't a dict")
-		# - it must have exactly one condition type in it
-		m = set(conds.keys()).intersection(vif.keys())
-		if len(m) != 1:
-			raise HcpJsonPolicyError(f"{x}: 'if' must have one " +
-					f"condition (not {len(m)})")
-		m = m.pop()
-		cond = conds[m]
-		# - and that condition has to like what it sees
-		cond['is_valid'](vif, x, m)
-		# Cache the info required to run the evaluation
-		vif['cond'] = m
+		if isinstance(vif, list):
+			log(f"{x}: parsing list of 'if' conditions;")
+			andlist = vif
+		else:
+			log(f"{x}: parsing single 'if' condition;")
+			andlist = [ vif ]
+		for vif in andlist:
+			log(f"{x}: if: {vif}")
+			# The following could become "check_condition(vif)"
+			# - it has to be a struct
+			if not isinstance(vif, dict):
+				raise HcpJsonPolicyError(
+					f"{x}: if: entry isn't a dict")
+			# - it must have exactly one condition type in it
+			m = set(conds.keys()).intersection(vif.keys())
+			if len(m) == 0:
+				raise HcpJsonPolicyError(f"{x}: if: no method")
+			if len(m) != 1:
+				raise HcpJsonPolicyError(
+					f"{x}: if: too many methods '{m}'")
+			m = m.pop()
+			log(f"method={m}")
+			cond = conds[m]
+			# - and that condition has to like what it sees
+			cond['is_valid'](vif, x, m)
+			# Cache the info required to run the evaluation
+			vif['cond'] = m
 	# - if there's an "otherwise", it must be parameter-less
 	if 'otherwise' in value:
 		vo = value['otherwise']
-		if not isinstance(vo, str) or vo not in noparam:
+		if not isinstance(vo, str):
 			raise HcpJsonPolicyError(
-				f"{x}: invalid 'otherwise' ({vo})")
+				f"{x}: otherwise: '{vo}' not a string")
+		if vo not in noparam:
+			raise HcpJsonPolicyError(
+				f"{x}: otherwise: unknown '{vo}'")
 	# - add the filter entry, but it must not collide
 	if x in output_filters:
-		raise HcpJsonPolicyError(f"{x}: conflict on filter")
+		raise HcpJsonPolicyError(f"{x}: filter name conflict '{x}'")
 	output_filters[x] = value
+	log(f"FUNC parse_filter ending; '{value['name']}'")
 	return value
 
 # Return a policy object that we can trust, which is parsed and sanity-checked
 # from a JSON encoding. This will throw HcpJsonPolicyError if we find a
 # problem, otherwise JSONDecodingError if the JSON decoder hits something.
 def loads(jsonstr):
+	log(f"FUNC loads starting")
 	policy = json.loads(jsonstr)
+	log(f"input policy = {policy}")
 	if not isinstance(policy, dict):
 		raise HcpJsonPolicyError(
 			f"Policy must be a 'dict' (not {type(policy)})")
 	# Check 'start' and 'default'
-	if 'start' in policy and not isinstance(policy['start'], str):
-		raise HcpJsonPolicyError(f"'start' must be a string")
-	if 'start' not in policy:
+	if 'start' in policy:
+		if not isinstance(policy['start'], str):
+			raise HcpJsonPolicyError(
+				f"start: '{policy['start']}' not a string")
+	else:
+		log("setting start = None")
 		policy['start'] = None
 	if 'default' in policy:
 		if not isinstance(policy['default'], str):
-			raise HcpJsonPolicyError(f"'default' must be a string")
+			raise HcpJsonPolicyError(
+				f"default: '{policy['default']}' not a string")
 		if policy['default'] not in accrej:
 			raise HcpJsonPolicyError(
-				f"'default' must be accept/reject (not {d})")
+				f"default: '{policy['default']}' not accept/reject")
 	else:
+		log("setting default = reject")
 		policy['default'] = "reject"
 	# We pop the 'filters' _out_ of 'policy', build a list of
 	# "output_filters" via whatever parse_filter() produces while looking
-	# at those popped filters, then insert "output_filters" back _into_
-	# the policy.
+	# at those popped filters, then insert "output_filters" back _into_ the
+	# policy. This is how a list-typed entry (a chain) gets replaced with
+	# multiple entries (with 'next's filled in).
 	if 'filters' not in policy:
-		raise HcpJsonPolicyError("Missing 'filters' field")
+		raise HcpJsonPolicyError("filters: missing")
 	filters = policy.pop('filters')
 	if not isinstance(filters, dict):
 		raise HcpJsonPolicyError(
-			f"'filters' must be of type dict (not {type(filters)})")
+			f"filters: must be dict (not {type(filters)})")
 	# Build a new 'filters' set from the old one
 	output_filters = {}
 	for i in filters:
 		f = parse_filter(i, filters[i], output_filters)
 		if not policy['start']:
+			log(f"setting start = {f['name']}")
 			policy['start'] = f
 	policy['filters'] = output_filters
 	# This checks for things that we can't check during construction of
@@ -391,6 +810,7 @@ def loads(jsonstr):
 	# optimizes the policy - eg. by replacing text condition names
 	# ("exist", "not-equal", etc) with the functions that implement them.
 	check_policy(policy)
+	log(f"FUNC loads ending; {policy}")
 	return policy
 
 def load(jsonpath):
@@ -398,95 +818,108 @@ def load(jsonpath):
 
 # Pass the JSON data through the fully-formed policy object.
 def run_sub(filters, cursor, data):
-	foo(f"run_sub(,{cursor},) starting")
+	log(f"FUNC run_sub starting; {cursor}")
 	while True:
 		f = filters[cursor]
 		action = f['action']
 		name = f['name']
-		foo(f"name={name}, action={action}")
-		pp(f)
+		log(f"name={name}, action={action}")
+		x = name
 		if 'if' in f:
 			i = f['if']
-			c = i['cond']
-			foo(f"condition check, c={c}")
-			cond = conds[c]
-			b = cond['run'](i, name, c, data)
-			foo(f"check returned {b}")
-			if not b:
+			if isinstance(i, list):
+				log(f"{x}: processing list of 'if' conditions;")
+				andlist = i
+			else:
+				log(f"{x}: processing single 'if' condition;")
+				andlist = [ i ]
+			finalb = True
+			for i in andlist:
+				log(f"{x}: if: {i}")
+				c = i['cond']
+				cond = conds[c]
+				b = cond['run'](i, name, c, data)
+				if not b:
+					log(f"{x}: if: got a False, leaving loop")
+					finalb = False
+					break
+			if not finalb:
 				if 'otherwise' in f:
 					action = f['otherwise']
-					foo(f"doesn't match -> {action}")
+					log(f"{x}: if: no match -> {action}")
 				else:
-					foo("doesn't match -> next")
 					action = 'next'
+					log("{x}: if: no match -> next")
 			else:
-				foo(f"match -> {action}")
+				log(f"{x}: if: match -> {action}")
 		if action == 'return':
-			foo("returning None")
+			log(f"FUNC run_sub ending; 'return'")
 			return None
 		if action == 'call':
+			log(f"{x}: call: preparing to call '{f['call']}'")
 			# Call -> recurse
-			foo(f"calling {f['call']}")
-			suboutput = run_sub(filters, f['call'], data)
+			scope = '.'
+			if 'scope' in f:
+				scope = f['scope']
+				scoped_data = run_scope(data, scope, name)
+			else:
+				scoped_data = data
+			log(f"{x}: call: calling '{f['call']}'")
+			suboutput = run_sub(filters, f['call'], scoped_data)
 			if suboutput:
-				foo(f"got output, passing it along")
-				pp(suboutput)
+				log(f"{x}: call: got a decision back, passing it along")
+				log(f"FUNC run_sub ending; {suboutput}")
 				return suboutput
-			foo("got no output -> next")
-			action = 'next'
+			log("{x}: call: no decision yet")
 			if 'on-return' in f:
 				action = f['on-return']
-				foo(f"got no ouput, on-return -> {action}")
-
+				log(f"{x}: on-return: -> {action}")
 			else:
-				foo("got no output -> next")
+				action = 'next'
+				log(f"{x}: call: -> next")
 		if action == 'jump':
-			# Jump -> move cursor and restart the loop
 			cursor = f['jump']
-			foo(f"jumping to {cursor}")
+			log(f"{x}: jump: -> '{cursor}'")
+			# Jump -> move cursor and restart the loop
 			continue
-		# 'next' is a little special. It's an implicit target, used
-		# when the filter entry does _not_ match the input (and
-		# therefore the action doesn't depend on anything in that
-		# entry). And static checking (per check_policy() above) cannot
-		# generally "know" whether the set of potential inputs will or
-		# won't require 'next' attributes in places where they're not
-		# present. As such, we don't want to throw an exception when
-		# performing a 'next' action on an entry that doesn't have one,
-		# instead treat it like a rejection and set a 'reason' field
-		# that should alert someone to the bug in their JSON config
 		if action == 'next':
 			if 'next' not in f:
-				return {
-					'action': 'reject',
-					'last_filter': name,
-					'reason': "bug in policy.json - no 'next'"
-				}
+				raise HcpJsonPolicyError(f"{x}: {next}: missing")
 			cursor = f['next']
-			foo(f"next -> {cursor}")
+			log(f"[x]: next: -> {cursor}")
 			continue
 		if action not in accrej:
 			raise HcpJsonPolicyError(
-				f"{name}: unhandled 'action' ({action})")
-		foo(f"action -> {action}")
+				f"{x}: unhandled 'action' ({action})")
+		log(f"FUNC run_sub ending; {x},{action}")
 		return {
 			'action': action,
 			'last_filter': name,
 			'reason': 'Filter match'
 		}
-def run(policy, data):
-	foo("run() starting, will call run_sub()")
-	pp(data)
+# If debugging is enabled, run_with_env() and run() both dump a lot of data, so
+# we make them both wrappers of __run(), rather than one being a wrapper of the
+# other.
+def __run(policy, data):
 	output = run_sub(policy['filters'], policy['start'], data)
-	foo("run() back from run_sub()")
-	print(f"output={output}")
-	if output:
-		return output
-	return {
-		'action': policy['default'],
-		'last_filter': None,
-		'reason': 'Default filter action'
-	}
+	if not output:
+		log("setting default output (run_sub returned 'None')")
+		output = {
+			'action': policy['default'],
+			'last_filter': None,
+			'reason': 'Default filter action'
+		}
+	return output
+def run(policy, data, stripComments = True):
+	log(f"FUNC run starting; {stripComments}")
+	if stripComments:
+		log("running strip_comments() on policy and data")
+		strip_comments(policy)
+		strip_comments(data)
+	log(f"policy={policy},data={data}")
+	output = __run(policy, data)
+	log(f"FUNC run ending; {output}")
+	return output
 
 # Wrapper function to deal with input that has embedded '__env'. That "env" is
 # decoded and fully self-expanded, then it is used to expand both the input and
@@ -496,16 +929,35 @@ def run(policy, data):
 # filtering, set 'includeEnv=True'. Expansion requires string (JSON)
 # representation, so this wrapper consumes unparsed string inputs rather than
 # python structs.
-def run_with_env(policyjson, datajson, includeEnv=False):
+def run_with_env(policyjson, datajson, includeEnv = False,
+		stripComments = True):
+	log(f"FUNC run_with_env starting; {includeEnv}, {stripComments}")
 	data = json.loads(datajson)
+	policy = json.loads(policyjson)
+	if stripComments:
+		log("running strip_comments() on policy and data")
+		strip_comments(policy)
+		strip_comments(data)
+	log(f"policy={policy},data={data}")
+	log("separating '__env' from data")
 	env = data.pop('__env', {})
-	datajson = json.dumps(data)
 	HcpEnvExpander.env_check(env)
 	envjson, env = HcpEnvExpander.env_selfexpand(env)
+	log(f"expanded 'env' = {env}")
+	# Convert __env-less (and stripped) data back to a JSON string so it's
+	# ready for expansion
+	datajson = json.dumps(data)
 	datajson = HcpEnvExpander.env_expand(datajson, env)
+	data = json.loads(datajson)
+	log(f"expanded 'data' (without env) = {data}")
+	# Convert stripped policy back to JSON for expansion
+	policyjson = json.dumps(policy)
 	policyjson = HcpEnvExpander.env_expand(policyjson, env)
 	policy = loads(policyjson)
-	data = json.loads(datajson)
+	log(f"expanded 'policy' = {policy}")
 	if includeEnv:
+		log("putting '__env' back into data")
 		data['__env'] = env
-	return run(policy, data)
+	output = __run(policy, data)
+	log(f"FUNC run_with_env ending; {output}")
+	return output
