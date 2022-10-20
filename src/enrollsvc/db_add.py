@@ -174,6 +174,22 @@ resultprofile['__env'] = origenv
 os.environ['ENROLL_JSON'] = json.dumps(resultprofile)
 log(f"{z}: param-expanded resultprofle={resultprofile}")
 
+# And we now deal with genprogs[_{pre,post}]
+genprogs_pre = ""
+genprogs_post = ""
+genprogs = ""
+if 'genprogs_pre' in resultprofile:
+	genprogs_pre = resultprofile['genprogs_pre']
+if 'genprogs_post' in resultprofile:
+	genprogs_post = resultprofile['genprogs_post']
+if 'genprogs' in resultprofile:
+	genprogs = resultprofile['genprogs']
+final_genprogs = f"{genprogs_pre} {genprogs} {genprogs_post}"
+# NB: we keep the 'final_genprogs' variable as a space-separated string for the
+# benefit of safeboot, which expects it. But the correspondingly-named field in
+# the profile will be an array.
+resultprofile['final_genprogs'] = final_genprogs.split(' ')
+
 # The JSON profile is now fully curated. (The only thing left to do is generate
 # the enroll.conf that safeboot's 'attest-enroll' requires, but that's only
 # because it doesn't consume our profile.)
@@ -184,11 +200,11 @@ if policy_url:
 	uuid = uuid4().urn
 	os.environ['HCP_REQUEST_UID'] = uuid
 	form_data = {
-		'hookname': (None, 'enrollsvc::add_request'),
+		'hookname': (None, "enrollsvc::add_request"),
 		'request_uid': (None, uuid),
 		'params': (None, json.dumps(resultprofile))
 	}
-	url = f"{policy_url}/emgmt/v1/{cmdname}"
+	url = f"{policy_url}/run"
 	log(f"{z}: sending policy request={form_data}")
 	response = requests.post(url, files=form_data)
 	log(f"{z}: policy response={response}")
@@ -197,20 +213,10 @@ if policy_url:
 		sys.exit(403)
 
 # Prepare the enroll.conf that safeboot feeds on
-genprogs_pre = ""
-genprogs_post = ""
-genprogs = ""
-if 'genprogs_pre' in resultprofile:
-	genprogs_pre = resultprofile['genprogs_pre']
-if 'genprogs_post' in resultprofile:
-	genprogs_post = resultprofile['genprogs_post']
-if 'genprogs' in resultprofile:
-	genprogs = resultprofile['genprogs']
-genprogs = f"{genprogs_pre} {genprogs} {genprogs_post}"
 shutil.copy('/install-safeboot/enroll.conf', ephemeral_dir)
-log(f"db_add: adding GENPROGS=({genprogs})")
+log(f"db_add: adding GENPROGS=({final_genprogs})")
 with open(f"{ephemeral_dir}/enroll.conf", 'a') as fenroll:
-	fenroll.write(f"export GENPROGS=({genprogs})")
+	fenroll.write(f"export GENPROGS=({final_genprogs})")
 
 # and give attest-enroll trust-roots for validating EKcerts
 log(f"db_add: setting TPM_VENDORS={db_common.enrollsvc_state}/tpm_vendors")

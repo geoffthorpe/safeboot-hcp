@@ -41,7 +41,7 @@ volumes:
     tpmsocket_kdc_secondary:
 
 networks:
-    pol_private:
+    emgmt_private:
         internal: true
     hcpnetwork:
         internal: true
@@ -58,28 +58,13 @@ services:
           - HCP_ENTRYPOINT_EXCEPT=bash
         #  - VERBOSE=1
 
-# This policysvc instance runs in a private network so that only containers
-# explicitly connected get access. (Right now this is emgmt only.)
-    pol:
-        extends: common
-        image: ${HCP_IMAGE_policysvc}
-        networks:
-          - pol_private
-        environment:
-          - HCP_INSTANCE=/usecase/pol.env
-          - HCP_ENTRYPOINT=/hcp/policysvc/run_policy.sh
-        healthcheck:
-            test: /hcp/policysvc/healthcheck.sh
-            timeout: 1s
-            interval: 2s
-
 # Enrollment svc, mgmt interface
     emgmt:
         extends: common
         image: ${HCP_IMAGE_enrollsvc}
         networks:
-          - pol_private
           - hcpnetwork
+          - emgmt_private
         volumes:
           - enrolldb:${HCP_EMGMT_STATE}:rw
           - ${HCP_TESTCREDS_ENROLLSIGNER}:${HCP_EMGMT_CREDS_SIGNER}:ro
@@ -92,6 +77,18 @@ services:
           - HCP_ENTRYPOINT=/hcp/enrollsvc/run_mgmt.sh
         healthcheck:
             test: /hcp/tools/emgmt_healthcheck.sh
+            timeout: 1s
+            interval: 2s
+    emgmt_pol:
+        extends: common
+        image: ${HCP_IMAGE_policysvc}
+        networks:
+          - emgmt_private
+        environment:
+          - HCP_INSTANCE=/usecase/emgmt.pol.env
+          - HCP_ENTRYPOINT=/hcp/policysvc/run_policy.sh
+        healthcheck:
+            test: /hcp/policysvc/healthcheck.sh
             timeout: 1s
             interval: 2s
 

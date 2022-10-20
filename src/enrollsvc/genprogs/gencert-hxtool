@@ -29,10 +29,6 @@ output_dir = sys.argv[1]
 if not Path(output_dir).is_dir():
 	bail(f"Output location is not a directory: {output_dir}")
 
-policy_url = env_get_or_none('HCP_ENROLLSVC_POLICY')
-if policy_url:
-	request_uid = env_get('HCP_REQUEST_UID')
-
 # Error-checking? No, if assumptions and requirements aren't met; exceptions.
 conf_enroll = json.loads(env_get('ENROLL_JSON'))
 conf_env = dict_val_or(conf_enroll, '__env', {})
@@ -53,8 +49,6 @@ for asset in certlist:
 		raise HcpErrorGencertHxtool(f"asset {asset} not in JSON {conf_hxtool}")
 	conf_asset = union(conf_common, conf_hxtool[asset])
 	log(f" - conf_asset={conf_asset}")
-	# Keep a copy for the policy check (before conf_asset gets fields popped)
-	copy_asset = conf_asset.copy()
 	cmd = [ 'hxtool', 'issue-certificate' ]
 	# Special handling:
 	# - the '--certificate' setting comes from 'name' if defined, otherwise
@@ -102,22 +96,6 @@ for asset in certlist:
 				cmd += [ f"--{prop}={propval}" ]
 	cmd += args
 	log(f" - cmd={cmd}")
-
-	# Policy check
-	if policy_url:
-		log(" - policy_check")
-		json_asset = json.dumps({ asset: copy_asset, '__env': conf_env })
-		form_data = {
-			'hookname': (None, 'enrollsvc::asset_check'),
-			'request_uid': (None, request_uid),
-			'params': (None, json_asset)
-		}
-		log(f"   - form_data={form_data}")
-		response = requests.post(f"{policy_url}/emgmt/gencert-hxtool",
-					 files = form_data)
-		log(f"   - response={response}")
-		if response.status_code != 200:
-			bail(f"policy-checker {response.status_code} refused {json_asset}")
 
 	# Run the command "hxtool issue-certificate"
 	log(f" - running hxtool command;")
