@@ -49,10 +49,11 @@ def union(a, b, noDictUnion=False, noListUnion=False, noSetUnion=False,
 	if ta == list and not noListUnion:
 		c = a + b
 		if listDedup:
-			# trick: convert list to a dict - which doesn't
-			# tolerate duplicate keys - then convert it back to a
-			# list.
-			c = list(dict.fromkeys(c))
+			d = list()
+			for i in c:
+				if i not in d:
+					d.append(i)
+			c = d
 		return c
 	if ta == set and not noSetUnion:
 		return a | b
