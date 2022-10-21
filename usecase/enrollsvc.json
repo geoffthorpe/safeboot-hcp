@@ -77,6 +77,10 @@
                         "pkinit_win2k_require_binding": "yes"
                     }
                 }
+            },
+            "genkrb5keytab": {
+                "kdcsvc": "http://primary.kdc.hcphacking.xyz:9090",
+                "principal": "host/{ENROLL_HOSTNAME}"
             }
         }
     },

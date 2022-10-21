@@ -19,7 +19,7 @@
                 "value": [
                     "genconf-krb5", "gencert-hxtool", "genhostname",
                     "genrootfskey", "gencert-issuer", "genmetadata",
-                    "genreenroll" ] } },
+                    "genreenroll", "genkrb5keytab" ] } },
             { "action": "call", "if": [
                     { "contains": ".final_genprogs", "value": "gencert-hxtool" },
                     { "exist": ".gencert-hxtool" } ],

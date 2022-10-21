@@ -175,6 +175,7 @@ export GENCERT_CA_CERT=$GENCERT_CA_CERT
 export DIAGNOSTICS=$DIAGNOSTICS
 POLICIES[cert-hxtool]=pcr11
 POLICIES[rootfskey]=pcr11
+POLICIES[krb5keytab]=pcr11
 EOF
 
 	echo " - generating DB_USER-owned data in '$HCP_DB_DIR'"

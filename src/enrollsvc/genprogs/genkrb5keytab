@@ -1,0 +1,97 @@
+#!/usr/bin/python3
+
+import os
+import sys
+import json
+import subprocess
+import base64
+
+sys.path.insert(1, '/hcp/common')
+to_trace = 'HCP_NO_TRACE' not in os.environ
+if to_trace:
+	from hcp_tracefile import tracefile
+	tfile = tracefile(f"genkrb5keytab")
+	sys.stderr = tfile
+else:
+	tfile = sys.stderr
+import hcp_common
+log = hcp_common.log
+bail = hcp_common.bail
+
+log("Starting genkrb5keytab")
+
+# See gencert-hxtool for reasoning
+if len(sys.argv) <= 3:
+	bail(f"Wrong number of arguments: {len(sys.argv)}")
+
+outdir = sys.argv[1]
+os.chdir(outdir)
+
+configjson = os.environ['ENROLL_JSON']
+log(f"config={configjson}")
+config = json.loads(configjson)
+if not isinstance(config, dict):
+	bail(f"Config is not a dict ({type(config)})")
+
+# We home in on our own subsection of the JSON
+if 'genkrb5keytab' not in config:
+	bail("Config does not contain 'genkrb5keytab'")
+config = config['genkrb5keytab']
+log(f"config={config}")
+
+if 'kdcsvc' not in config:
+	bail("Config does not contain 'kdcsvc'")
+kdcsvc = config['kdcsvc']
+log(f"kdcsvc={kdcsvc}")
+if not isinstance(kdcsvc, str):
+	bail(f"'kdcsvc' not a string ({type(kdcsvc)})")
+
+clientcred = None
+if 'clientcred' in config:
+	clientcred = config['clientcred']
+	log(f"clientcred={clientcred}")
+	if not isinstance(clientcred, str):
+		bail(f"'clientcred' not a string ({type(clientcred)})")
+	if not os.path.exists(clientcred):
+		bail(f"'clientcred' file missing: ({clientcred})")
+
+if 'principal' not in config and 'principals' not in config:
+	bail("Config does not contain 'principal' or 'principals'")
+principals=[]
+if 'principals' in config:
+	newprincipals = config['principals']
+	log(f"principals={newprincipals}")
+	if not isinstance(newprincipals, list):
+		bail(f"'principals' not a list ({type(newprincipals)})")
+	principals += newprincipals
+if 'principal' in config:
+	newprincipal = config['principal']
+	log(f"principal={newprincipal}")
+	if isinstance(newprincipal, str):
+		newprincipal = [ newprincipal ]
+	if not isinstance(newprincipal, list):
+		bail(f"'principal' not a list or string ({type(newprincipal)})")
+	principals += newprincipal
+
+# TODO: refit this to use 'requests' rather than shelling out to 'curl'.
+args = [ 'curl', '-s', '-F', f"principals={json.dumps(principals)}" ]
+if clientcred:
+	args += [ '-E', clientcred ]
+args += [ f"{kdcsvc}/v1/ext_keytab" ]
+
+log(f"running subprocess: {args}")
+c = subprocess.run(args, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+log(f"result: {c}")
+if c.returncode:
+	bail(f"Request to KDC failed: {c.stderr}")
+
+res = json.loads(c.stdout)
+keytab64 = res['stdout']
+keytab = base64.b64decode(keytab64)
+with open('krb5.keytab', 'wb') as f:
+	f.write(keytab)
+log("keytab data written to krb5.keytab")
+
+# The end-result, we tell attest-enroll (via a line of stdout) that there's a
+# sensitive asset to seal for the enrolled host
+print("sensitive krb5.keytab")
