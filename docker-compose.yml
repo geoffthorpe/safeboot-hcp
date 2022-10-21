@@ -43,6 +43,10 @@ volumes:
 networks:
     emgmt_private:
         internal: true
+    kdc_primary_private:
+        internal: true
+    kdc_secondary_private:
+        internal: true
     hcpnetwork:
         internal: true
 
@@ -226,6 +230,7 @@ services:
           - ${HCP_TESTCREDS_ENROLLVERIFIER}:${HCP_KDC_PRIMARY_ATTEST_CREDS_VERIFIER}:ro
         networks:
           - hcpnetwork
+          - kdc_primary_private
         environment:
           - HCP_INSTANCE=/usecase/kdc_primary.env
           - HCP_ENTRYPOINT=/hcp/kdcsvc/run_kdc.sh
@@ -243,6 +248,18 @@ services:
             test: /hcp/tools/swtpm_healthcheck.sh
             timeout: 1s
             interval: 2s
+    kdc_primary_pol:
+        extends: common
+        image: ${HCP_IMAGE_policysvc}
+        networks:
+          - kdc_primary_private
+        environment:
+          - HCP_INSTANCE=/usecase/kdc_primary.pol.env
+          - HCP_ENTRYPOINT=/hcp/policysvc/run_policy.sh
+        healthcheck:
+            test: /hcp/policysvc/healthcheck.sh
+            timeout: 1s
+            interval: 2s
 
 # Kerberos Domain Controller - Secondary
     kdc_secondary:
@@ -254,6 +271,7 @@ services:
           - ${HCP_TESTCREDS_ENROLLVERIFIER}:${HCP_KDC_SECONDARY_ATTEST_CREDS_VERIFIER}:ro
         networks:
           - hcpnetwork
+          - kdc_secondary_private
         environment:
           - HCP_INSTANCE=/usecase/kdc_secondary.env
           - HCP_ENTRYPOINT=/hcp/kdcsvc/run_kdc.sh
@@ -269,5 +287,17 @@ services:
           - HCP_ENTRYPOINT=/hcp/swtpmsvc/run_swtpm.sh
         healthcheck:
             test: /hcp/tools/swtpm_healthcheck.sh
+            timeout: 1s
+            interval: 2s
+    kdc_secondary_pol:
+        extends: common
+        image: ${HCP_IMAGE_policysvc}
+        networks:
+          - kdc_secondary_private
+        environment:
+          - HCP_INSTANCE=/usecase/kdc_secondary.pol.env
+          - HCP_ENTRYPOINT=/hcp/policysvc/run_policy.sh
+        healthcheck:
+            test: /hcp/policysvc/healthcheck.sh
             timeout: 1s
             interval: 2s

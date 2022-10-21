@@ -129,7 +129,7 @@ if ! ln -s "$HCP_KDC_STATE/etc/sudoers" /etc/sudoers.d/hcp > /dev/null 2>&1 && \
 	echo "Error, couldn't create symlink '/etc/sudoers.d/hcp'" >&2
 	exit 1
 fi
-if [[ $HCP_KDC_STATE != /kdc ]] &&
+if [[ $HCP_KDC_STATE != /kdc ]] &&
 		! ln -s "$HCP_KDC_STATE" /kdc > /dev/null 2>&1; then
 	echo "Error, couldn't ensure /kdc exists" >&2
 	exit 1
@@ -172,25 +172,31 @@ echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> /root/exported.hcp.env
 # which they wish to ignore or handle by other means).
 export HCP_NO_TRACE=1
 
+# Primary and secondary fundamentally differ by which end of iprop they reside
+# at. :-)
 case $HCP_KDC_MODE in
 primary)
 	/hcp/kdcsvc/primary_iprop.py &
-	/hcp/kdcsvc/sub_kdc.py &
-	# this child will exec to uwsgi, so leave it as a child (don't exec)
-	/hcp/kdcsvc/launch_mgmt.sh
 	;;
-
 secondary)
 	/hcp/kdcsvc/secondary_iprop.py &
-	/hcp/kdcsvc/sub_kdc.py &
-	while :; do
-		echo "TODO: don't sleep 120 seconds"
-		sleep 120
-	done
 	;;
-
 *)
 	echo "Error, HCP_KDC_MODE ($HCP_KDC_MODE) not recognized" >&2
 	exit 1
 	;;
 esac
+
+# Start the KDC
+/hcp/kdcsvc/sub_kdc.py &
+
+# Maybe start a HTTPS front-end
+if [[ -n $HCP_KDC_ENABLE_NGINX ]]; then
+	echo "kdcsvc::mgmt, running nginx as front-end proxy"
+	# Copy the nginx config into place and start the service.
+	cp "$HCP_KDC_NGINX_CONF" /etc/nginx/sites-enabled/
+	nginx
+fi
+
+# this child will exec to uwsgi, so leave it as a child (don't exec)
+/hcp/kdcsvc/launch_mgmt.sh

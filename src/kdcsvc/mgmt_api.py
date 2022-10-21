@@ -18,6 +18,7 @@ from hcp_common import log
 
 sys.path.insert(1, '/hcp/xtra')
 from HcpRecursiveUnion import union
+from HcpPemHelper import get_email_address
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = False
@@ -32,16 +33,24 @@ app.config["DEBUG"] = False
 #  - any details from the HTTPS request (client authentication) that we can
 #    pass through.
 def get_request_data(uri):
+    log(f"get_request_data({uri})")
     request_data = {
-        'uri': uri,
-        'auth': {}
+        'uri': uri
     }
     # Curate a copy of the request environment that only contains non-empty,
     # string-valued variables.
     e = { x: request.environ[x] for x in request.environ if
              type(request.environ[x]) is str and len(request.environ[x]) > 0 }
     if 'SSL_CLIENT_CERT' in e:
-        request_data['auth']['client_cert'] = e['SSL_CLIENT_CERT']
+        s = e['SSL_CLIENT_CERT']
+        log(f"SSL_CLIENT_CERT={s}")
+        email = get_email_address(s)
+        log(f"email={email}")
+        auth = {}
+        auth['client_cert'] = s
+        if email:
+            auth['email'] = email
+        request_data['auth'] = auth
     return request_data
 
 @app.route('/', methods=['GET'])
@@ -62,8 +71,6 @@ def home():
 <h2>{xheading};</h2>
 <form {xtxtMethod} action="{xurl}">
 <table>
-<tr><td>realm</td><td><input type=text name=realm></td>
-    <td>Leave empty to use the default realm</td></tr>
 <tr><td>principals</td><td><input type=text name=principals></td>
     <td>JSON array, don't include the trailing "@REALM".<br>
     Eg. ["alicia/admin", "host/server.domain.com"]</td></tr>
@@ -120,8 +127,7 @@ def healthcheck():
 # to the command.) Arguments passed to 'do_kadmin.sh' are;
 # $1 - name of the requested operation ("add", "add_ns", "ext_keytab", etc),
 # $2 - list of principals (a JSON array),
-# $3 - the realm (empty string implies the default realm),
-# $4 - any command-specific options/attributes (a JSON struct).
+# $3 - any command-specific options/attributes (a JSON struct).
 #
 # This is the sudo preamble to pass to subprocess.run(), the actual operation
 # string ("add", "query", etc) and arguments follow this, and are appended by
@@ -180,10 +186,6 @@ def my_cmd_handler(url, cmd, request, isPost = True):
         form_principals = args['principals']
     mylog(f"form_principals={form_principals}")
     _ = my_json_loads(form_principals, 'principals', mylog)
-    form_realm = ""
-    if 'realm' in args:
-        form_realm = args['realm']
-    mylog(f"form_realm={form_realm}")
     form_profile="{}"
     if 'profile' in args and len(args['profile']) > 0:
         form_profile = args['profile']
@@ -191,10 +193,10 @@ def my_cmd_handler(url, cmd, request, isPost = True):
     form_data = my_json_loads(form_profile, 'profile', mylog)
     if 'verbose' in args:
         form_data['verbose'] = 1
-    request_data = get_request_data('/v1/add')
+    request_data = get_request_data(url)
     request_data = union(form_data, request_data)
     request_json = json.dumps(request_data)
-    op_args = sudoargs + [ cmd, form_principals, form_realm, request_json]
+    op_args = sudoargs + [ cmd, form_principals, request_json]
     mylog(f"args={op_args}")
     c = subprocess.run(op_args,
                        stdout = subprocess.PIPE, stderr = tfile,

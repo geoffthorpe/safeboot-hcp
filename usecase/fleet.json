@@ -70,7 +70,8 @@
 					"ENROLL_KDC": "primary.kdc"
 				},
 				"gencert-hxtool": {
-					"list": [ "default-pkinit-kdc", "pkinit-iprop" ]
+					"list": [ "default-pkinit-kdc", "pkinit-iprop",
+						  "default-https-server" ]
 				}
 			}
 		}

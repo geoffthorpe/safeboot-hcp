@@ -1,0 +1,75 @@
+{
+    "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
+
+    "start": "check_caller",
+    "default": "reject",
+
+    "filters": {
+
+        "check_caller": {
+            "_": [
+                "This filter chain would check that the object had environment",
+                "variables set by the TLS/HTTPS front-end that indicate a",
+                "satisfactory client authentication.",
+                "Here, we are assuming that access to this interface already",
+                "implies that adequate authn/authz has been met.",
+                "NB: this rule is only 'called' by policy hooks when client",
+                "requests are first serviced. Subsequent policy hooks (such",
+                "as validating all the individual assets to be created by the",
+                "client request) need not do so, and likely can't do so in any",
+                "case as the authn environment variables are probably gone by",
+                "then. (If this rule was to run on all policy checks, it would",
+                "move to the top and run in sequence rather than being called",
+                "and then returning.)" ],
+            "action": "next",
+            "next": "dispatch_cmd"
+        },
+
+        "dispatch_cmd": [
+            { "if": { "equal": ".__cmd", "value": "add" },
+                "action": "jump", "jump": "do_add" },
+            { "if": { "equal": ".__cmd", "value": "add_ns" },
+                "action": "jump", "jump": "do_add_ns" },
+            { "if": { "equal": ".__cmd", "value": "del" },
+                "action": "jump", "jump": "do_del" },
+            { "if": { "equal": ".__cmd", "value": "del_ns" },
+                "action": "jump", "jump": "do_del_ns" },
+            { "if": { "equal": ".__cmd", "value": "get" },
+                "action": "jump", "jump": "do_get" },
+            { "if": { "equal": ".__cmd", "value": "ext_keytab" },
+                "action": "jump", "jump": "do_ext_keytab" },
+            { "action": "return" }
+        ],
+
+        "do_add": {
+            "if": { "equal": ".add.realm", "value": "{KDC_REALM}" },
+            "action": "accept",
+            "otherwise": "reject" },
+
+        "do_add_ns": {
+            "if": { "equal": ".add_ns.realm", "value": "{KDC_REALM}" },
+            "action": "accept",
+            "otherwise": "reject" },
+
+        "do_del": {
+            "if": { "equal": ".del.realm", "value": "{KDC_REALM}" },
+            "action": "accept",
+            "otherwise": "reject" },
+
+        "do_del_ns": {
+            "if": { "equal": ".del_ns.realm", "value": "{KDC_REALM}" },
+            "action": "accept",
+            "otherwise": "reject" },
+
+        "do_get": {
+            "if": { "equal": ".get.realm", "value": "{KDC_REALM}" },
+            "action": "accept",
+            "otherwise": "reject" },
+
+        "do_ext_keytab": {
+            "if": { "equal": ".ext_keytab.realm", "value": "{KDC_REALM}" },
+            "action": "accept",
+            "otherwise": "reject" }
+
+    }
+}

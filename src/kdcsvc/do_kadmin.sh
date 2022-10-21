@@ -14,5 +14,5 @@ set -e
 source /root/exported.hcp.env
 
 # Usage:
-# do_kadmin.py <cmd> <principals_list> <realm> <options>
-exec /hcp/kdcsvc/do_kadmin.py "$1" "$2" "$3" "$4"
+# do_kadmin.py <cmd> <principals_list> <options>
+exec /hcp/kdcsvc/do_kadmin.py "$1" "$2" "$3"

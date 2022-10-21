@@ -7,7 +7,8 @@
             "limitations (if any) can be enforced in the policysvc lookup.",
             "Alternatively, you can force the setting in postclient." ],
         "__env": {
-            "KDC_REALM": "HCPHACKING.XYZ"
+            "KDC_REALM": "HCPHACKING.XYZ",
+            "KDC_DOMAIN": "hcphacking.xyz"
         },
         "<common>": {
             "realm": "{KDC_REALM}"
@@ -15,13 +16,10 @@
     },
     "postclient": {
         "_": [
-            "TODO: put settings in here and honor them.",
-            "add: use-defaults, random-key",
-            "add_ns: key-rotation-{epoch,period}, max-{ticket,renewable}-life,",
-            "        and attributes" ],
-        "add": {
-        },
-        "add_ns": {
-        }
+            "As a secondary, this interface should only allow 'get' and",
+            "'ext_keytab'. We could enforce that in the policysvc (and will),",
+            "but in an abundance of caution, or for lightweight cases that",
+            "don't want a policysvc involved, we restrict that here too." ],
+        "allowed": [ "get", "ext_keytab" ]
     }
 }
