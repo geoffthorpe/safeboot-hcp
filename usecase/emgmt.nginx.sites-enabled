@@ -1,9 +1,9 @@
 server {
 	listen                 8443 ssl;
 	server_name	       emgmt.hcphacking.xyz;
-	ssl_certificate        /etc/ssl/hostcerts/hostcert-default-https-server.pem;
-	ssl_certificate_key    /etc/ssl/hostcerts/hostcert-default-https-server-key.pem;
-	ssl_client_certificate /usr/share/ca-certificates/HCP/certissuer.pem;
+	ssl_certificate        /enrollserver/server.pem;
+	ssl_certificate_key    /enrollserver/server.pem;
+	ssl_client_certificate /enrollcertchecker/CA.cert;
 	ssl_verify_client      on;
 
 	location / {

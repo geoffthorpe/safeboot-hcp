@@ -100,6 +100,34 @@ $(HCP_TESTCREDS_OUT)/done.enrollcertchecker:
 	$Qtouch $@
 HCP_TESTCREDS_DONE += $(HCP_TESTCREDS_OUT)/done.enrollcertchecker
 
+# "enrollserver"
+#    This is a web server certificate that can be used to host the
+#    enrollsvc::mgmt API and serve enrollments. This is to avoid the
+#    chicken-and-egg problems you otherwise get when running a
+#    dev/debug/non-production use-case. We used to solve this by having
+#    enrollsvc enroll _itself_, without starting the HTTPS interface, then wait
+#    for the enrollment to replicate and attest to get its web-server
+#    certificate. This worked but was more likely to confuse than inform any
+#    innocent bystanders.
+HCP_TESTCREDS_ENROLLSERVER := $(HCP_TESTCREDS_OUT)/enrollserver
+$(HCP_TESTCREDS_ENROLLSERVER): | $(HCP_TESTCREDS_OUT)
+MDIRS += $(HCP_TESTCREDS_ENROLLSERVER)
+CMD_CREDS_ENROLLSERVER := cd /testcreds/enrollserver &&
+CMD_CREDS_ENROLLSERVER += source /hcp/common/hcp.sh &&
+CMD_CREDS_ENROLLSERVER += hxtool issue-certificate \
+			--ca-certificate="FILE:/testcreds/enrollcertissuer/CA.pem" \
+			--type=https-server \
+			--hostname=emgmt.hcphacking.xyz \
+			--generate-key=rsa --key-bits=2048 \
+			--certificate="FILE:server.pem" && \
+			$(CMD_CREDS_CHOWN)
+$(HCP_TESTCREDS_OUT)/done.enrollserver: | $(HCP_TESTCREDS_ENROLLSERVER)
+$(HCP_TESTCREDS_OUT)/done.enrollserver: $(HCP_TESTCREDS_OUT)/done.enrollcertissuer
+$(HCP_TESTCREDS_OUT)/done.enrollserver:
+	$Q$(HCP_TESTCREDS_DOCKER_RUN) "$(CMD_CREDS_ENROLLSERVER)"
+	$Qtouch $@
+HCP_TESTCREDS_DONE += $(HCP_TESTCREDS_OUT)/done.enrollserver
+
 # "enrollclient"
 #    This is a client certificate that can be used with the orchestration
 #    client to hit the enrollsvc::mgmt API and request enrollments. This is to
@@ -151,6 +179,7 @@ clean_testcreds:
 	$Qrm -rf $(HCP_TESTCREDS_ENROLLCERTCHECKER)
 	$Qrm -rf $(HCP_TESTCREDS_ENROLLSIGNER)
 	$Qrm -rf $(HCP_TESTCREDS_ENROLLVERIFIER)
+	$Qrm -rf $(HCP_TESTCREDS_ENROLLSERVER)
 	$Qrm -rf $(HCP_TESTCREDS_ENROLLCLIENT)
 	$Qrm -f $(HCP_TESTCREDS_DONE)
 	$Qrmdir $(HCP_TESTCREDS_OUT)

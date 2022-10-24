@@ -9,7 +9,8 @@ URL=${HCP_EMGMT_HOSTNAME}.${HCP_FQDN_DEFAULT_DOMAIN}
 CERTARG="-f -g"
 if [[ -n $HCP_EMGMT_ENABLE_NGINX ]]; then
 	URL=https://$URL:8443
-	CERTARG="$CERTARG --cert /etc/ssl/hostcerts/hostcert-default-https-client-key.pem"
+	CERTARG="$CERTARG --cacert ${HCP_EMGMT_CREDS_CERTCHECKER}/CA.cert"
+	CERTARG="$CERTARG --cert ${HCP_EMGMT_CREDS_CLIENTCERT}/client.pem"
 else
 	URL=http://$URL:5000
 fi
@@ -90,7 +91,7 @@ fi
 while :; do
 	((VERBOSE > 0)) && echo >&2 "Running: curl -f -G $CERTARG $URL"
 	res=0
-	curl -f -G $CERTARG $URL >$tout 2>$terr || res=$?
+	curl $CERTARG $URL >$tout 2>$terr || res=$?
 	if [[ $res == 0 ]]; then
 		((VERBOSE > 0)) && echo >&2 "Success"
 		exit 0

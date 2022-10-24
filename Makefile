@@ -66,6 +66,7 @@ $(HCP_OUT)/docker-compose.env:
 	$Qecho "HCP_TESTCREDS_ENROLLSIGNER=$(HCP_TESTCREDS_ENROLLSIGNER)" >> $@
 	$Qecho "HCP_TESTCREDS_ENROLLVERIFIER=$(HCP_TESTCREDS_ENROLLVERIFIER)" >> $@
 	$Qecho "HCP_TESTCREDS_ENROLLCLIENT=$(HCP_TESTCREDS_ENROLLCLIENT)" >> $@
+	$Qecho "HCP_TESTCREDS_ENROLLSERVER=$(HCP_TESTCREDS_ENROLLSERVER)" >> $@
 	$Qecho "HCP_TOP=$(TOP)" >> $@
 	$Qecho "" >> $@
 	$Qecho "# Variables copied from (HCP_APPS_SRC)/usecase/common.env;" >> $@
