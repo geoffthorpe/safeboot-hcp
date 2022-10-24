@@ -158,7 +158,7 @@ while :; do
 	break
 done
 
-if (
+if ! (
 	echo "Extracting the attestation result"
 	tar xvf $tmp_secrets -C $tmp_extract | sort
 	echo "Signature-checking the received assets"
@@ -186,8 +186,6 @@ if (
 		done
 	fi
 ); then
-	echo "Success!"
-else
 	echo "Error of some kind."
 	echo "Leaving tarball: $tmp_secrets"
 	echo "Leaving extraction: $tmp_extract"
