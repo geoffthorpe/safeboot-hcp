@@ -70,7 +70,6 @@ if [[ ! -f $HCP_KDC_STATE/initialized ]]; then
 	database = {
 		dbname = $HCP_KDC_STATE/var/heimdal
 		realm = $HCP_KDC_REALM
-		log_file = $HCP_KDC_STATE/var/kdc.log
 	}
 	signal_socket = $HCP_KDC_STATE/var/signalsock-iprop
 	iprop-acl = $HCP_KDC_STATE/etc/iprop-secondaries
