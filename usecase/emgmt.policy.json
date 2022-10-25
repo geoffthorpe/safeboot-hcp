@@ -52,19 +52,23 @@
 
         "gencert-hxtool": [
             { "action": "reject", "if": { "not-subset": ".list",
-                "value": [ "default-https-client", "default-https-server",
-                           "default-pkinit-client", "default-pkinit-kdc",
-                           "pkinit-iprop",
-                           "https-client-user", "pkinit-client-user" ] } },
+                "value": [
+                    "default-pkinit-kdc",
+                    "default-https-server",
+                    "default-https-hostclient",
+                    "pkinit-client-user",
+                    "pkinit-client-admin",
+                    "https-client-user",
+                    "pkinit-iprop" ] } },
             { "action": "call", "if": [
-                    { "contains": ".list", "value": "default-https-client" },
-                    { "exist": ".default-https-client" } ],
-                "call": "hxtool-default-https-client",
+                    { "contains": ".list", "value": "default-https-hostclient" },
+                    { "exist": ".default-https-hostclient" } ],
+                "call": "hxtool-default-https-hostclient",
                 "scope": [
                     { "import": ".", "source": "." },
-                    { "union": ".default-https-client",
+                    { "union": ".default-https-hostclient",
                         "source1": ".<common>",
-                        "source2": ".default-https-client" } ] },
+                        "source2": ".default-https-hostclient" } ] },
             { "action": "call", "if": [
                     { "contains": ".list", "value": "default-https-server" },
                     { "exist": ".default-https-server" } ],
@@ -74,15 +78,6 @@
                     { "union": ".default-https-server",
                         "source1": ".<common>",
                         "source2": ".default-https-server" } ] },
-            { "action": "call", "if": [
-                    { "contains": ".list", "value": "default-pkinit-client" },
-                    { "exist": ".default-pkinit-client" } ],
-                "call": "hxtool-default-pkinit-client",
-                "scope": [
-                    { "import": ".", "source": "." },
-                    { "union": ".default-pkinit-client",
-                        "source1": ".<common>",
-                        "source2": ".default-pkinit-client" } ] },
             { "action": "call", "if": [
                     { "contains": ".list", "value": "default-pkinit-kdc" },
                     { "exist": ".default-pkinit-kdc" } ],
@@ -119,9 +114,18 @@
                     { "union": ".pkinit-client-user",
                         "source1": ".<common>",
                         "source2": ".pkinit-client-user" } ] },
+            { "action": "call", "if": [
+                    { "contains": ".list", "value": "pkinit-client-admin" },
+                    { "exist": ".pkinit-client-admin" } ],
+                "call": "hxtool-pkinit-client-admin",
+                "scope": [
+                    { "import": ".", "source": "." },
+                    { "union": ".pkinit-client-admin",
+                        "source1": ".<common>",
+                        "source2": ".pkinit-client-admin" } ] },
             { "action": "return" } ],
 
-        "hxtool-default-https-client": {
+        "hxtool-default-https-hostclient": {
             "_": [
                 "This rule (and others like it) enforce exact match over the",
                 "whole struct, so there's no wiggle room to modify or add",
@@ -134,7 +138,7 @@
                 "the path to different issuer creds is shared with the",
                 "orchestration layer to allow it to choose, in which case",
                 "enrollsvc might set it in the 'preclient' profile.)" ],
-            "if": { "not-equal": ".default-https-client", "value": {
+            "if": { "not-equal": ".default-https-hostclient", "value": {
                     "generate-key": "rsa",
                     "key-bits": "2048",
                     "type": "https-client",
@@ -154,19 +158,6 @@
                     "ca-certificate": "{ENROLL_CA_ISSUER_PRIV}" } },
             "action": "reject",
             "otherwise": "return" },
-
-        "hxtool-default-pkinit-client": {
-            "_": "Exact match or fail",
-            "if": { "not-equal": ".default-pkinit-client", "value": {
-                    "generate-key": "rsa",
-                    "key-bits": "2048",
-                    "type": "pkinit-client",
-                    "pk-init-principal": "host/{ENROLL_HOSTNAME}@{ENROLL_REALM}",
-                    "subject": "CN=host,{ENROLL_HOSTNAME2DC}",
-                    "ca-certificate": "{ENROLL_CA_ISSUER_PRIV}" } },
-            "action": "reject",
-            "otherwise": "return"
-        },
 
         "hxtool-default-pkinit-kdc": [
             { "_": [
@@ -251,9 +242,9 @@
                 "name": "enrollsvc::asset_check::pkinit-client-user - wrong host",
                 "action": "reject" } ],
         "hxtool-pkinit-client-user-aclient": {
-            "_": "On 'aclient' we only accept the 'alicia/admin' principal",
+            "_": "On 'aclient' we only accept the 'alicia' principal",
             "if": { "not-equal": ".pkinit-client-user.pk-init-principal",
-                    "value": "alicia/admin@{ENROLL_REALM}" },
+                    "value": "alicia@{ENROLL_REALM}" },
             "action": "reject",
             "otherwise": "return" },
         "hxtool-pkinit-client-user-kdcprimary": {
@@ -261,7 +252,25 @@
             "if": { "not-equal": ".pkinit-client-user.pk-init-principal",
                     "value": "foo@{ENROLL_REALM}" },
             "action": "reject",
-            "otherwise": "return" }
+            "otherwise": "return" },
+
+        "hxtool-pkinit-client-admin": [
+            { "_": "Similar to the hxtool-pkinit-client-user example above.",
+                "if": { "not-equal": ".pkinit-client-admin.type",
+                    "value": "pkinit-client" },
+                "name": "enrollsvc::asset_check::pkinit-client-admin - bad type",
+                "action": "reject" },
+            { "_": "We only allow one hostname and one user",
+                "if": [ {
+                        "equal": ".__env.ENROLL_HOSTNAME",
+                        "value": "aclient.{ENROLL_DOMAIN}"
+                    }, {
+                        "equal": ".pkinit-client-admin.pk-init-principal",
+                        "value": "alicia/admin@{ENROLL_REALM}"
+                    } ],
+                "name": "enrollsvc::asset_check::pkinit-client-admin - aclient",
+                "action": "return",
+                "otherwise": "reject" } ]
 
     }
 }

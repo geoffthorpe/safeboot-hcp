@@ -10,7 +10,7 @@
             },
             "genprogs": "gencert-hxtool",
             "gencert-hxtool": {
-                "list": [ "default-https-client" ],
+                "list": [ "default-https-hostclient" ],
                 "prefix": "{ENROLL_CERTPREFIX}",
                 "<common>": {
                     "generate-key": "rsa",
@@ -21,16 +21,11 @@
                     "name": "pkinit-kdc",
                     "pk-init-principal": "krbtgt/{ENROLL_REALM}@{ENROLL_REALM}"
                 },
-                "default-pkinit-client": {
-                    "type": "pkinit-client",
-                    "pk-init-principal": "host/{ENROLL_HOSTNAME}@{ENROLL_REALM}",
-                    "subject": "CN=host,{ENROLL_HOSTNAME2DC}"
-                },
                 "default-https-server": {
                     "type": "https-server",
                     "hostname": "{ENROLL_HOSTNAME}"
                 },
-                "default-https-client": {
+                "default-https-hostclient": {
                     "type": "https-client",
                     "subject": "UID=host,{ENROLL_HOSTNAME2DC}",
                     "hostname": "{ENROLL_HOSTNAME}"
