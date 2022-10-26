@@ -5,16 +5,8 @@ source /hcp/common/hcp.sh
 retries=0
 pause=1
 VERBOSE=0
-URL=${HCP_EMGMT_HOSTNAME}.${HCP_FQDN_DEFAULT_DOMAIN}
-CERTARG="-f -g"
-if [[ -n $HCP_EMGMT_ENABLE_NGINX ]]; then
-	URL=https://$URL:8443
-	CERTARG="$CERTARG --cacert ${HCP_EMGMT_CREDS_CERTCHECKER}/CA.cert"
-	CERTARG="$CERTARG --cert ${HCP_EMGMT_CREDS_CLIENTCERT}/client.pem"
-else
-	URL=http://$URL:5000
-fi
-URL=$URL/healthcheck
+URL="http://${HCP_HOSTNAME}.${HCP_FQDN_DEFAULT_DOMAIN}:8080/healthcheck"
+CURLARG="-f -G"
 
 usage() {
 	((${1:-1} == 0)) || exec 1>&2
@@ -31,10 +23,10 @@ usage() {
 	$pager <<EOF
 Usage: $PROG [OPTIONS]
 
-  Queries the "/healthcheck" API of an HCP enrollsvc "mgmt" instance. This is
+  Queries the "/healthcheck" API of an HCP attestsvc "hcp" instance. This is
   used to determine if the service is alive, e.g. if a startup script needs to
-  wait for the service to come up before initializing and, once it has, will
-  treat any subsequent error as fatal.
+  wait for the service to come up before attempting an attestation and, once it
+  has, will treat any subsequent error as fatal.
 
   Options:
 
@@ -47,7 +39,7 @@ Usage: $PROG [OPTIONS]
     -U <url>         URL for healthcheck the API
         (default: $URL)
     -A <curl args>   Pre-URL arguments to 'curl'
-        (default: $CERTARG)
+        (default: $CURLARG)
 
 EOF
 	exit "${1:-1}"
@@ -58,7 +50,7 @@ case "$opt" in
 R)	retries="$OPTARG";;
 P)	pause="$OPTARG";;
 U)	URL="$OPTARG";;
-A)	CERTARG="$OPTARG";;
+A)	CURLARG="$OPTARG";;
 h)	usage 0;;
 v)	((VERBOSE++)) || true;;
 *)	echo >&2 "Unknown option: $opt"; usage;;
@@ -81,7 +73,7 @@ Starting $PROG:
  - retries=$retries
  - pause=$pause
  - VERBOSE=$VERBOSE
- - CERTARG=$CERTARG
+ - CURLARG=$CURLARG
  - URL=$URL
  - Temp stdout=$tout
  - Temp stderr=$terr
@@ -89,9 +81,9 @@ EOF
 fi
 
 while :; do
-	((VERBOSE > 0)) && echo >&2 "Running: curl -f -G $CERTARG $URL"
+	((VERBOSE > 0)) && echo >&2 "Running: curl $CURLARG $URL"
 	res=0
-	curl $CERTARG $URL >$tout 2>$terr || res=$?
+	curl $CURLARG $URL >$tout 2>$terr || res=$?
 	if [[ $res == 0 ]]; then
 		((VERBOSE > 0)) && echo >&2 "Success"
 		exit 0

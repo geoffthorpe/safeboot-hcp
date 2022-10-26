@@ -83,7 +83,7 @@ services:
           - HCP_INSTANCE=/usecase/emgmt.env
           - HCP_ENTRYPOINT=/hcp/enrollsvc/run_mgmt.sh
         healthcheck:
-            test: /hcp/tools/emgmt_healthcheck.sh
+            test: /hcp/enrollsvc/emgmt_healthcheck.sh
             timeout: 1s
             interval: 2s
     emgmt_pol:
@@ -143,7 +143,7 @@ services:
           - HCP_INSTANCE=/usecase/ahcp.env
           - HCP_ENTRYPOINT=/hcp/attestsvc/run_hcp.sh
         healthcheck:
-            test: /hcp/tools/ahcp_healthcheck.sh
+            test: /hcp/attestsvc/ahcp_healthcheck.sh
             timeout: 1s
             interval: 2s
 
@@ -188,7 +188,7 @@ services:
           - HCP_INSTANCE=/usecase/aclient_tpm.env
           - HCP_ENTRYPOINT=/hcp/swtpmsvc/run_swtpm.sh
         healthcheck:
-            test: /hcp/tools/swtpm_healthcheck.sh
+            test: /hcp/swtpmsvc/healthcheck.sh
             timeout: 1s
             interval: 2s
 
@@ -248,7 +248,7 @@ services:
           - HCP_INSTANCE=/usecase/kdc_primary_tpm.env
           - HCP_ENTRYPOINT=/hcp/swtpmsvc/run_swtpm.sh
         healthcheck:
-            test: /hcp/tools/swtpm_healthcheck.sh
+            test: /hcp/swtpmsvc/healthcheck.sh
             timeout: 1s
             interval: 2s
     kdc_primary_pol:
@@ -289,7 +289,7 @@ services:
           - HCP_INSTANCE=/usecase/kdc_secondary_tpm.env
           - HCP_ENTRYPOINT=/hcp/swtpmsvc/run_swtpm.sh
         healthcheck:
-            test: /hcp/tools/swtpm_healthcheck.sh
+            test: /hcp/swtpmsvc/healthcheck.sh
             timeout: 1s
             interval: 2s
     kdc_secondary_pol:
@@ -329,6 +329,6 @@ services:
           - HCP_INSTANCE=/usecase/sherver_tpm.env
           - HCP_ENTRYPOINT=/hcp/swtpmsvc/run_swtpm.sh
         healthcheck:
-            test: /hcp/tools/swtpm_healthcheck.sh
+            test: /hcp/swtpmsvc/healthcheck.sh
             timeout: 1s
             interval: 2s

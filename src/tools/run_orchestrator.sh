@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 retries=0
 pause=1
 option_create=
