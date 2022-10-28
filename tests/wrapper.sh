@@ -22,7 +22,18 @@ if [[ ! -x $HCP_TEST_PATH ]]; then
 	exit 1
 fi
 
-trap '$DCOMPOSE down -v' ERR EXIT
+trapper() {
+	VERBOSE=$((VERBOSE))
+	if [[ $VERBOSE -gt 0 ]]; then
+		echo "Cleaning up docker resources"
+	fi
+	if [[ $VERBOSE -lt 2 ]]; then
+		$DCOMPOSE down -v > /dev/null 2>&1
+	else
+		$DCOMPOSE down -v
+	fi
+}
+trap trapper ERR EXIT
 
 rc=0
 $HCP_TEST_PATH || rc=$?
@@ -31,5 +42,3 @@ if [[ $rc != 0 ]]; then
 	echo "FAIL: test had exit code of $rc"
 	exit 1
 fi
-
-echo "Success"

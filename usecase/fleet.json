@@ -113,7 +113,13 @@
 			"tpm_path": "/tpm_sherver",
 			"enroll_hostname": "sherver.hcphacking.xyz",
 			"enroll_profile": {
-				"genprogs": "genconf-krb5 gencert-hxtool genkrb5keytab"
+				"__env": {
+					"ENROLL_PKINIT_USER_PRINC": "user1"
+				},
+				"genprogs": "genconf-krb5 gencert-hxtool genkrb5keytab",
+				"gencert-hxtool": {
+					"list": [ "default-https-server", "pkinit-client-user" ]
+				}
 			}
 		}
 	]
