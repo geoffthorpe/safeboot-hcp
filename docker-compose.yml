@@ -234,6 +234,8 @@ services:
         volumes:
           - kdc_primary:${HCP_KDC_PRIMARY_STATE}
           - tpmsocket_kdc_primary:${HCP_KDC_PRIMARY_ATTEST_TCTI_SOCKDIR}
+          - ${HCP_TESTCREDS_ENROLLCERTCHECKER}:${HCP_KDC_PRIMARY_CREDS_CERTCHECKER}:ro
+          - ${HCP_TESTCREDS_ENROLLCLIENT}:${HCP_KDC_PRIMARY_CREDS_CLIENTCERT}:ro
           - ${HCP_TESTCREDS_ENROLLVERIFIER}:${HCP_KDC_PRIMARY_ATTEST_CREDS_VERIFIER}:ro
         networks:
           - hcpnetwork
@@ -241,6 +243,10 @@ services:
         environment:
           - HCP_INSTANCE=/usecase/kdc_primary.env
           - HCP_ENTRYPOINT=/hcp/kdcsvc/run_kdc.sh
+        healthcheck:
+            test: /hcp/kdcsvc/healthcheck.sh
+            timeout: 1s
+            interval: 5s
     kdc_primary_tpm:
         extends: common
         image: ${HCP_IMAGE_swtpmsvc}
@@ -275,6 +281,8 @@ services:
         volumes:
           - kdc_secondary:${HCP_KDC_SECONDARY_STATE}
           - tpmsocket_kdc_secondary:${HCP_KDC_SECONDARY_ATTEST_TCTI_SOCKDIR}
+          - ${HCP_TESTCREDS_ENROLLCERTCHECKER}:${HCP_KDC_SECONDARY_CREDS_CERTCHECKER}:ro
+          - ${HCP_TESTCREDS_ENROLLCLIENT}:${HCP_KDC_SECONDARY_CREDS_CLIENTCERT}:ro
           - ${HCP_TESTCREDS_ENROLLVERIFIER}:${HCP_KDC_SECONDARY_ATTEST_CREDS_VERIFIER}:ro
         networks:
           - hcpnetwork
@@ -282,6 +290,10 @@ services:
         environment:
           - HCP_INSTANCE=/usecase/kdc_secondary.env
           - HCP_ENTRYPOINT=/hcp/kdcsvc/run_kdc.sh
+        healthcheck:
+            test: /hcp/kdcsvc/healthcheck.sh
+            timeout: 1s
+            interval: 5s
     kdc_secondary_tpm:
         extends: common
         image: ${HCP_IMAGE_swtpmsvc}
