@@ -9,8 +9,8 @@ URL=${HCP_HOSTNAME}.${HCP_FQDN_DEFAULT_DOMAIN}
 CERTARG="-f -g"
 if [[ -n $HCP_ENROLLSVC_ENABLE_NGINX ]]; then
 	URL=https://$URL:8443
-	CERTARG="$CERTARG --cacert ${HCP_ENROLLSVC_CERTCHECKER}/CA.cert"
-	CERTARG="$CERTARG --cert ${HCP_ENROLLSVC_CLIENTCERT}/client.pem"
+	CERTARG="$CERTARG --cacert /enrollcertchecker/CA.cert"
+	CERTARG="$CERTARG --cert /enrollclient/client.pem"
 else
 	URL=http://$URL:5000
 fi

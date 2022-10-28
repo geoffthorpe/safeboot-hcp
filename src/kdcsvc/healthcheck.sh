@@ -9,8 +9,8 @@ URL=${HCP_HOSTNAME}.${HCP_FQDN_DEFAULT_DOMAIN}
 CERTARG="-f -g"
 if [[ -n $HCP_KDC_ENABLE_NGINX ]]; then
 	URL=https://$URL:9443
-	CERTARG="$CERTARG --cacert ${HCP_KDC_CERTCHECKER}/CA.cert"
-	CERTARG="$CERTARG --cert ${HCP_KDC_CLIENTCERT}/client.pem"
+	CERTARG="$CERTARG --cacert /enrollcertchecker/CA.cert"
+	CERTARG="$CERTARG --cert /enrollclient/client.pem"
 else
 	URL=http://$URL:9090
 fi

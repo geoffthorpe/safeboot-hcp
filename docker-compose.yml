@@ -75,10 +75,10 @@ services:
           - emgmt_private
         volumes:
           - enrolldb:${HCP_EMGMT_STATE}:rw
-          - ${HCP_TESTCREDS_ENROLLSIGNER}:${HCP_EMGMT_CREDS_SIGNER}:ro
-          - ${HCP_TESTCREDS_ENROLLCERTISSUER}:${HCP_EMGMT_CREDS_CERTISSUER}:ro
-          - ${HCP_TESTCREDS_ENROLLCERTCHECKER}:${HCP_EMGMT_CREDS_CERTCHECKER}:ro
-          - ${HCP_TESTCREDS_ENROLLCLIENT}:${HCP_EMGMT_CREDS_CLIENTCERT}:ro
+          - ${HCP_TESTCREDS_ENROLLSIGNER}:/enrollsigner:ro
+          - ${HCP_TESTCREDS_ENROLLCERTISSUER}:/enrollcertissuer:ro
+          - ${HCP_TESTCREDS_ENROLLCERTCHECKER}:/enrollcertchecker:ro
+          - ${HCP_TESTCREDS_ENROLLCLIENT}:/enrollclient:ro
           - ${HCP_TESTCREDS_ENROLLSERVER}:${HCP_EMGMT_NGINX_CERT}:ro
           - ${HCP_TOP}/vendors:/vendors:ro
         environment:
@@ -157,8 +157,8 @@ services:
         networks:
           - hcpnetwork
         volumes:
-          - ${HCP_TESTCREDS_ENROLLCERTCHECKER}:${HCP_ORCH_CERTCHECKER}:ro
-          - ${HCP_TESTCREDS_ENROLLCLIENT}:${HCP_ORCH_CLIENTCERT}:ro
+          - ${HCP_TESTCREDS_ENROLLCERTCHECKER}:/enrollcertchecker:ro
+          - ${HCP_TESTCREDS_ENROLLCLIENT}:/enrollclient:ro
           - tpm_aclient:${HCP_ORCH_TPM_ACLIENT}
           - tpm_kdc_primary:${HCP_ORCH_TPM_KDC_PRIMARY}
           - tpm_kdc_secondary:${HCP_ORCH_TPM_KDC_SECONDARY}
@@ -176,7 +176,7 @@ services:
           - hcpnetwork
         volumes:
           - tpmsocket_aclient:${HCP_ACLIENT_TCTI_SOCKDIR}
-          - ${HCP_TESTCREDS_ENROLLVERIFIER}:${HCP_ACLIENT_CREDS_VERIFIER}:ro
+          - ${HCP_TESTCREDS_ENROLLVERIFIER}:/enrollverifier:ro
         environment:
           - HCP_INSTANCE=/usecase/aclient.env
           - HCP_ENTRYPOINT=/hcp/tools/run_client.sh
@@ -229,7 +229,7 @@ services:
           - HCP_ENTRYPOINT=/hcp/common/do_nothing.sh
         volumes:
           - tpmsocket_caboodlenet:${HCP_CABOODLENET_TCTI_SOCKDIR}
-          - ${HCP_TESTCREDS_ENROLLVERIFIER}:${HCP_CABOODLENET_CREDS_VERIFIER}:ro
+          - ${HCP_TESTCREDS_ENROLLVERIFIER}:/enrollverifier:ro
         healthcheck:
             test: /hcp/caboodle/networked_healthcheck.sh
             timeout: 1s
@@ -256,9 +256,9 @@ services:
         volumes:
           - kdc_primary:${HCP_KDC_PRIMARY_STATE}
           - tpmsocket_kdc_primary:${HCP_KDC_PRIMARY_ATTEST_TCTI_SOCKDIR}
-          - ${HCP_TESTCREDS_ENROLLCERTCHECKER}:${HCP_KDC_PRIMARY_CREDS_CERTCHECKER}:ro
-          - ${HCP_TESTCREDS_ENROLLCLIENT}:${HCP_KDC_PRIMARY_CREDS_CLIENTCERT}:ro
-          - ${HCP_TESTCREDS_ENROLLVERIFIER}:${HCP_KDC_PRIMARY_ATTEST_CREDS_VERIFIER}:ro
+          - ${HCP_TESTCREDS_ENROLLCERTCHECKER}:/enrollcertchecker:ro
+          - ${HCP_TESTCREDS_ENROLLCLIENT}:/enrollclient:ro
+          - ${HCP_TESTCREDS_ENROLLVERIFIER}:/enrollverifier:ro
         networks:
           - hcpnetwork
           - kdc_primary_private
@@ -303,9 +303,9 @@ services:
         volumes:
           - kdc_secondary:${HCP_KDC_SECONDARY_STATE}
           - tpmsocket_kdc_secondary:${HCP_KDC_SECONDARY_ATTEST_TCTI_SOCKDIR}
-          - ${HCP_TESTCREDS_ENROLLCERTCHECKER}:${HCP_KDC_SECONDARY_CREDS_CERTCHECKER}:ro
-          - ${HCP_TESTCREDS_ENROLLCLIENT}:${HCP_KDC_SECONDARY_CREDS_CLIENTCERT}:ro
-          - ${HCP_TESTCREDS_ENROLLVERIFIER}:${HCP_KDC_SECONDARY_ATTEST_CREDS_VERIFIER}:ro
+          - ${HCP_TESTCREDS_ENROLLCERTCHECKER}:/enrollcertchecker:ro
+          - ${HCP_TESTCREDS_ENROLLCLIENT}:/enrollclient:ro
+          - ${HCP_TESTCREDS_ENROLLVERIFIER}:/enrollverifier:ro
         networks:
           - hcpnetwork
           - kdc_secondary_private
@@ -350,7 +350,7 @@ services:
         volumes:
           - sherver:${HCP_SHERVER_STATE}:rw
           - tpmsocket_sherver:${HCP_SHERVER_ATTEST_TCTI_SOCKDIR}
-          - ${HCP_TESTCREDS_ENROLLVERIFIER}:${HCP_SHERVER_ATTEST_CREDS_VERIFIER}:ro
+          - ${HCP_TESTCREDS_ENROLLVERIFIER}:/enrollverifier:ro
         networks:
           - hcpnetwork
         environment:

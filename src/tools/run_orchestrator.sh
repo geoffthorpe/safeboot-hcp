@@ -252,15 +252,13 @@ api_prerequisites()
 	((VERBOSE > 0)) &&
 		api_cmd="$api_cmd --verbosity 2" ||
 		api_cmd="$api_cmd --verbosity 0"
-	if [[ -n HCP_CERTCHECKER ]]; then
-		if [[ $HCP_CERTCHECKER == "none" ]]; then
-			api_cmd="$api_cmd --noverify"
-		else
-			api_cmd="$api_cmd --cacert $HCP_CERTCHECKER"
-		fi
+	if [[ -f /enrollcertchecker/CA.cert ]]; then
+		api_cmd="$api_cmd --cacert /enrollcertchecker/CA.cert"
+	else
+		api_cmd="$api_cmd --noverify"
 	fi
-	if [[ -n HCP_CLIENTCERT ]]; then
-		api_cmd="$api_cmd --clientcert $HCP_CLIENTCERT"
+	if [[ -f /enrollclient/client.pem ]]; then
+		api_cmd="$api_cmd --clientcert /enrollclient/client.pem"
 	fi
 	echo "api_prerequisites: api_cmd=$api_cmd" > $out2
 }

@@ -7,9 +7,8 @@ pause=1
 VERBOSE=0
 URL="$HCP_ATTESTCLIENT_ATTEST_URL"
 TCTI="$HCP_ATTESTCLIENT_TPM2TOOLS_TCTI"
-VERIFIER=
-ANCHOR=$([[ -n $HCP_ATTESTCLIENT_VERIFIER ]] &&
-	echo "$HCP_ATTESTCLIENT_VERIFIER/key.pem" || true)
+ANCHOR=$([[ -f /enrollverifier/key.pem ]] &&
+	echo "/enrollverifier/key.pem" || true)
 CALLBACKS="$HCP_ATTESTCLIENT_CALLBACKS"
 
 usage() {

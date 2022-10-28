@@ -19,53 +19,53 @@ role_account_uid_file \
 # We don't consume testcreds created by the host and mounted in, we spin up our
 # own. Keep this logic sync'd with src/testcreds.Makefile!!
 show_hcp_env | egrep "=\/enroll" | sed -e "s/^.*=//" | sort | uniq | xargs mkdir -p
-if [[ ! -f $HCP_EMGMT_CREDS_SIGNER/key.priv ]]; then
+if [[ ! -f /enrollsigner/key.priv ]]; then
 	echo "Generating: Enrollment signing key"
-	openssl genrsa -out $HCP_EMGMT_CREDS_SIGNER/key.priv
-	openssl rsa -pubout -in $HCP_EMGMT_CREDS_SIGNER/key.priv \
-		-out $HCP_EMGMT_CREDS_SIGNER/key.pem
-	chown $HCP_EUSER_DB:$HCP_EUSER_DB $HCP_EMGMT_CREDS_SIGNER/key.priv
+	openssl genrsa -out /enrollsigner/key.priv
+	openssl rsa -pubout -in /enrollsigner/key.priv \
+		-out /enrollsigner/key.pem
+	chown $HCP_EUSER_DB:$HCP_EUSER_DB /enrollsigner/key.priv
 fi
-if [[ ! -f $HCP_ACLIENT_CREDS_VERIFIER/key.pem ]]; then
+if [[ ! -f /enrollverifier/key.pem ]]; then
 	echo "Generating: Enrollment verification key"
-	cp $HCP_EMGMT_CREDS_SIGNER/key.pem $HCP_ACLIENT_CREDS_VERIFIER/
+	cp /enrollsigner/key.pem /enrollverifier/
 fi
-if [[ ! -f $HCP_EMGMT_CREDS_CERTISSUER/CA.pem ]]; then
+if [[ ! -f /enrollcertissuer/CA.pem ]]; then
 	echo "Generating: Enrollment certificate issuer (CA)"
 	hxtool issue-certificate \
 		--self-signed --issue-ca --generate-key=rsa \
 		--subject="CN=CA,DC=hcphacking,DC=xyz" \
 		--lifetime=10years \
-		--certificate="FILE:$HCP_EMGMT_CREDS_CERTISSUER/CA.pem"
+		--certificate="FILE:/enrollcertissuer/CA.pem"
 	openssl x509 \
-		-in $HCP_EMGMT_CREDS_CERTISSUER/CA.pem -outform PEM \
-		-out $HCP_EMGMT_CREDS_CERTISSUER/CA.cert
-	chown $HCP_EUSER_DB:$HCP_EUSER_DB $HCP_EMGMT_CREDS_CERTISSUER/CA.pem
-	chown $HCP_EUSER_DB:$HCP_EUSER_DB $HCP_EMGMT_CREDS_CERTISSUER/CA.cert
+		-in /enrollcertissuer/CA.pem -outform PEM \
+		-out /enrollcertissuer/CA.cert
+	chown $HCP_EUSER_DB:$HCP_EUSER_DB /enrollcertissuer/CA.pem
+	chown $HCP_EUSER_DB:$HCP_EUSER_DB /enrollcertissuer/CA.cert
 fi
-if [[ ! -f $HCP_EMGMT_CREDS_CERTCHECKER/CA.cert ]]; then
+if [[ ! -f /enrollcertchecker/CA.cert ]]; then
 	echo "Generating: Enrollment certificate verifier (CA)"
-	cp "$HCP_EMGMT_CREDS_CERTISSUER/CA.cert" "$HCP_EMGMT_CREDS_CERTCHECKER/"
+	cp "/enrollcertissuer/CA.cert" /enrollcertchecker/
 fi
 if [[ ! -f $HCP_EMGMT_NGINX_CERT/server.pem ]]; then
 	echo "Generating: Enrollment server certificate"
 	hxtool issue-certificate \
-		--ca-certificate="FILE:$HCP_EMGMT_CREDS_CERTISSUER/CA.pem" \
+		--ca-certificate="FILE:/enrollcertissuer/CA.pem" \
 		--type=https-server \
 		--hostname=emgmt.hcphacking.xyz \
 		--generate-key=rsa --key-bits=2048 \
 		--certificate="FILE:$HCP_EMGMT_NGINX_CERT/server.pem"
 fi
-if [[ ! -f $HCP_EMGMT_CREDS_CLIENTCERT/client.pem ]]; then
+if [[ ! -f /enrollclient/client.pem ]]; then
 	echo "Generating: Enrollment client certificate"
 	hxtool issue-certificate \
-		--ca-certificate="FILE:$HCP_EMGMT_CREDS_CERTISSUER/CA.pem" \
+		--ca-certificate="FILE:/enrollcertissuer/CA.pem" \
 		--type=https-client \
 		--hostname=orchestrator.hcphacking.xyz \
 		--subject="UID=orchestrator,DC=hcphacking,DC=xyz" \
 		--email="orchestrator@hcphacking.xyz" \
 		--generate-key=rsa --key-bits=2048 \
-		--certificate="FILE:$HCP_EMGMT_CREDS_CLIENTCERT/client.pem"
+		--certificate="FILE:/enrollclient/client.pem"
 fi
 
 # Managing services within a caboodle container

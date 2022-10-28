@@ -140,16 +140,14 @@ EOF
 fi
 
 # Copy creds to the home dir if we have them and they aren't copied yet
-if [[ -n $HCP_ENROLLSVC_SIGNER && -d "$HCP_ENROLLSVC_SIGNER" &&
-		! -d "$SIGNING_KEY_DIR" ]]; then
+if [[ -d /enrollsigner && ! -d "$SIGNING_KEY_DIR" ]]; then
 	echo "Copying asset-signing creds to '$SIGNING_KEY_DIR'"
-	cp -r $HCP_ENROLLSVC_SIGNER $SIGNING_KEY_DIR
+	cp -r /enrollsigner $SIGNING_KEY_DIR
 	chown -R $HCP_ENROLLSVC_USER_DB $SIGNING_KEY_DIR
 fi
-if [[ -n $HCP_ENROLLSVC_CERTISSUER && -d "$HCP_ENROLLSVC_CERTISSUER" &&
-		! -d "$GENCERT_CA_DIR" ]]; then
+if [[ -d "/enrollcertissuer" && ! -d "$GENCERT_CA_DIR" ]]; then
 	echo "Copying cert-issuer creds to '$GENCERT_CA_DIR'"
-	cp -r $HCP_ENROLLSVC_CERTISSUER $GENCERT_CA_DIR
+	cp -r /enrollcertissuer $GENCERT_CA_DIR
 	chown -R $HCP_ENROLLSVC_USER_DB $GENCERT_CA_DIR
 fi
 

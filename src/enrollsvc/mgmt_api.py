@@ -265,8 +265,8 @@ def my_janitor():
 @app.route('/v1/get-asset-signer', methods=['GET'])
 def assetSigner():
     log(f"assetSigner: request={request}")
-    log(f"assetSigner: {os.environ['HCP_ENROLLSVC_SIGNER']}/key.pem")
-    return send_file(f"{os.environ['HCP_ENROLLSVC_SIGNER']}/key.pem",
+    log("assetSigner: /enrollsigner/key.pem")
+    return send_file(f"/enrollsigner/key.pem",
                      as_attachment = True,
                      attachment_filename = 'asset-signer.pem')
 
