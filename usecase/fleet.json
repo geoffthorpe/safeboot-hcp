@@ -93,6 +93,22 @@
 			}
 		},
 		{
+			"name": "caboodlenet",
+			"tpm_path": "/tpm_caboodlenet",
+			"enroll_hostname": "caboodlenet.hcphacking.xyz",
+			"enroll_profile": {
+				"__env": {
+					"ENROLL_PKINIT_USER_PRINC": "user2"
+				},
+				"gencert-hxtool": {
+					"list": [
+						"default-https-hostclient",
+						"pkinit-client-user"
+					]
+				}
+			}
+		},
+		{
 			"name": "sherver",
 			"tpm_path": "/tpm_sherver",
 			"enroll_hostname": "sherver.hcphacking.xyz",

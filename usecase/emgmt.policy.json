@@ -222,37 +222,50 @@
             { "action": "return" } ],
 
         "hxtool-pkinit-client-user": [
-            { "_": "Similar to the hxtool-https-client-user example above.",
+            { "_": "We accept specific host/user combos, otherwise reject",
                 "if": { "not-equal": ".pkinit-client-user.type",
                     "value": "pkinit-client" },
                 "name": "enrollsvc::asset_check::pkinit-client-user - bad type",
                 "action": "reject" },
-            { "_": "We allow two hostnames, each with its own conditions",
-                "if": { "equal": ".__env.ENROLL_HOSTNAME",
-                    "value": "aclient.{ENROLL_DOMAIN}" },
-                "name": "enrollsvc::asset_check::pkinit-client-user - aclient",
-                "action": "jump",
-                "jump": "hxtool-pkinit-client-user-aclient" },
-            { "if": { "equal": ".__env.ENROLL_HOSTNAME",
-                    "value": "primary.kdc.{ENROLL_DOMAIN}" },
-                "name": "enrollsvc::asset_check::pkinit-client-user - kdc_primary",
-                "action": "jump",
-                "jump": "hxtool-pkinit-client-user-kdcprimary" },
-            {
-                "name": "enrollsvc::asset_check::pkinit-client-user - wrong host",
-                "action": "reject" } ],
-        "hxtool-pkinit-client-user-aclient": {
-            "_": "On 'aclient' we only accept the 'alicia' principal",
-            "if": { "not-equal": ".pkinit-client-user.pk-init-principal",
-                    "value": "alicia@{ENROLL_REALM}" },
-            "action": "reject",
-            "otherwise": "return" },
-        "hxtool-pkinit-client-user-kdcprimary": {
-            "_": "On 'kdcprimary' we only accept the 'foo' principal",
-            "if": { "not-equal": ".pkinit-client-user.pk-init-principal",
-                    "value": "foo@{ENROLL_REALM}" },
-            "action": "reject",
-            "otherwise": "return" },
+            { "_": "We only issue this cert type to specific hosts",
+                "if": { "not-elementof": ".__env.ENROLL_HOSTNAME", "value": [
+                        "aclient.{ENROLL_DOMAIN}",
+                        "primary.kdc.{ENROLL_DOMAIN}",
+                        "caboodlenet.{ENROLL_DOMAIN}",
+                        "sherver.{ENROLL_DOMAIN}" ] },
+                "name": "enrollsvc::asset_check::pkinit-client-user - bad host",
+                "action": "reject" },
+            { "_": "On 'aclient', only issue an 'alicia' cred",
+                "if": [ {
+                        "equal": ".__env.ENROLL_HOSTNAME",
+                        "value": "aclient.{ENROLL_DOMAIN}"
+                    }, {
+                        "equal": ".pkinit-client-user.pk-init-principal",
+                        "value": "alicia@{ENROLL_REALM}"
+                    } ],
+                "name": "enrollsvc::asset_check::pkinit-client-user - aclient,alicia",
+                "action": "return" },
+            { "_": "On 'primary.kdc', only issue a 'foo' cred",
+                "if": [ {
+                        "equal": ".__env.ENROLL_HOSTNAME",
+                        "value": "primary.kdc.{ENROLL_DOMAIN}"
+                    }, {
+                        "equal": ".pkinit-client-user.pk-init-principal",
+                        "value": "foo@{ENROLL_REALM}"
+                    } ],
+                "name": "enrollsvc::asset_check::pkinit-client-user - kdc_primary,foo",
+                "action": "return" },
+            { "_": [ "Lastly, on 'sherver' and 'caboodlenet', issue anything",
+                     "at all, otherwise fail." ],
+                "if": [ {
+                        "not-equal": ".__env.ENROLL_HOSTNAME",
+                        "value": "sherver.{ENROLL_DOMAIN}"
+                    }, {
+                        "not-equal": ".__env.ENROLL_HOSTNAME",
+                        "value": "caboodlenet.{ENROLL_DOMAIN}" } ],
+                "name": "enrollsvc::asset_check::pkinit-client-user - sherver and caboodlenet",
+                "action": "reject",
+                "otherwise": "return" } ],
 
         "hxtool-pkinit-client-admin": [
             { "_": "Similar to the hxtool-pkinit-client-user example above.",

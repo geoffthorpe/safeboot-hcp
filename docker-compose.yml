@@ -39,6 +39,8 @@ volumes:
     tpmsocket_kdc_primary:
     tpm_kdc_secondary:
     tpmsocket_kdc_secondary:
+    tpm_caboodlenet:
+    tpmsocket_caboodlenet:
     tpm_sherver:
     tpmsocket_sherver:
 
@@ -160,6 +162,7 @@ services:
           - tpm_aclient:${HCP_ORCH_TPM_ACLIENT}
           - tpm_kdc_primary:${HCP_ORCH_TPM_KDC_PRIMARY}
           - tpm_kdc_secondary:${HCP_ORCH_TPM_KDC_SECONDARY}
+          - tpm_caboodlenet:${HCP_ORCH_TPM_CABOODLENET}
           - tpm_sherver:${HCP_ORCH_TPM_SHERVER}
         environment:
           - HCP_INSTANCE=/usecase/orchestrator.env
@@ -200,6 +203,7 @@ services:
           - hcpnetwork
         environment:
           - HCP_INSTANCE=/usecase/caboodle_alone.env
+          - HCP_ENTRYPOINT=/hcp/common/do_nothing.sh
         volumes:
           - ${HCP_TOP}/vendors:/vendors:ro
         healthcheck:
@@ -211,14 +215,6 @@ services:
         environment:
           - HCP_INSTANCE=/usecase/caboodle_test.env
           - HCP_ENTRYPOINT=/usecase/caboodle_test.sh
-    caboodle_networked:
-        extends: caboodle_alone
-        environment:
-          - HCP_INSTANCE=/usecase/caboodle_networked.env
-        command: bash
-        volumes:
-          - tpmsocket_aclient:${HCP_ACLIENT_TCTI_SOCKDIR}
-          - ${HCP_TESTCREDS_ENROLLVERIFIER}:${HCP_ACLIENT_CREDS_VERIFIER}:ro
     caboodle_unit:
         extends: caboodle_alone
         environment:
@@ -226,6 +222,32 @@ services:
           - HCP_ENTRYPOINT=/unit/test.py
         volumes:
           - ${HCP_TOP}/tests/unit:/unit
+    caboodle_networked:
+        extends: caboodle_alone
+        environment:
+          - HCP_INSTANCE=/usecase/caboodle_networked.env
+          - HCP_ENTRYPOINT=/hcp/common/do_nothing.sh
+        volumes:
+          - tpmsocket_caboodlenet:${HCP_CABOODLENET_TCTI_SOCKDIR}
+          - ${HCP_TESTCREDS_ENROLLVERIFIER}:${HCP_CABOODLENET_CREDS_VERIFIER}:ro
+        healthcheck:
+            test: /hcp/caboodle/networked_healthcheck.sh
+            timeout: 1s
+            interval: 5s
+    caboodle_networked_tpm:
+        extends: common
+        image: ${HCP_IMAGE_swtpmsvc}
+        network_mode: "none"
+        volumes:
+          - tpm_caboodlenet:${HCP_CABOODLENETTPM_STATE}
+          - tpmsocket_caboodlenet:${HCP_CABOODLENETTPM_SOCKDIR}
+        environment:
+          - HCP_INSTANCE=/usecase/caboodle_networked_tpm.env
+          - HCP_ENTRYPOINT=/hcp/swtpmsvc/run_swtpm.sh
+        healthcheck:
+            test: /hcp/swtpmsvc/healthcheck.sh
+            timeout: 1s
+            interval: 5s
 
 # Kerberos Domain Controller - Primary
     kdc_primary:
