@@ -11,24 +11,21 @@ if [[ ! -d $HCP_KDC_STATE ]]; then
 	exit 1
 fi
 
-# Run the attestation and get our assets
-# Note, run_client is not a service, it's a utility, so it doesn't retry
-# forever waiting for things to be ready to succeed. We, on the other hand,
-# _are_ a service, so we need to be more forgiving.
-attestlog=$(mktemp)
-if ! /hcp/tools/run_client.sh 2> $attestlog; then
-	echo "Warning: the attestation client lost patience, error output follows;" >&2
-	cat $attestlog >&2
-	rm $attestlog
-	echo "Warning: suppressing error output from future attestation attempts" >&2
-	attestation_done=
-	until [[ -n $attestation_done ]]; do
-		echo "Warning: waiting 10 seconds before retrying attestation" >&2
-		sleep 10
-		echo "Retrying attestation" >&2
-		/hcp/tools/run_client.sh 2> /dev/null && attestation_done=yes
-	done
-fi
+# We rely on the backgrounded attester to perform attestation and install the
+# received assets. We will proceed once this has happened at least once.
+# Handle initialization ordering issues by retrying.
+waitcount=0
+until [[ -f $HCP_ATTESTER_TOUCHFILE ]]; do
+	waitcount=$((waitcount+1))
+	if [[ $waitcount -eq 1 ]]; then
+		echo "Warning: waiting for attestation" >&2
+	fi
+	if [[ $waitcount -eq 11 ]]; then
+		echo "Warning: waited for another 10 seconds" >&2
+		waitcount=1
+	fi
+	sleep 1
+done
 
 if [[ ! -x $(which kdc) ]]; then
 	echo "Error, no 'kdc' binary found"
