@@ -107,8 +107,8 @@ EOF
 		echo "Creating $HCP_KDC_STATE/etc/script.kadmin"
 		cat > $HCP_KDC_STATE/etc/script.kadmin << EOF
 init --realm-max-ticket-life=unlimited --realm-max-renewable-life=unlimited $HCP_KDC_REALM
-add_ns --key-rotation-epoch=-10d --key-rotation-period=5d --max-ticket-life=1d --max-renewable-life=5d --attributes= _/$HCP_KDC_NAMESPACE@$HCP_KDC_REALM
-add_ns --key-rotation-epoch=-10d --key-rotation-period=5d --max-ticket-life=1d --max-renewable-life=5d --attributes=ok-as-delegate host/$HCP_KDC_NAMESPACE@$HCP_KDC_REALM
+add_ns --key-rotation-epoch=-600s --key-rotation-period=300s --max-ticket-life=60s --max-renewable-life=300s --attributes= _/$HCP_KDC_NAMESPACE@$HCP_KDC_REALM
+add_ns --key-rotation-epoch=-600s --key-rotation-period=300s --max-ticket-life=60s --max-renewable-life=300s --attributes=ok-as-delegate host/$HCP_KDC_NAMESPACE@$HCP_KDC_REALM
 EOF
 
 		echo "Initializing KDC via 'kadmin -l'"
