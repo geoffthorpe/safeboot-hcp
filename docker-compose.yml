@@ -334,6 +334,10 @@ services:
         environment:
           - HCP_INSTANCE=/usecase/sherver.env
           - HCP_ENTRYPOINT=/hcp/sshsvc/run_sshsvc.sh
+        healthcheck:
+            test: /hcp/sshsvc/healthcheck.sh
+            timeout: 1s
+            interval: 5s
     sherver_tpm:
         extends: common
         image: ${HCP_IMAGE_swtpmsvc}
