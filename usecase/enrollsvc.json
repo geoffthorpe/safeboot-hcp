@@ -42,7 +42,7 @@
             "genprogs_post": "gencert-issuer genmetadata genreenroll",
             "genreenroll": {
                 "_": "(artificially low for devel purposes)",
-                "days": 2
+                "minutes": 2
             },
             "gencert-hxtool": {
                 "<common>": {
