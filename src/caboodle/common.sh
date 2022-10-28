@@ -17,13 +17,8 @@ role_account_uid_file \
 	"EnrollDB User,,,,"
 
 # We don't consume testcreds created by the host and mounted in, we spin up our
-# own. NB: KEEP THESE RULES CONSISTENT WITH src/testcreds.Makefile, OR
-# CONSOLIDATE THEM SOMEHOW!
-mkdir -p $HCP_EMGMT_CREDS_SIGNER
-mkdir -p $HCP_EMGMT_CREDS_CERTISSUER
-mkdir -p $HCP_ACLIENT_CREDS_VERIFIER
-mkdir -p $HCP_ORCH_CERTCHECKER
-mkdir -p $HCP_ORCH_CLIENTCERT
+# own. Keep this logic sync'd with src/testcreds.Makefile!!
+show_hcp_env | egrep "=\/enroll" | sed -e "s/^.*=//" | sort | uniq | xargs mkdir -p
 if [[ ! -f $HCP_EMGMT_CREDS_SIGNER/key.priv ]]; then
 	echo "Generating: Enrollment signing key"
 	openssl genrsa -out $HCP_EMGMT_CREDS_SIGNER/key.priv
@@ -48,11 +43,20 @@ if [[ ! -f $HCP_EMGMT_CREDS_CERTISSUER/CA.pem ]]; then
 	chown $HCP_EUSER_DB:$HCP_EUSER_DB $HCP_EMGMT_CREDS_CERTISSUER/CA.pem
 	chown $HCP_EUSER_DB:$HCP_EUSER_DB $HCP_EMGMT_CREDS_CERTISSUER/CA.cert
 fi
-if [[ ! -f $HCP_ORCH_CERTCHECKER/CA.pem ]]; then
+if [[ ! -f $HCP_EMGMT_CREDS_CERTCHECKER/CA.cert ]]; then
 	echo "Generating: Enrollment certificate verifier (CA)"
-	cp "$HCP_EMGMT_CREDS_CERTISSUER/CA.cert" "$HCP_ORCH_CERTCHECKER/"
+	cp "$HCP_EMGMT_CREDS_CERTISSUER/CA.cert" "$HCP_EMGMT_CREDS_CERTCHECKER/"
 fi
-if [[ ! -f $HCP_ORCH_CLIENTCERT/client.pem ]]; then
+if [[ ! -f $HCP_EMGMT_NGINX_CERT/server.pem ]]; then
+	echo "Generating: Enrollment server certificate"
+	hxtool issue-certificate \
+		--ca-certificate="FILE:$HCP_EMGMT_CREDS_CERTISSUER/CA.pem" \
+		--type=https-server \
+		--hostname=emgmt.hcphacking.xyz \
+		--generate-key=rsa --key-bits=2048 \
+		--certificate="FILE:$HCP_EMGMT_NGINX_CERT/server.pem"
+fi
+if [[ ! -f $HCP_EMGMT_CREDS_CLIENTCERT/client.pem ]]; then
 	echo "Generating: Enrollment client certificate"
 	hxtool issue-certificate \
 		--ca-certificate="FILE:$HCP_EMGMT_CREDS_CERTISSUER/CA.pem" \
@@ -61,7 +65,7 @@ if [[ ! -f $HCP_ORCH_CLIENTCERT/client.pem ]]; then
 		--subject="UID=orchestrator,DC=hcphacking,DC=xyz" \
 		--email="orchestrator@hcphacking.xyz" \
 		--generate-key=rsa --key-bits=2048 \
-		--certificate="FILE:$HCP_ORCH_CLIENTCERT/client.pem"
+		--certificate="FILE:$HCP_EMGMT_CREDS_CLIENTCERT/client.pem"
 fi
 
 # Managing services within a caboodle container
@@ -70,51 +74,65 @@ mkdir -p /pids /logs
 
 # Declare service existence and corresponding .env file
 declare -A hcp_entity=( \
-	[pol]=/usecase/pol.env \
+	[emgmt_pol]=/usecase/emgmt.pol.env \
 	[emgmt]=/usecase/emgmt.env \
 	[erepl]=/usecase/erepl.env \
 	[arepl]=/usecase/arepl.env \
 	[ahcp]=/usecase/ahcp.env \
-	[orchestrator]=/usecase/orchestrator.env \
+	[orchestrator_core]=/usecase/orchestrator.env \
+	[orchestrator_fleet]=/usecase/orchestrator.env \
 	[kdc_primary]=/usecase/kdc_primary.env \
 	[kdc_primary_tpm]=/usecase/kdc_primary_tpm.env \
 	[aclient]=/usecase/aclient.env \
 	[aclient_tpm]=/usecase/aclient_tpm.env \
 	[wait_emgmt]=/usecase/emgmt.env \
 	[wait_ahcp]=/usecase/ahcp.env \
+	[wait_kdc_primary]=/usecase/kdc_primary.env \
 	[wait_aclient_tpm]=/usecase/aclient_tpm.env \
         )
 # Declare what type of service it is (lifetime)
 declare -A hcp_entity_type=( \
-	[pol]=service \
+	[emgmt_pol]=service \
 	[emgmt]=service \
 	[erepl]=service \
 	[arepl]=service \
 	[ahcp]=service \
-	[orchestrator]=setup \
 	[kdc_primary]=service \
 	[kdc_primary_tpm]=service \
-	[aclient]=util \
+	[kdc_primary_pol]=service \
+	[kdc_secondary]=service \
+	[kdc_secondary_tpm]=service \
+	[kdc_secondary_pol]=service \
 	[aclient_tpm]=service \
+	[orchestrator_core]=setup \
+	[orchestrator_fleet]=setup \
+	[aclient]=util \
 	[wait_emgmt]=util \
 	[wait_ahcp]=util \
+	[wait_kdc_primary]=util \
 	[wait_aclient_tpm]=util \
 	)
 # Declare the commands to run
 declare -A hcp_entity_cmd=( \
-	[pol]=/hcp/policysvc/run_policy.sh \
+	[emgmt_pol]=/hcp/policysvc/run_policy.sh \
 	[emgmt]=/hcp/enrollsvc/run_mgmt.sh \
 	[erepl]=/hcp/enrollsvc/run_repl.sh \
 	[arepl]=/hcp/attestsvc/run_repl.sh \
 	[ahcp]=/hcp/attestsvc/run_hcp.sh \
-	[orchestrator]="/hcp/tools/run_orchestrator.sh -c -e" \
 	[kdc_primary]=/hcp/kdcsvc/run_kdc.sh \
 	[kdc_primary_tpm]=/hcp/swtpmsvc/run_swtpm.sh \
-	[aclient]="/hcp/tools/run_client.sh -R 9999" \
+	[kdc_primary_pol]=/hcp/policysvc/run_policy.sh \
+	[kdc_secondary]=/hcp/kdcsvc/run_kdc.sh \
+	[kdc_secondary_tpm]=/hcp/swtpmsvc/run_swtpm.sh \
+	[kdc_secondary_pol]=/hcp/policysvc/run_policy.sh \
 	[aclient_tpm]=/hcp/swtpmsvc/run_swtpm.sh \
-	[wait_emgmt]="/hcp/tools/emgmt_healthcheck.sh -R 9999" \
-	[wait_ahcp]="/hcp/tools/ahcp_healthcheck.sh -R 9999" \
-	[wait_aclient_tpm]="/hcp/tools/swtpm_healthcheck.sh -R 9999" \
+	[orchestrator_core]="/hcp/tools/run_orchestrator.sh -c -e kdc_primary kdc_secondary" \
+	[orchestrator_fleet]="/hcp/tools/run_orchestrator.sh -c -e" \
+	[aclient]="/hcp/tools/run_client.sh -R 9999" \
+	[wait_emgmt]="/hcp/enrollsvc/emgmt_healthcheck.sh -R 9999" \
+	[wait_ahcp]="/hcp/attestsvc/ahcp_healthcheck.sh -R 9999" \
+	[wait_kdc_primary]="/hcp/kdcsvc/healthcheck.sh -R 9999" \
+	[wait_aclient_tpm]="/hcp/swtpm/healthcheck.sh -R 9999" \
 	)
 # Ordered list of entities
 hcp_entities=$(echo "${!hcp_entity[@]}" | tr " " "\n" | sort)
