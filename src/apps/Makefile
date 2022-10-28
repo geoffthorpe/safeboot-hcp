@@ -16,7 +16,7 @@ $(eval $(call app_image,common,,safeboot tpmware heimdal xtra common,\
 # that can be run an instance of any of the HCP apps/purposes, because it contains
 # the code for everything.
 $(eval $(call app_image,caboodle,common,\
-	caboodle enrollsvc attestsvc policysvc swtpmsvc tools kdcsvc))
+	caboodle enrollsvc attestsvc policysvc swtpmsvc kdcsvc sshsvc tools))
 
 ifdef HCP_APPS_GRANULAR
 # Only build service/tools-specific images if requested. This is mostly a way

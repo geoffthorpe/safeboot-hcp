@@ -8,8 +8,12 @@ if [[ -n $HCP_CABOODLE_ALONE ]]; then
 	hcp_start_all
 	echo "CABOODLE_TEST: waiting for emgmt to come up"
 	hcp_util_run wait_emgmt
-	echo "CABOODLE_TEST: running orchestrator"
-	hcp_setup_all
+	echo "CABOODLE_TEST: running orchestrator for core services"
+	hcp_setup_run orchestrator_core
+	echo "CABOODLE_TEST: waiting for kdc_primary to come up"
+	hcp_util_run wait_kdc_primary
+	echo "CABOODLE_TEST: running orchestrator for fleet"
+	hcp_setup_run orchestrator_fleet
 	echo "CABOODLE_TEST: waiting for ahcp to come up"
 	hcp_util_run wait_ahcp
 fi

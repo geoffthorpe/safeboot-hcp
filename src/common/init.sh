@@ -25,20 +25,6 @@ elif [[ -n $HCP_PURGER_JSON_PATH ]]; then
 		> /.purger.output 2>&1 &
 fi
 
-############
-# ATTESTER #
-############
-
-# Credentials should and do expire, and the enrollsvc's "reenroller"
-# functionality helps cater to this, by ensuring that enrollments get refreshed
-# on a timely basis. However this requires hosts to repeat the attestation
-# process periodically, because this obtains updated creds and installs them
-# (and, optionally, triggers hooks to run when particular assets change - eg.
-# if /etc/krb5.keytab changes, we want to SIGHUP the sshd process).
-if [[ -n $HCP_ATTESTER_PERIOD ]]; then
-	nohup python3 /hcp/common/attester.py &
-fi
-
 # The following is only relevant when running a closed system inside a docker
 # network, usually to test use-cases/scenarios. If you're deploying a production
 # service and want your containers interacting with the host and other networks,

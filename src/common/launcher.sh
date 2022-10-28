@@ -27,6 +27,28 @@
 source /hcp/common/hcp.sh
 log "HCP launcher: sourced /hcp/common/hcp.sh"
 
+############
+# ATTESTER #
+############
+
+# Credentials should and do expire, and the enrollsvc's "reenroller"
+# functionality helps cater to this, by ensuring that enrollments get refreshed
+# on a timely basis. However this requires hosts to repeat the attestation
+# process periodically, because this obtains updated creds and installs them
+# (and, optionally, triggers hooks to run when particular assets change - eg.
+# if /etc/krb5.keytab changes, we want to SIGHUP the sshd process).
+#
+# NOTE: we do not do this in init.sh for a reason! This backgrounded service
+# gets started for each service that wants it. Ie. in a 'caboodle' environment,
+# we don't want the 1-per-machine behavior of init.sh, we want 1-per-service
+# behavior. As with the ENTRYPOINT tricks lower down, we undefine the setting
+# once this is launched, so we don't accidentally start it again from the same
+# process tree. (Eg. because a sub-sub-sub-script includes hcp.sh.)
+if [[ -n $HCP_ATTESTER_PERIOD ]]; then
+	nohup python3 /hcp/common/attester.py &
+	unset HCP_ATTESTER_PERIOD
+fi
+
 # NB: due to entanglements between bash (IFS, quoting, ...), docker[-compose],
 # and so forth, we do some fiddling below with the argument lists passed to
 # 'exec'. It might well be improved with some effort, but it will probably
