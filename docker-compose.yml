@@ -62,7 +62,7 @@ services:
           - ${HCP_TOP}/usecase:/usecase:ro
         environment:
           - HCP_ENTRYPOINT_EXCEPT=bash
-        #  - VERBOSE=1
+#          - VERBOSE=1
 
 # Enrollment svc, mgmt interface
     emgmt:
@@ -85,7 +85,7 @@ services:
         healthcheck:
             test: /hcp/enrollsvc/emgmt_healthcheck.sh
             timeout: 1s
-            interval: 2s
+            interval: 5s
     emgmt_pol:
         extends: common
         image: ${HCP_IMAGE_policysvc}
@@ -97,7 +97,7 @@ services:
         healthcheck:
             test: /hcp/policysvc/healthcheck.sh
             timeout: 1s
-            interval: 2s
+            interval: 5s
 
 # Enrollment svc, replication interface
     erepl:
@@ -113,7 +113,7 @@ services:
         healthcheck:
             test: git ls-remote --heads git://localhost/enrolldb || exit 1
             timeout: 1s
-            interval: 2s
+            interval: 5s
 
 # Attestation svc, replication client
     arepl:
@@ -129,7 +129,7 @@ services:
         healthcheck:
             test: test -f /attestdb/initialized && ! test -f /attestdb/hcp/transient-failure
             timeout: 1s
-            interval: 2s
+            interval: 5s
 
 # Attestation svc, attestation interface
     ahcp:
@@ -145,7 +145,7 @@ services:
         healthcheck:
             test: /hcp/attestsvc/ahcp_healthcheck.sh
             timeout: 1s
-            interval: 2s
+            interval: 5s
 
 # Orchestrator client (create and/or enroll TPMs). You'll typically want to
 # pass "-c -e" to this to make it do something.
@@ -190,7 +190,7 @@ services:
         healthcheck:
             test: /hcp/swtpmsvc/healthcheck.sh
             timeout: 1s
-            interval: 2s
+            interval: 5s
 
 # Caboodle instance
     caboodle_alone:
@@ -202,6 +202,10 @@ services:
           - HCP_INSTANCE=/usecase/caboodle_alone.env
         volumes:
           - ${HCP_TOP}/vendors:/vendors:ro
+        healthcheck:
+            test: /bin/true
+            timeout: 1s
+            interval: 5s
     caboodle_test:
         extends: caboodle_alone
         environment:
@@ -250,7 +254,7 @@ services:
         healthcheck:
             test: /hcp/swtpmsvc/healthcheck.sh
             timeout: 1s
-            interval: 2s
+            interval: 5s
     kdc_primary_pol:
         extends: common
         image: ${HCP_IMAGE_policysvc}
@@ -262,7 +266,7 @@ services:
         healthcheck:
             test: /hcp/policysvc/healthcheck.sh
             timeout: 1s
-            interval: 2s
+            interval: 5s
 
 # Kerberos Domain Controller - Secondary
     kdc_secondary:
@@ -291,7 +295,7 @@ services:
         healthcheck:
             test: /hcp/swtpmsvc/healthcheck.sh
             timeout: 1s
-            interval: 2s
+            interval: 5s
     kdc_secondary_pol:
         extends: common
         image: ${HCP_IMAGE_policysvc}
@@ -303,7 +307,7 @@ services:
         healthcheck:
             test: /hcp/policysvc/healthcheck.sh
             timeout: 1s
-            interval: 2s
+            interval: 5s
 
 # SSH host
     sherver:
@@ -331,4 +335,4 @@ services:
         healthcheck:
             test: /hcp/swtpmsvc/healthcheck.sh
             timeout: 1s
-            interval: 2s
+            interval: 5s
