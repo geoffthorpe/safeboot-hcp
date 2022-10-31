@@ -6,24 +6,17 @@ import subprocess
 import time
 
 sys.path.insert(1, '/hcp/common')
-to_trace = 'HCP_NO_TRACE' not in os.environ
-if to_trace:
-	from hcp_tracefile import tracefile
-	tfile = tracefile("attester")
-	sys.stderr = tfile
-from hcp_common import log, bail
+from hcp_common import log, bail, current_tracefile, hcp_config_extract, \
+	hcp_config_scope_set, hcp_config_scope_get, hcp_config_scope_shrink
 
-_period = os.environ['HCP_ATTESTER_PERIOD']
+_period = hcp_config_extract('.attester.period', must_exist = True)
 try:
 	period = int(_period)
 except ValueError as e:
-	log(f"ERROR: HCP_ATTESTER_PERIOD ({_period}) must be a number")
+	log(f"ERROR: .attester.period ({_period}) must be a number")
 	log(f"{e}")
 	sys.exit(1)
 cmd_args = [ '/hcp/tools/run_client.sh' ]
-touchfile = None
-if 'HCP_ATTESTER_TOUCHFILE' in os.environ:
-	touchfile = os.environ['HCP_ATTESTER_TOUCHFILE']
 
 log(f"Starting attester")
 log(f" - period={period}")
@@ -33,19 +26,10 @@ while True:
 	res = 0
 	try:
 		log("Running command")
-		if to_trace:
-			c = subprocess.run(cmd_args, stderr = tfile, text = True)
-		else:
-			c = subprocess.run(cmd_args, text = True)
+		c = subprocess.run(cmd_args, stderr = current_tracefile,
+				text = True)
 		res = c.returncode
 	except Exception as e:
 		log(f"Warning, exception: {e}")
 	log(f"Command exited with code={res}")
-	if res == 0:
-		if touchfile:
-			# This is the closest thing we seem to have to the
-			# "touch" command. It needs to handle initialization
-			# races but does not need to handle a racing delete.
-			with open(touchfile, 'a'):
-				os.utime(touchfile, None)
 	time.sleep(period)

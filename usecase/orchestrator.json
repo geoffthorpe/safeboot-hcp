@@ -1,0 +1,32 @@
+{
+    "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
+
+    "services": [
+        "fqdn_updater",
+        "orchestrator"
+    ],
+    "default": [
+        "start-presetup",
+        "start-postsetup"
+    ],
+    "args_for": "orchestrator",
+
+    "fqdn_updater": {
+        "exec": "/hcp/common/fqdn_updater.py",
+        "until": "/etc/hcp-fqdn-alive",
+        "nowait": 1,
+        "tag": "presetup",
+        "path": "/fqdn-bus",
+        "refresh": 5,
+        "expiry": 20,
+        "hostnames": [ "do-not-contact-me-orchestrator" ],
+        "default_domain": "hcphacking.xyz",
+        "bad_address": "100.100.100.100"
+    },
+
+    "orchestrator": {
+        "exec": "/hcp/tools/run_orchestrator.sh",
+        "tag": "postsetup",
+        "fleet": "/usecase/fleet.json"
+    }
+}

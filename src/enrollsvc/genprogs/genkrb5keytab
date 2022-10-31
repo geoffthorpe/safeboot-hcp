@@ -5,15 +5,9 @@ import sys
 import json
 import subprocess
 import base64
+import requests
 
 sys.path.insert(1, '/hcp/common')
-to_trace = 'HCP_NO_TRACE' not in os.environ
-if to_trace:
-	from hcp_tracefile import tracefile
-	tfile = tracefile(f"genkrb5keytab")
-	sys.stderr = tfile
-else:
-	tfile = sys.stderr
 import hcp_common
 log = hcp_common.log
 bail = hcp_common.bail
@@ -73,19 +67,19 @@ if 'principal' in config:
 		bail(f"'principal' not a list or string ({type(newprincipal)})")
 	principals += newprincipal
 
-# TODO: refit this to use 'requests' rather than shelling out to 'curl'.
-args = [ 'curl', '-s', '-F', f"principals={json.dumps(principals)}" ]
+req_data = { 'principals': (None, json.dumps(principals)) }
+req_cert = None
 if clientcred:
-	args += [ '-E', clientcred ]
-args += [ f"{kdcsvc}/v1/ext_keytab" ]
+	req_cert = clientcred
+response = requests.post(f"{kdcsvc}/v1/ext_keytab", files = req_data,
+		verify = True, cert = req_cert)
+if response.status_code != 200:
+	bail(f"Request to KDC failed with code {response.status_code}")
+try:
+	res = json.loads(response.content)
+except Exception as e:
+	bail(f"Error, JSON decoding of kdc::ext_keytab failed: {e}")
 
-log(f"running subprocess: {args}")
-c = subprocess.run(args, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
-log(f"result: {c}")
-if c.returncode:
-	bail(f"Request to KDC failed: {c.stderr}")
-
-res = json.loads(c.stdout)
 keytab64 = res['stdout']
 keytab = base64.b64decode(keytab64)
 with open('krb5.keytab', 'wb') as f:

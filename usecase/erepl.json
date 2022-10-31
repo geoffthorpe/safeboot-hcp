@@ -1,0 +1,59 @@
+{
+    "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
+
+    "services": [
+        "fqdn_updater",
+        "enrollsvc",
+        "git-daemon"
+    ],
+    "default": [
+        "start-presetup",
+        "setup-local",
+        "start-postsetup"
+    ],
+
+    "fqdn_updater": {
+        "exec": "/hcp/common/fqdn_updater.py",
+        "until": "/etc/hcp-fqdn-alive",
+        "nowait": 1,
+        "tag": "presetup",
+        "path": "/fqdn-bus",
+        "refresh": 5,
+        "expiry": 20,
+        "hostnames": [ "erepl" ],
+        "default_domain": "hcphacking.xyz"
+    },
+
+    "enrollsvc": {
+        "setup": [ {
+                "touchfile": "/enrolldb/initialized"
+            }, {
+                "tag": "local",
+                "exec": "/hcp/enrollsvc/setup_local.sh",
+                "touchfile": "/etc/hcp-enrollsvc-local-setup"
+            } ],
+        "state": "/enrolldb",
+        "realm": "HCPHACKING.XYZ",
+        "dbuser": {
+            "handle": "/enrolldb/uid-dbuser",
+            "id": "emgmtdb"
+        },
+        "webuser": {
+            "handle": "/enrolldb/uid-webuser",
+            "id": "emgmtflask"
+        }
+    },
+
+    "git-daemon": {
+        "setup": { "touchfile": "/etc/hcp-enrollsvc-local-setup" },
+        "exec": "/usr/lib/git-core/git-daemon",
+        "args": [
+            "--reuseaddr",
+            "--listen=0.0.0.0",
+            "--port=9418",
+            "--base-path=/enrolldb/db"
+        ],
+        "tag": "postsetup",
+        "uid": "emgmtdb"
+    }
+}

@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 # This purger tool is used to clear out files that "get too old". The
 # motivating use-case is where logically-distinct software components produce
 # detailed logs for debugging and diagnosis and we want to reap old logs so
@@ -87,23 +88,13 @@ import glob
 import json
 
 sys.path.insert(1, '/hcp/common')
-from hcp_common import bail, env_get_or_none, dict_timedelta, dict_val_or
+from hcp_common import bail, dict_timedelta, dict_val_or, hcp_config_extract
 
 print("Running purger task")
 
-# TODO: make the command-line better. Then we can;
-# - specify an option for verbosity,
-# - read our configuration JSON from a file (rather than a literal string on
-#   the command-line or env-var),
-# - probably more.
-
-purgerjson = env_get_or_none('HCP_PURGER_JSON')
-if len(sys.argv) > 1:
-	purgerjson = sys.argv[1]
-try:
-	conf = json.loads(purgerjson)
-except e:
-	bail(f"Unable to parse JSON configuration: {e}")
+# Pull our entire conf, we'll examine its fields directly. (We could call
+# hcp_config_extract for each attribute, but we don't.)
+conf = hcp_config_extract('.purger', must_exist = True)
 
 def log(s):
 	global conf 
@@ -134,8 +125,8 @@ def do_purge_item(j, now, conf):
 	log(f"Recipe: {j}")
 	g = j['glob']
 	td = dict_timedelta(j)
-	if td.seconds == 0:
-		bail("Non-zero time period must be provided to genreenroll")
+	if now + td == now:
+		bail("Non-zero time period must be provided to purger")
 	cutoff = now - td
 	log(f"timedelta={td}")
 	files = glob.glob(g)

@@ -1,0 +1,54 @@
+{
+    "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
+
+    "services": [
+        "fqdn_updater",
+        "attester",
+        "do_nothing"
+    ],
+    "default": [
+        "start-presetup",
+        "start-attester",
+        "setup-global",
+        "setup-local",
+        "start-postsetup"
+    ],
+
+    "fqdn_updater": {
+        "exec": "/hcp/common/fqdn_updater.py",
+        "until": "/etc/hcp-fqdn-alive",
+        "nowait": 1,
+        "tag": "presetup",
+        "path": "/fqdn-bus",
+        "refresh": 5,
+        "expiry": 20,
+        "hostnames": [ "caboodlenet" ],
+        "default_domain": "hcphacking.xyz",
+        "bad_address": "100.100.100.100"
+    },
+
+    "attester": {
+        "exec": "/hcp/common/attester.py",
+        "until": "/etc/hcp-attested",
+        "nowait": 1,
+        "tag": "attester",
+        "period": 120,
+        "env": {
+            "set": {
+                "HCP_ATTESTCLIENT_HOOK_KRB5KEY": "/hcp/sshsvc/hup_sshd.sh"
+            }
+        }
+    },
+    "client": {
+        "exec": "/hcp/tools/run_client.sh",
+        "touchfile": "/etc/hcp-attested",
+        "attest_url": "http://ahcp.hcphacking.xyz:8080",
+        "tcti": "swtpm:path=/tpm_socket_caboodlenet/tpm",
+        "callbacks": [ "/hcp/tools/attest_callback_common.py" ]
+    },
+
+    "do_nothing": {
+        "exec": "/hcp/common/do_nothing.sh",
+        "tag": "postsetup"
+    }
+}

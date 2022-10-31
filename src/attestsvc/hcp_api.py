@@ -6,7 +6,6 @@
 import sys
 
 sys.path.insert(1, '/install-safeboot/sbin')
-
 from attest_server import app
 
 # Inject the healthcheck handler

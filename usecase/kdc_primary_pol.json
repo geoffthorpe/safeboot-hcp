@@ -1,0 +1,39 @@
+{
+    "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
+
+    "services": [
+        "fqdn_updater",
+        "webapi"
+    ],
+    "default": [
+        "start-presetup",
+        "start-postsetup"
+    ],
+
+    "fqdn_updater": {
+        "exec": "/hcp/common/fqdn_updater.py",
+        "until": "/etc/hcp-fqdn-alive",
+        "nowait": 1,
+        "tag": "presetup",
+        "path": "/fqdn-bus",
+        "refresh": 5,
+        "expiry": 20,
+        "hostnames": [ "policy.primary.kdc" ],
+        "default_domain": "hcphacking.xyz"
+    },
+
+    "webapi": {
+        "exec": "/hcp/common/webapi.sh",
+        "tag": "postsetup",
+        "servername": "policy.primary.kdc.hcphacking.xyz",
+        "port": 9180,
+        "app": "/hcp/policysvc/policy_api.py",
+        "config": "/usecase/kdc_primary_pol.policy.json",
+        "uwsgi_env": {
+            "HCP_TRACEFILE": "/tmp",
+            "uncomment_to_enable_HCP_POLICYSVC_DEBUG": "1"
+        },
+        "uwsgi_uid": "www-data",
+        "uwsgi_gid": "www-data"
+    }
+}

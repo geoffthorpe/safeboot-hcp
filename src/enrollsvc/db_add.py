@@ -10,17 +10,15 @@ from tempfile import TemporaryDirectory
 from uuid import uuid4
 
 sys.path.insert(1, '/hcp/common')
-import hcp_tracefile
-tfile = hcp_tracefile.tracefile("dbadd")
-sys.stderr = tfile
-import hcp_common
-log = hcp_common.log
+
+from hcp_common import log, current_tracefile, http2exit, \
+	env_get_dir, env_get_file, hcp_config_extract
 
 sys.path.insert(1, '/hcp/xtra')
 
 from HcpHostname import valid_hostname, dc_hostname, pop_hostname
 from HcpRecursiveUnion import union
-import HcpEnvExpander
+import HcpJsonExpander
 
 sys.path.insert(1, '/hcp/enrollsvc')
 import db_common
@@ -53,12 +51,12 @@ log(f"db_add: starting '{cmdname}'")
 z = f"db_{cmdname}"
 
 # We expect these env-vars to point to things
-signing_key_dir = hcp_common.env_get_dir('SIGNING_KEY_DIR')
-signing_key_pub = hcp_common.env_get_file('SIGNING_KEY_PUB')
-signing_key_priv = hcp_common.env_get_file('SIGNING_KEY_PRIV')
-gencert_ca_dir = hcp_common.env_get_dir('GENCERT_CA_DIR')
-gencert_ca_cert = hcp_common.env_get_file('GENCERT_CA_CERT')
-gencert_ca_priv = hcp_common.env_get_file('GENCERT_CA_PRIV')
+signing_key_dir = env_get_dir('SIGNING_KEY_DIR')
+signing_key_pub = env_get_file('SIGNING_KEY_PUB')
+signing_key_priv = env_get_file('SIGNING_KEY_PRIV')
+gencert_ca_dir = env_get_dir('GENCERT_CA_DIR')
+gencert_ca_cert = env_get_file('GENCERT_CA_CERT')
+gencert_ca_priv = env_get_file('GENCERT_CA_PRIV')
 
 # Make sure attest-enroll prefers HCP's genprogs
 genprogspath = '/hcp/enrollsvc/genprogs'
@@ -73,13 +71,21 @@ os.environ['EPHEMERAL_ENROLL'] = ephemeral_dir
 log(f"{z}: ephemeral_dir={ephemeral_dir}")
 
 # Load the server's config and extract the "preclient" and "postclient"
-# profiles. Let exceptions do our error-checking.
-serverprofile = {}
-if 'HCP_ENROLLSVC_JSON' in os.environ:
-	configpath = os.environ['HCP_ENROLLSVC_JSON']
-	serverprofile = json.load(open(configpath, 'r')).pop('db_add', {})
+# profiles.
+serverprofile = hcp_config_extract('.enrollsvc.db_add', must_exist = True)
+log(f"{z}: serverprofile={serverprofile}")
 serverprofile_pre = serverprofile.pop('preclient', {})
 serverprofile_post = serverprofile.pop('postclient', {})
+
+# We also need to pull the policy URL (if any) from our JSON input. We'll pump
+# this into the environment so that any child processes (eg. genprogs) that
+# expect it get it.
+policy_url = hcp_config_extract('.enrollsvc.policy_url', or_default = True)
+if policy_url:
+	os.environ['HCP_ENROLLSVC_POLICY'] = policy_url
+else:
+	if 'HCP_ENROLLSVC_POLICY' in os.environ:
+		os.environ.pop('HCP_ENROLLSVC_POLICY')
 
 # Initialization that differs between enroll/reenroll
 if cmdname == 'add':
@@ -165,11 +171,8 @@ log(f"{z}: env-adjusted resultprofle={resultprofile}")
 
 # Now we need to perform parameter-expansion
 origenv = resultprofile.pop('__env', {})
-data_no_env = json.dumps(resultprofile)
-HcpEnvExpander.env_check(origenv)
-envjson, env = HcpEnvExpander.env_selfexpand(origenv)
-data_no_env = HcpEnvExpander.env_expand(data_no_env, env)
-resultprofile = json.loads(data_no_env)
+resultprofile = HcpJsonExpander.process_obj(origenv, resultprofile, '.',
+			varskey = None, fileskey = None)
 resultprofile['__env'] = origenv
 os.environ['ENROLL_JSON'] = json.dumps(resultprofile)
 log(f"{z}: param-expanded resultprofle={resultprofile}")
@@ -195,7 +198,6 @@ resultprofile['final_genprogs'] = final_genprogs.split(' ')
 # because it doesn't consume our profile.)
 # So before doing that and performing the enrollment, send our profile to the
 # policy-checker!
-policy_url = hcp_common.env_get_or_none('HCP_ENROLLSVC_POLICY')
 if policy_url:
 	uuid = uuid4().urn
 	os.environ['HCP_REQUEST_UID'] = uuid
@@ -206,11 +208,16 @@ if policy_url:
 	}
 	url = f"{policy_url}/run"
 	log(f"{z}: sending policy request={form_data}")
-	response = requests.post(url, files=form_data)
-	log(f"{z}: policy response={response}")
-	if response.status_code != 200:
-		log(f"policy-checker refused enrollment: {response.status_code}")
-		sys.exit(403)
+	try:
+		response = requests.post(url, files=form_data)
+		log(f"{z}: policy response={response}")
+		status = response.status_code
+	except Exception as e:
+		log(f"{z}: policy connection failed: {e}")
+		status = 403
+	if status != 200:
+		log(f"policy-checker refused enrollment: {status}")
+		sys.exit(http2exit(403))
 
 # Prepare the enroll.conf that safeboot feeds on
 shutil.copy('/install-safeboot/enroll.conf', ephemeral_dir)
@@ -244,7 +251,7 @@ c = subprocess.run(
 		f"{hostname}" ],
 	cwd = '/install-safeboot',
 	stdout = subprocess.PIPE,
-	stderr = tfile,
+	stderr = current_tracefile,
 	text = True)
 log(f"{z}: attest-enroll returned c={c}")
 if c.returncode != 0:
@@ -337,4 +344,4 @@ result = {
 }
 print(json.dumps(result, sort_keys = True))
 log("{z}: JSON output produced, exiting with code 201")
-sys.exit(201)
+sys.exit(http2exit(201))

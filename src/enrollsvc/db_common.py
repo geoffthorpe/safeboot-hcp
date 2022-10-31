@@ -5,14 +5,17 @@ import re
 import json
 
 sys.path.insert(1, '/hcp/common')
-import hcp_common
-log = hcp_common.log
-env_get = hcp_common.env_get
-def bail(s, exitcode = 500):
-	hcp_common.bail(s, exitcode)
+from hcp_common import log, bail, env_get, env_get_or_none, http2exit, \
+	hcp_config_extract
+
+enrollsvc_ctx = hcp_config_extract('.enrollsvc', must_exist = True)
+
+# The two non-root users we may be acting on behalf of
+dbuser = enrollsvc_ctx['dbuser']['id']
+webuser = enrollsvc_ctx['webuser']['id']
 
 # The following environment elements are required by all db ops
-enrollsvc_state = env_get('HCP_ENROLLSVC_STATE')
+enrollsvc_state = enrollsvc_ctx['state']
 db_dir = f"{enrollsvc_state}/db"
 repo_name = 'enrolldb.git'
 repo_path = f"{db_dir}/{repo_name}"

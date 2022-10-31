@@ -8,9 +8,6 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 sys.path.insert(1, '/hcp/common')
-import hcp_tracefile
-tfile = hcp_tracefile.tracefile("genreenroll")
-sys.stderr = tfile
 from hcp_common import \
 	log, bail, dict_val_or, env_get, \
 	dict_timedelta, datetime2hint

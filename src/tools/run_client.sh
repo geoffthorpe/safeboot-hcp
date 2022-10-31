@@ -2,14 +2,25 @@
 
 source /hcp/common/hcp.sh
 
+URL=$(hcp_config_extract ".client.attest_url")
+TCTI=$(hcp_config_extract ".client.tcti")
+# So longs as we're bash, parsing a JSON list will always be a
+# whitespace-handling whack-a-mole. For now, we assume that the list of
+# callbacks simply mustn't have spaces. If you want spaces, convert this script
+# to python.
+function set_callbacks {
+	JSON_CALLBACKS=$1
+	CALLBACKS=($(jq -r '.[]' <<< "$JSON_CALLBACKS"))
+}
+set_callbacks "$(hcp_config_extract_or '.client.callbacks' '[]')"
+TOUCHFILE=$(hcp_config_extract ".client.touchfile" "")
+
 retries=0
 pause=1
 VERBOSE=0
-URL="$HCP_ATTESTCLIENT_ATTEST_URL"
-TCTI="$HCP_ATTESTCLIENT_TPM2TOOLS_TCTI"
 ANCHOR=$([[ -f /enrollverifier/key.pem ]] &&
 	echo "/enrollverifier/key.pem" || true)
-CALLBACKS="$HCP_ATTESTCLIENT_CALLBACKS"
+wantfail=0
 
 usage() {
 	((${1:-1} == 0)) || exec 1>&2
@@ -30,12 +41,14 @@ Usage: $PROG [OPTIONS] [names ...]
   tool runs - the retry logic (per -R and -P options) only applies to the
   attestation process, to support the case where the TPM/host tuple has been
   enrolled but the enrollment has not yet replicated to the attestation
-  service.
+  service. Test cases can use -w when failure is expected (eg. before
+  enrollment and/or after unenrollment), but that is incompatible with -R.
 
   Options:
 
     -h               This message
     -v               Verbose
+    -w               'want failure', inverts success/failure.
     -R <num>         Number of retries before failure
         (default: $retries)
     -P <seconds>     Time between retries
@@ -46,22 +59,26 @@ Usage: $PROG [OPTIONS] [names ...]
         (default: $(test -n "$TCTI" && echo "$TCTI" || echo "None"))
     -A <path>        Path to enrollsvc trust anchor for verification
         (default: $(test -n "$ANCHOR" && echo "$ANCHOR" || echo "None"))
-    -C <callbacks>   Space-separated list of callbacks to execute"
-        (default: $(test -n "$CALLBACKS" && echo "\"$CALLBACKS\"" || echo "None"))
+    -C <callbacks>   JSON list of callbacks to execute (eg. \"[ \\\"/bin/foo\\\", \\\"/your/cb\\\" ]\")"
+        (default: $JSON_CALLBACKS )
+    -Z <path>        Touchfile once complete
+        (default: $TOUCHFILE)
 EOF
 	exit "${1:-1}"
 }
 
-while getopts +:R:P:U:T:A:C:hv opt; do
+while getopts +:R:P:U:T:A:C:Z:hvw opt; do
 case "$opt" in
 R)	retries="$OPTARG";;
 P)	pause="$OPTARG";;
 U)	URL="$OPTARG";;
 T)	TCTI="$OPTARG";;
 A)	ANCHOR="$OPTARG";;
-C)	CALLBACKS="$OPTARG";;
+C)	set_callbacks "$OPTARG";;
+Z)	TOUCHFILE="$OPTARG";;
 h)	usage 0;;
 v)	((VERBOSE++)) || true;;
+w)	wantfail=1;;
 *)	echo >&2 "Unknown option: $opt"; usage;;
 esac
 done
@@ -72,13 +89,15 @@ if ((VERBOSE > 0)); then
 Starting $PROG:
  - retries=$retries
  - pause=$pause
+ - wantfail=$wantfail
  - onlyenroll=$onlyenroll
  - onlycreate=$onlycreate
  - VERBOSE=$VERBOSE
  - URL=$URL
- - JSONPATH=$JSONPATH
- - #names=$#
- - {names}=$@
+ - TCTI=$TCTI
+ - ANCHOR=$ANCHOR
+ - JSON_CALLBACKS=$JSON_CALLBACKS
+ - TOUCHFILE=$TOUCHFILE
 EOF
 fi
 
@@ -96,6 +115,10 @@ if [[ -z $ANCHOR ]]; then
 	exit 1
 fi
 export ENROLL_SIGN_ANCHOR=$ANCHOR
+if [[ $wantfail != 0 && $retries != 0 ]]; then
+	echo "Error, using -w and setting -R non-zero are incompatible options" >&2
+	exit 1
+fi
 
 source_safeboot_functions
 
@@ -137,6 +160,14 @@ while :; do
 	# we'll exit with 2 as well.
 	./sbin/tpm2-attest attest $URL > "$tmp_secrets" 2> "$tmp_attest" ||
 		ecode=$?
+	if [[ $wantfail != 0 ]]; then
+		if [[ $ecode == 0 ]]; then
+			echo "Error, attestation succeeded but we wanted failure" >&2
+			exit 1
+		fi
+		echo "Info, attestation failed, as we wanted" >&2
+		exit 0
+	fi
 	if [[ $ecode == 2 ]]; then
 		if [[ $retries == 0 ]]; then
 			echo "Error, attestsvc doesn't recognize our TPM" >&2
@@ -175,14 +206,18 @@ if ! (
 			tpm2 policypcr '--pcr-list=sha256:11' > /dev/null 2>&1
 		aead_decrypt "$i.enc" $tmp_key "$i"
 	done
-	if [[ -n $CALLBACKS ]]; then
-		for i in $CALLBACKS; do
-			echo "Running callback '$i'"
-			if ! $i; then
-				echo "Failure in callback '$i'" >&2
-				exit 1
-			fi
-		done
+	# This is one of the places where bash's handling of arrays and
+	# white-space is ... less than one would hope.
+	for i in ${CALLBACKS[@]}; do
+		echo "Running callback '$i'"
+		if ! $i; then
+			echo "Failure in callback '$i'" >&2
+			exit 1
+		fi
+	done
+	if [[ -n $TOUCHFILE ]]; then
+		echo "Completion touchfile: $TOUCHFILE"
+		touch $TOUCHFILE
 	fi
 ); then
 	echo "Error of some kind."

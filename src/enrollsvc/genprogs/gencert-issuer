@@ -7,10 +7,7 @@ import json
 from pathlib import Path
 
 sys.path.insert(1, '/hcp/common')
-import hcp_tracefile
-tfile = hcp_tracefile.tracefile("gencert-issuer")
-sys.stderr = tfile
-from hcp_common import log, bail, dict_val_or, env_get
+from hcp_common import log, bail, current_tracefile, dict_val_or, env_get
 
 # attest-enroll sends us 3 arguments (+1 for the program name, so
 # len(sys.args)==4), but we only consume the first, the directory to produce
@@ -41,7 +38,7 @@ cmd = [ 'openssl', 'x509', '-inform', 'PEM', '-outform', 'PEM',
 	'-in', conf_source, '-out', conf_dest ]
 result = subprocess.run(cmd, cwd = output_dir, text = True,
 			stdout = subprocess.PIPE,
-			stderr = tfile)
+			stderr = current_tracefile)
 if result.returncode != 0:
 	bail(f"openssl command for issuer cert {result.returncode}: {cmd}")
 

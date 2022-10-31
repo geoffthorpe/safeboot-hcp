@@ -7,16 +7,18 @@ MDIRS += $(HCP_APPS_OUT)
 # Include the app_image() subroutine
 include $(HCP_APPS_SRC)/Makefile.sub
 
-# hcp_common: base-platform plus all non-app code (the launcher and some
-# general-purpose helpers). Think of this as the base class for all HCP apps.
-$(eval $(call app_image,common,,safeboot tpmware heimdal xtra common,\
-	[\"/hcp/common/launcher.sh\"],))
+# hcp_precommon: base-platform plus all non-app-specific code (the launcher,
+# fqdn-updater, purger, etc).
+# hcp_common: this is hcp_precommon plus the baking-in of the launcher as the
+# ENTRYPOINT. Think of this as the base class for all HCP apps.
+$(eval $(call app_image,precommon,,safeboot tpmware heimdal xtra common,,))
+$(eval $(call app_image,common,precommon,,[\"/hcp/common/launcher.py\"],))
 
 # hcp_caboodle: at the other extreme, this contains everything. It's an image
-# that can be run an instance of any of the HCP apps/purposes, because it contains
-# the code for everything.
+# that can run any of the HCP apps/purposes, because it contains the code for
+# all of it.
 $(eval $(call app_image,caboodle,common,\
-	caboodle enrollsvc attestsvc policysvc swtpmsvc kdcsvc sshsvc tools))
+	caboodle enrollsvc attestsvc policysvc swtpmsvc kdcsvc sshsvc tools,,))
 
 ifdef HCP_APPS_GRANULAR
 # Only build service/tools-specific images if requested. This is mostly a way
@@ -44,10 +46,10 @@ ifdef HCP_APPS_GRANULAR
 $(eval $(call app_image,tools,common,tools,,))
 $(eval $(call app_image,enrollsvc,tools,enrollsvc swtpmsvc,,))
 $(eval $(call app_image,attestsvc,tools,attestsvc,,))
-$(eval $(call app_image,policysvc,common,policysvc,,[\"/hcp/policysvc/run_policy.sh\"]))
-$(eval $(call app_image,swtpmsvc,tools,swtpmsvc,,[\"/hcp/swtpmsvc/run_swtpm.sh\"]))
-$(eval $(call app_image,kdcsvc,tools,kdcsvc,,[\"/hcp/kdcsvc/run_kdc.sh\"]))
-$(eval $(call app_image,sshsvc,tools,sshsvc,,[\"/hcp/sshsvc/run_sshsvc.sh\"]))
+$(eval $(call app_image,policysvc,common,policysvc,,))
+$(eval $(call app_image,swtpmsvc,tools,swtpmsvc,,))
+$(eval $(call app_image,kdcsvc,tools,kdcsvc,,))
+$(eval $(call app_image,sshsvc,tools,sshsvc,,))
 else
 # Otherwise, use the 'hcp_caboodle' image for any and all purposes.
 $(eval $(call app_alias,tools,caboodle))
@@ -60,7 +62,7 @@ $(eval $(call app_alias,sshsvc,caboodle))
 endif
 
 # Post-process now that all apps are registered
-$(eval $(call app_image_post,common))
+$(eval $(call app_image_post,precommon))
 $(eval APPS_NAMES := $(strip $(APPS_NAMES)))
 APPS := $(foreach i,$(APPS_NAMES),$(HCP_$i_TFILE))
 ALL += $(APPS)

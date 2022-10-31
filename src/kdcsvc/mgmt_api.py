@@ -11,10 +11,7 @@ import tempfile
 import requests
 
 sys.path.insert(1, '/hcp/common')
-from hcp_tracefile import tracefile
-tfile = tracefile("kdcsvc-mgmt")
-sys.stderr = tfile
-from hcp_common import log
+from hcp_common import log, current_tracefile, http2exit, exit2http
 
 sys.path.insert(1, '/hcp/xtra')
 from HcpRecursiveUnion import union
@@ -140,8 +137,10 @@ sudoargs = [ 'sudo', '--', '/hcp/kdcsvc/do_kadmin.sh' ]
 # before allowing it to be used, and we handle construction of the response.
 def check_status_code(c, mylog):
     mylog(f"check_status_code: returncode={c.returncode}")
-    # We accept success in the form of 200 or 201, ...
-    if c.returncode == 200 or c.returncode == 201:
+    httpcode = exit2http(c.returncode)
+    mylog(f"check_status_code: httpcode={httpcode}")
+    # We accept success in the 2xx form ...
+    if httpcode >= 200 and httpcode < 300:
         try:
             j = json.loads(c.stdout)
         except json.JSONDecodeError as e:
@@ -149,22 +148,20 @@ def check_status_code(c, mylog):
                 "--- document to JSONDecode ---\n" +
                 f"{e.doc}" +
                 "--- document to JSONDecode ---")
-            abort(500)
-    # ... or failure in the form of 403, 409, or 500
-    elif c.returncode == 403 or c.returncode == 409 or c.returncode == 500:
-        abort(c.returncode)
+            return "Server JSON error", 500
+    # ... or failure in any other form
     else:
-        mylog(f"unrecognized code, changing to 500")
-        abort(500)
+        mylog(f"aborting")
+        return "Error", httpcode
     mylog(f"decoded from stdout: {j}")
-    return j, c.returncode, {'Content-Type': 'application/json'}
+    return j, httpcode, {'Content-Type': 'application/json'}
 
 def my_json_loads(x, t, mylog):
     try:
         r = json.loads(x)
     except json.JSONDecodeError as e:
         mylog(f"Error, {t} doesn't contain valid JSON;\n{x}")
-        abort(400)
+        abort(http2exit(400))
     return r
 
 # Many handlers have the same parameter-processing (and sudo-command-forming)
@@ -199,7 +196,8 @@ def my_cmd_handler(url, cmd, request, isPost = True):
     op_args = sudoargs + [ cmd, form_principals, request_json]
     mylog(f"args={op_args}")
     c = subprocess.run(op_args,
-                       stdout = subprocess.PIPE, stderr = tfile,
+                       stdout = subprocess.PIPE,
+                       stderr = current_tracefile,
                        text = True)
     return check_status_code(c, mylog)
 

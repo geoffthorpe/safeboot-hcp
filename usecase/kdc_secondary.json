@@ -1,25 +1,139 @@
 {
     "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
 
-    "preclient": {
-        "_": [
-            "Putting REALM in preclient allows the user to override it, so",
-            "limitations (if any) can be enforced in the policysvc lookup.",
-            "Alternatively, you can force the setting in postclient." ],
-        "__env": {
-            "KDC_REALM": "HCPHACKING.XYZ",
-            "KDC_DOMAIN": "hcphacking.xyz"
-        },
-        "<common>": {
-            "realm": "{KDC_REALM}"
+    "services": [
+        "fqdn_updater",
+        "attester",
+        "kdcsvc",
+        "webapi",
+        "kdcsvc_TGS",
+        "kdcsvc_iprop_secondary"
+    ],
+    "default": [
+        "start-presetup",
+        "start-attester",
+        "setup-global",
+        "setup-local",
+        "start-postsetup"
+    ],
+    "args_for": "kdcsvc_TGS",
+
+    "fqdn_updater": {
+        "exec": "/hcp/common/fqdn_updater.py",
+        "until": "/etc/hcp-fqdn-alive",
+        "nowait": 1,
+        "tag": "presetup",
+        "path": "/fqdn-bus",
+        "refresh": 5,
+        "expiry": 20,
+        "hostnames": [ "secondary.kdc" ],
+        "default_domain": "hcphacking.xyz",
+        "bad_address": "100.100.100.100"
+    },
+
+    "attester": {
+        "exec": "/hcp/common/attester.py",
+        "until": "/etc/hcp-attested",
+        "nowait": 1,
+        "tag": "attester",
+        "period": 120
+    },
+    "client": {
+        "exec": "/hcp/tools/run_client.sh",
+        "touchfile": "/etc/hcp-attested",
+        "attest_url": "http://ahcp.hcphacking.xyz:8080",
+        "tcti": "swtpm:path=/tpm_socket_kdc_secondary/tpm",
+        "callbacks": [ "/hcp/tools/attest_callback_common.py" ]
+    },
+
+    "kdcsvc": {
+        "setup": [ {
+                "tag": "global",
+                "exec": "/hcp/kdcsvc/setup_global.sh",
+                "touchfile": "/kdc/initialized"
+            }, {
+                "tag": "local",
+                "exec": "/hcp/kdcsvc/setup_local.sh",
+                "touchfile": "/etc/hcp-kdcsvc-local-setup"
+            } ],
+        "state": "/kdc",
+        "mode": "secondary",
+        "realm": "HCPHACKING.XYZ",
+        "namespace": "hcphacking.xyz",
+        "policy_url": "http://policy.secondary.kdc.hcphacking.xyz:9180",
+        "kadmin": {
+            "preclient": {
+                "_": [
+                    "Putting REALM in preclient allows the user to override it, so",
+                    "limitations (if any) can be enforced in the policysvc lookup.",
+                    "Alternatively, you can force the setting in postclient." ],
+                "__env": {
+                    "KDC_REALM": "HCPHACKING.XYZ",
+                    "KDC_DOMAIN": "hcphacking.xyz"
+                },
+                "<common>": {
+                    "realm": "{KDC_REALM}"
+                }
+            },
+            "postclient": {
+                "_": [
+                    "As a secondary, this interface should only allow 'get' and",
+                    "'ext_keytab'. We could enforce that in the policysvc (and will),",
+                    "but in an abundance of caution, or for lightweight cases that",
+                    "don't want a policysvc involved, we restrict that here too." ],
+                "allowed": [ "get", "ext_keytab" ]
+            }
         }
     },
-    "postclient": {
-        "_": [
-            "As a secondary, this interface should only allow 'get' and",
-            "'ext_keytab'. We could enforce that in the policysvc (and will),",
-            "but in an abundance of caution, or for lightweight cases that",
-            "don't want a policysvc involved, we restrict that here too." ],
-        "allowed": [ "get", "ext_keytab" ]
+
+    "webapi": {
+        "setup": { "touchfile": "/etc/hcp-kdcsvc-local-setup" },
+        "exec": "/hcp/common/webapi.sh",
+        "tag": "postsetup",
+        "servername": "secondary.kdc.hcphacking.xyz",
+        "port": 9090,
+        "app": "/hcp/kdcsvc/mgmt_api.py",
+        "uwsgi_env": {
+            "HCP_TRACEFILE": "/tmp"
+        },
+        "uwsgi_uid": "www-data",
+        "uwsgi_gid": "www-data"
+    },
+
+    "kdcsvc_TGS": {
+        "setup": { "touchfile": "/etc/hcp-kdcsvc-local-setup" },
+        "env": {
+            "pathadd": {
+                "PATH": "/install-heimdal/libexec:/install-heimdal/bin",
+                "LD_LIBRARY_PATH": "/install-heimdal/lib"
+            }
+        },
+        "exec": "kdc",
+        "args": [ "--config-file=/kdc/etc/kdc.conf" ],
+        "tag": "postsetup"
+    },
+
+    "kdcsvc_iprop_secondary": {
+        "setup": { "touchfile": "/etc/hcp-kdcsvc-local-setup" },
+        "env": {
+            "pathadd": {
+                "PATH": "/install-heimdal/libexec:/install-heimdal/bin",
+                "LD_LIBRARY_PATH": "/install-heimdal/lib"
+            }
+        },
+        "exec": [
+            "kinit",
+            "-C",
+            "FILE:/etc/ssl/hostcerts/hostcert-pkinit-iprop-key.pem",
+            "iprop/secondary.kdc.hcphacking.xyz@HCPHACKING.XYZ",
+            "ipropd-slave"
+        ],
+        "args": [
+            "--config-file=/kdc/etc/kdc.conf",
+            "--no-keytab",
+            "--verbose",
+            "primary.kdc.hcphacking.xyz"
+        ],
+        "tag": "postsetup"
     }
 }

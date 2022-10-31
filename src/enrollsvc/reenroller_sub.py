@@ -8,12 +8,7 @@ import re
 import subprocess
 
 sys.path.insert(1, '/hcp/common')
-import hcp_tracefile
-tfile = hcp_tracefile.tracefile("reenroller")
-sys.stderr = tfile
-from hcp_common import \
-	log, bail, env_get_or_none, dict_val_or, \
-	dict_timedelta, datetime2hint
+from hcp_common import log, bail, datetime2hint, exit2http
 
 sys.path.insert(1, '/hcp/enrollsvc')
 import db_common
@@ -87,8 +82,9 @@ for entry in matches:
 	# In fact, when the process exits and the sudo call returns to the web
 	# API handler, the stdout from the operation provides the return data
 	# (JSON) and the exit code from the process provides the http status
-	# code! (That's why we're checking for '201' below, rather than the
-	# conventional posix '0'.)
+	# code! (Relative to the http2exit/exit2http stuff defined in
+	# common/hcp.sh and common/hcp_common.py. That's why we're checking for
+	# '201' below, rather than the conventional posix '0'.)
 	#
 	# So _that's_ why the python operation is launched as a process, rather
 	# than as a library call. (BTW, the bash demuxer running behind sudo
@@ -99,7 +95,8 @@ for entry in matches:
 			'reenroll', clientjson],
 		stdout = subprocess.PIPE,
 		stderr = subprocess.PIPE)
-	if c.returncode != 201:
+	httpcode = exit2http(c.returncode)
+	if httpcode != 201:
 		log(f"FAILURE: 'reenroll' of '{shorthash}';")
 		log(f" - exitcode: {c.returncode}")
 		log(f" - stdout: {c.stdout}")

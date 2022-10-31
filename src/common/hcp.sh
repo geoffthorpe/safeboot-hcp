@@ -1,15 +1,196 @@
 #!/bin/bash
 
 # For interactive shells, don't "set -e", it can be (more than) mildly
-# inconvenient to have the shell exit every time you run a command that exits
-# with a non-zero status code. It's good discipline for scripts though.
+# inconvenient to have the shell exit any time you run a command that returns a
+# non-zero status code. It's good discipline for scripts though.
 [[ -z $PS1 ]] && set -e
 
-# Always call log(), it'll decide whether to print or not
-log() {
-	if [[ -n $VERBOSE ]]; then
-		echo -E "$1" >&2
+WHOAMI=$(whoami)
+
+hcp_default_log_level=1
+hcp_current_log_level=1
+hcp_current_tracefile=""
+
+hlog() {
+	if [[ $1 -gt $hcp_current_log_level ]]; then
+		return
 	fi
+	whoami=$(whoami)
+	pid=$BASHPID
+	procname=$(ps -p $pid -o comm=)
+	datestr=$(date --utc +%Y-%m-%d-%H)
+	fname="/tmp/debug-$whoami-$datestr-$pid-$procname"
+	if [[ $fname != $hcp_current_tracefile ]]; then
+		echo "[tracefile forking to $fname]" >&2
+		exec 2>> $fname
+		echo "[tracefile forked from $hcp_current_tracefile]" >&2
+		hcp_current_tracefile=fname
+	fi
+	echo -E "$2" >&2
+}
+
+log() {
+	hlog $hcp_default_log_level "$1"
+}
+
+# Our web-handling code (particularly for enrollsvc) relies heavily on
+# processing that executes child processes synchronously. This includes using
+# tpm tools, safeboot scripts, "genprogs", and so forth. Furthermore, the
+# webhandlers are typically running as a low-priv userid to protect the fallout
+# from a successful exploit of anything in that stack (uwsgi, nginx, flask, etc) and
+# they defer "real work" via a curated sudo call to
+# run those tasks as a different non-root user. Throughout this handling, we rely on
+# two assumptions:
+# 1 - if the operation is successful, then the response to the web request is
+#     whatever got written to stdout (typically a JSON-encoding), and
+# 2 - the concept of what "successful" means is conveyed via exit codes, and if
+#     that results in failure then whatever is written to stdout is _not_ sent
+#     to the client. (In this way output can be produced sequentially knowing
+#     that if an error occurs later on the output doesn't need to be
+#     "un-written".)
+# We want to follow the http model, in that 2xx codes represent success, 4xx
+# codes represent request problems, 5xx codes represent server issues, etc.
+# This doesn't map well to the posix conventions for process exit codes. For
+# one, we have more than one success code (we only need 200 and 201, but that's
+# more than one). Also, exit codes are 8-bit, so we can't use the http status
+# codes literally as process exit codes. We use the following conventions
+# instead, and that's why we have the following functions and definitions.
+#
+#   http codes   ->   exit codes   ->   http codes
+#       200               20               200   (most success cases)
+#       201               21               201   (success creating a record)
+#       400               40               400   (malformed input)
+#       401               41               401   (authentication failure)
+#       403               43               403   (authorization failure)
+#       404               44               404   (resource not found)
+#       500               50               500   (misc server failure)
+#       xxx               49               500   (unexpected http code)
+#                          0               200   (posix success, not http-aware)
+#                         xx               500   (unexpected exit code)
+#
+declare -A ahttp2exit=(
+	[200]=20, [201]=21,
+	[400]=40, [401]=41, [403]=43, [404]=44,
+	[500]=50)
+declare -A aexit2http=(
+	[20]=200, [21]=201,
+	[40]=400, [41]=401, [43]=403, [44]=404,
+	[50]=500, [49]=500, [0]=200)
+aahttp2exit="${!ahttp2exit[@]}"
+function http2exit {
+	val=""
+	for key in $aahttp2exit; do
+		if [[ $1 == $key ]]; then
+			val=${ahttp2exit[$key]}
+			break
+		fi
+	done
+	if [[ -n $val ]]; then
+		echo $val
+		return
+	fi
+	echo 49
+}
+aaexit2http="${!aexit2http[@]}"
+function exit2http {
+	val=""
+	for key in $aaexit2http; do
+		if [[ $1 == $key ]]; then
+			val=${aexit2http[$key]}
+			break
+		fi
+	done
+	if [[ -n $val ]]; then
+		echo $val
+		return
+	fi
+	echo 500
+}
+
+# Until all the relevant code can migrate from bash to python, we need some
+# equivalent functionality. This mimics the "hcp_config_*" functions in
+# hcp_common.py.
+function normalize_path {
+	if [[ $1 =~ ^\. ]]; then
+		mypath=$1
+	else
+		mypath=".$1"
+	fi
+	echo "$mypath"
+}
+function hcp_config_scope_set {
+	mypath=$(normalize_path "$1")
+	log "hcp_config_scope_set: $mypath"
+	# Deliberately fail (ie. don't proceed) if mypath doesn't exist.
+	cat "$HCP_CONFIG_FILE" | jq -r "$mypath" > /dev/null 2>&1
+	export HCP_CONFIG_SCOPE=$mypath
+}
+function hcp_config_scope_get {
+	log "hcp_config_scope_get: $HCP_CONFIG_SCOPE"
+	# If HCP_CONFIG_SCOPE isn't set, it's possible we're the first context
+	# started. In which case the world we're given is supposed to be our
+	# starting context, in which case our initial region is ".".
+	if [[ ! -n $HCP_CONFIG_SCOPE ]]; then
+		# OTOH, if HCP_CONFIG_FILE isn't set _either_, the only legit
+		# explanation is that privileges have been dropped or switched
+		# and we're coming up as a regular user and need to find
+		# context. In this case, we assume we have a home-dir and our
+		# context is in it. (See internal_role_account_uid_file.)
+		if [[ ! -n $HCP_CONFIG_FILE ]]; then
+			if [[ $WHOAMI == root ]]; then
+				echo "Error, no HCP_CONFIG_FILE set" >&2
+				exit 1
+			fi
+			if [[ ! -d "/home/$WHOAMI" ]]; then
+				echo "Error, HCP_CONFIG_FILE from /home/$WHOAMI not possible" >&2
+				exit 1
+			fi
+			export HCP_CONFIG_FILE=/home/$WHOAMI/hcp_config_file
+			export HCP_CONFIG_SCOPE=$(cat /home/$WHOAMI/hcp_config_scope)
+			log "hcp_config_scope_get: loading from $HOME;"
+			log "- HCP_CONFIG_FILE=$HCP_CONFIG_FILE"
+			log "- HCP_CONFIG_SCOPE=$HCP_CONFIG_SCOPE"
+		else
+			log "hcp_config_scope_get: setting default scope '.'"
+			hcp_config_scope_set "."
+		fi
+	fi
+	log "hcp_config_scope_get: returning $HCP_CONFIG_SCOPE"
+	echo $HCP_CONFIG_SCOPE
+}
+# We want to trigger the lazy-initialization of hcp_config_scope_get() on first
+# use of the API, but not before (we don't want to do it at all in those cases
+# where the API is unused). If the first API call is hcp_config_scope_get()
+# itself, problem self-solved, otherwise we just call it quietly at the start
+# of APIs to get the desired behavior.
+function hcp_config_scope_shrink {
+	hcp_config_scope_get > /dev/null
+	mypath=$(normalize_path "$1")
+	if [[ $HCP_CONFIG_SCOPE != "." ]]; then
+		mypath="$HCP_CONFIG_SCOPE$mypath"
+	fi
+	hcp_config_scope_set "$mypath"
+}
+function hcp_config_extract {
+	hcp_config_scope_get > /dev/null
+	mypath=$(normalize_path "$1")
+	result=$(cat "$HCP_CONFIG_FILE" | jq -r "$HCP_CONFIG_SCOPE" | jq -r "$mypath")
+	log "hcp_config_extract: $HCP_CONFIG_FILE,$HCP_CONFIG_SCOPE,$mypath"
+	echo "$result"
+}
+function hcp_config_extract_or {
+	hcp_config_scope_get > /dev/null
+	# We need a string that will never occur and yet contains no odd
+	# characters that will screw up 'jq'. Thankfully this is just a
+	# temporary thing until bash->python is complete.
+	s="astringthatneveroccursever"
+	mypath=$(normalize_path "$1")
+	result=$(cat "$HCP_CONFIG_FILE" | jq -r "$HCP_CONFIG_SCOPE" | jq -r "$mypath // \"$s\"")
+	if [[ $result == $s ]]; then
+		result=$2
+	fi
+	log "hcp_config_extract_or: $HCP_CONFIG_FILE,$HCP_CONFIG_SCOPE,$mypath,$2"
+	echo "$result"
 }
 
 function add_env_path {
@@ -43,10 +224,6 @@ function add_install_path {
 
 }
 
-for i in $(find / -maxdepth 1 -mindepth 1 -type d -name "install-*"); do
-	add_install_path "$i"
-done
-
 function source_safeboot_functions {
 	if [[ ! -f /install-safeboot/functions.sh ]]; then
 		echo "Error, Safeboot 'functions.sh' isn't installed"
@@ -64,38 +241,60 @@ function export_hcp_env {
 		sed -e "s/\"/\\\"/" | sed -e "s/=/=\"/" | sed -e "s/$/\"/"
 }
 
-# Load instance-specific environment settings based on the HCP_INSTANCE
-# environment variable. Ie. when starting the container, if HCP_INSTANCE is set
-# then we source the file it points to (and if there is a common.env in the
-# same directory, we source that too).
-if [[ -n $HCP_INSTANCE ]]; then
-	log "HCP: processing HCP_INSTANCE=$HCP_INSTANCE"
-	if [[ ! -f $HCP_INSTANCE ]]; then
-		echo "Error, $HCP_INSTANCE not found" >&2
-		return 1
-	fi
-	HCP_LAUNCH_DIR=$(dirname "$HCP_INSTANCE")
-	HCP_LAUNCH_ENV=$(basename "$HCP_INSTANCE")
-	if [[ -f "$HCP_LAUNCH_DIR/common.env" ]]; then
-		log "HCP: source common.env"
-		source "$HCP_LAUNCH_DIR/common.env"
-	fi
-	log "HCP: source $HCP_LAUNCH_ENV"
-	source "$HCP_LAUNCH_DIR/$HCP_LAUNCH_ENV"
-else
-	log "HCP: no HCP_INSTANCE"
-fi
-
 # The following is flexible support for (re)creating a role account with an
-# associated UID file, which is typically in persistent storage. It generalises
-# to cases with a single container or multiple distinct containers, using the
-# same persistent storage, that need to have an agreed-upon account and UID.
-# When the UID file hasn't yet been created, the first caller will create the
-# account with a dynamically assigned UID, then print that into the UID file,
-# so that subsequent callers (if in distinct containers) can create the same
-# account with the same UID. If a container restarts and no longer has the
-# account locally, it will do likewise - recreate the account with the UID from
-# the UID file.
+# associated UID file, which is typically in persistent storage. A couple of
+# key points need to be noted.
+# 1. any non-root UIDs in persistent storage can't/shouldn't change over time,
+# and this persistent storage may be mounted and used by multiple containers,
+# and yet user accounts are innately local to a container and susceptible to
+# disappearing across reboots/upgrades. (/home, /etc/{passwd,groups}, etc.)
+# 2. as these accounts are specific to the service/usecase being run, then it
+# can be handy to statically record configuration-related context (ie.
+# HCP_CONFIG_FILE, HCP_CONFIG_SCOPE) in the created home directory. Why? I'm
+# glad you asked. Because this means that we can cross privilege-separation
+# boundaries (eg. purpose-specific sudo rules) without the callee having to
+# take and trust environment variables or other config/context from the caller.
+# This is because the callee can load it from a known-good copy we baked into
+# its home directory. (Eg. purpose-specific sudo rules can limit what gets run
+# and prevent any leakage of environment across such calls by resetting it
+# completely. The 'enrollsvc' service does this to priv-sep between the webapi
+# and the credential-issuance logic, in order to limit the damage that might
+# result from a vulnerability in the web stack.)
+#
+# Regarding (1), this function should get called in two different situations;
+# (a) when persistent state is first setup, and (b) when each container (that
+# mounts this state) starts up. Why? Glad you asked. In the (a) case, the
+# function notices the absence of the corresponding "UID file" in persistent
+# state, so it creates the requested user account with whatever UID the local
+# OS chooses and creates the UID file with that newly-created user as its
+# owner. In the (b) case, note that user accounts are "local" to their
+# container and rootfs, so each container needs to independently create the
+# user in its own rootfs, and a container update/restart can also be enough to
+# clean out the rootfs, so each time the container starts up may require the
+# account to be recreated. In this case however, the UID file will already
+# exist, so the function will be trying to recreate the account using the UID
+# that owns the file, rather than having the OS choose one.
+#
+# Regarding 2, the "hcp_config_*" functions handle the configuration input,
+# which is JSON-based and hierarchical, and at any point in time is
+# characterised by two environment variables;
+# - $HCP_CONFIG_FILE is the path to a JSON file, and it was probably passed
+#   down to us from a high-layer entity, which may itself have been using the
+#   same JSON file for its own configuration (but at a higher scope). In some
+#   code, this file is called the "world".
+# - $HCP_CONFIG_SCOPE is a jq-style, '.'-separated path into the JSON data that
+#   tells us where our configuration data is found. (This gives us our current
+#   "region" within the "world".)
+# Whenever this function creates a user account, it writes the current
+# HCP_CONFIG_FILE/HCP_CONFIG_SCOPE to 'hcp_config_file' and 'hcp_config_scope'
+# files (respectively) in the new home directory. Later, if this file is
+# sourced by a process that's running as that user, and if the HCP_CONFIG_FILE
+# and HCP_CONFIG_SCOPE variables haven't already been provided, then it will
+# detect and load those hcp_config_{file,scope} files to restore both
+# variables. As such, processes started as this user will, by default, have
+# their world (and region) be the same as they were the moment their home
+# account was created.
+#
 # NB: because of adduser's semantics, this function doesn't like to race
 # against multiple calls of itself. (Collisions and conflicts on creation of
 # groups, etc.) So we use a very crude mutex, based on 'mkdir'.
@@ -118,11 +317,16 @@ function role_account_uid_file {
 	return $retval
 }
 function internal_role_account_uid_file {
+	log "internal_role_account_uid_file: 1=$1, 2=$2, 3=$3"
+	homedir=/home/$1
 	if [[ ! -f $2 ]]; then
-		if ! egrep "^$1:" /etc/passwd; then
+		log "- no UID file"
+		if ! egrep "^$1:" /etc/passwd > /dev/null 2>&1; then
+			log "- no local account, creating with dynamic UID"
 			err_adduser=$(mktemp)
 			echo "Creating '$1' role account" >&2
 			if ! adduser --disabled-password --quiet \
+					--home $homedir \
 					--gecos "$3" $1 > $err_adduser 2>&1 ; then
 				echo "Error, couldn't create '$1'" >&2
 				cat $err_adduser >&2
@@ -130,21 +334,38 @@ function internal_role_account_uid_file {
 				exit 1
 			fi
 			rm $err_adduser
+		else
+			log "- have local account (BUG: shouldn't happen?!)"
 		fi
 		echo "Generating '$1' UID file ($2)"
 		touch $2
 		chown $1 $2
 	else
+		log "- have UID file"
 		ENROLLSVC_UID_FLASK=$(stat -c '%u' $2)
-		if ! egrep "^$1:" /etc/passwd; then
+		if ! egrep "^$1:" /etc/passwd > /dev/null 2>&1; then
+			log "- no local account, creating with UID=$ENROLLSVC_UID_FLASK"
 			echo "Recreating '$1' role account with UID=$ENROLLSVC_UID_FLASK" >&2
 			if ! adduser --disabled-password --quiet \
+					--home $homedir \
 					--uid $ENROLLSVC_UID_FLASK \
 					--gecos "$3" $1 > /dev/null 2>&1 ; then
 				echo "Error, couldn't recreate '$1'" >&2
 				exit 1
 			fi
+		else
+			log "- have local account"
 		fi
+	fi
+	# Bake the current world/region into the new home directory, when this
+	# file gets sourced later as the new user, these will be what we
+	# restore from if we don't yet know what world/region we're in.
+	if [[ ! -f $homedir/hcp_config_file ]]; then
+		log "- setting $HOME/hcp_config_{file,scope} to $HCP_CONFIG_FILE,$HCP_CONFIG_SCOPE"
+		cat $HCP_CONFIG_FILE > $homedir/hcp_config_file
+		echo "$HCP_CONFIG_SCOPE" > $homedir/hcp_config_scope
+		chown $1 $homedir/hcp_config_file
+		chown $1 $homedir/hcp_config_scope
 	fi
 }
 
@@ -206,3 +427,12 @@ function dict_timedelta {
 	val=$((val + $(get_element "seconds")))
 	echo "$val"
 }
+
+# The above stuff (apart from "set -e") is all function-definition, here we
+# actually _do_ something when you source this file.
+# TODO: this should be removed, and instead we should consume 'env' properties
+# from the configuration.
+
+for i in $(find / -maxdepth 1 -mindepth 1 -type d -name "install-*"); do
+	add_install_path "$i"
+done

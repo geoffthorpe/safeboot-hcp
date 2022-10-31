@@ -1,0 +1,58 @@
+{
+    "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
+
+    "services": [
+        "fqdn_updater",
+        "attestsvc",
+        "replication_client"
+    ],
+    "default": [
+        "start-presetup",
+        "setup-global",
+        "setup-local",
+        "start-postsetup"
+    ],
+
+    "fqdn_updater": {
+        "exec": "/hcp/common/fqdn_updater.py",
+        "until": "/etc/hcp-fqdn-alive",
+        "nowait": 1,
+        "tag": "presetup",
+        "path": "/fqdn-bus",
+        "refresh": 5,
+        "expiry": 20,
+        "hostnames": [ "arepl" ],
+        "default_domain": "hcphacking.xyz",
+        "bad_address": "100.100.100.100"
+    },
+
+    "attestsvc": {
+        "setup": [ {
+                "tag": "global",
+                "exec": "/hcp/attestsvc/setup_global.sh",
+                "touchfile": "/attestdb/initialized"
+            }, {
+                "tag": "local",
+                "exec": "/hcp/attestsvc/setup_local.sh",
+                "touchfile": "/etc/hcp-attestsvc-local-setup"
+            } ],
+        "state": "/attestdb",
+        "dbuser": {
+            "handle": "/attestdb/uid-dbuser",
+            "id": "auser"
+        },
+        "webuser": {
+            "handle": "/attestdb/uid-webuser",
+            "id": "ahcpflask"
+        },
+        "enrollsvc": "git://erepl.hcphacking.xyz/enrolldb"
+    },
+
+    "replication_client": {
+        "setup": { "touchfile": "/etc/hcp-attestsvc-local-setup" },
+        "exec": "/hcp/attestsvc/updater_loop.sh",
+        "tag": "postsetup",
+        "uid": "auser",
+	"period": 2
+    }
+}

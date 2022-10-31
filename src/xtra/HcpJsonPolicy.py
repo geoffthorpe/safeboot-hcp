@@ -277,16 +277,18 @@ import os
 from HcpJsonPath import valid_path_node, valid_path, path_pop_node, \
 		extract_path, overwrite_path, delete_path, HcpJsonPathError
 from HcpRecursiveUnion import union
-import HcpEnvExpander
+import HcpJsonExpander
 
 class HcpJsonPolicyError(Exception):
 	pass
 
 # This is noisy even for autopurged debugging logs. You'll probably only want
 # to enable this if you have a unit test that reproduces your problem.
+import sys
 if 'HCP_POLICYSVC_DEBUG' in os.environ:
 	def log(s):
-		print(s)
+		print(s, file = sys.stderr)
+		sys.stderr.flush()
 else:
 	def log(s):
 		pass
@@ -359,7 +361,7 @@ def run_exist(c, x, n, data):
 	log(f"FUNC run_exist ending; {ok}")
 	return ok
 def run_equal(c, x, n, data):
-	log("FUNC run_equal starting; {c},{x},{n}")
+	log(f"FUNC run_equal starting; {c},{x},{n}")
 	path = c[n]
 	ok, data = extract_path(data, path)
 	if not ok:
@@ -395,7 +397,7 @@ def run_elementof(c, x, n, data):
 	log(f"FUNC run_elementof ending; {ok}")
 	return ok
 def run_contains(c, x, n, data):
-	log("FUNC run_contains starting; {c},{x},{n}")
+	log(f"FUNC run_contains starting; {c},{x},{n}")
 	path = c[n]
 	ok, data = extract_path(data, path)
 	if not ok:
@@ -761,8 +763,8 @@ def parse_filter(key, value, output_filters):
 # Return a policy object that we can trust, which is parsed and sanity-checked
 # from a JSON encoding. This will throw HcpJsonPolicyError if we find a
 # problem, otherwise JSONDecodingError if the JSON decoder hits something.
-def loads(jsonstr):
-	log(f"FUNC loads starting")
+def parse(jsonstr):
+	log(f"FUNC parse starting")
 	policy = json.loads(jsonstr)
 	log(f"input policy = {policy}")
 	if not isinstance(policy, dict):
@@ -810,17 +812,17 @@ def loads(jsonstr):
 	# optimizes the policy - eg. by replacing text condition names
 	# ("exist", "not-equal", etc) with the functions that implement them.
 	check_policy(policy)
-	log(f"FUNC loads ending; {policy}")
+	log(f"FUNC parse ending; {policy}")
 	return policy
-
-def load(jsonpath):
-	return loads(open(jsonpath, "r").read())
 
 # Pass the JSON data through the fully-formed policy object.
 def run_sub(filters, cursor, data):
-	log(f"FUNC run_sub starting; {cursor}")
+	log(f"FUNC run_sub starting")
+	log(f"filters={json.dumps(filters)}")
 	while True:
+		log(f"cursor={cursor}")
 		f = filters[cursor]
+		log(f"filter={json.dumps(f)}")
 		action = f['action']
 		name = f['name']
 		log(f"name={name}, action={action}")
@@ -870,7 +872,7 @@ def run_sub(filters, cursor, data):
 				log(f"{x}: call: got a decision back, passing it along")
 				log(f"FUNC run_sub ending; {suboutput}")
 				return suboutput
-			log("{x}: call: no decision yet")
+			log(f"{x}: call: no decision yet")
 			if 'on-return' in f:
 				action = f['on-return']
 				log(f"{x}: on-return: -> {action}")
@@ -886,7 +888,7 @@ def run_sub(filters, cursor, data):
 			if 'next' not in f:
 				raise HcpJsonPolicyError(f"{x}: {next}: missing")
 			cursor = f['next']
-			log(f"[x]: next: -> {cursor}")
+			log(f"{x}: next: -> {cursor}")
 			continue
 		if action not in accrej:
 			raise HcpJsonPolicyError(
@@ -897,10 +899,42 @@ def run_sub(filters, cursor, data):
 			'last_filter': name,
 			'reason': 'Filter match'
 		}
-# If debugging is enabled, run_with_env() and run() both dump a lot of data, so
-# we make them both wrappers of __run(), rather than one being a wrapper of the
-# other.
-def __run(policy, data):
+
+# if 'dataUseVars' is set True, parameter expansion will be performed on 'data'
+# and 'policy' before filtering occurs, using variables found in 'data' (at the
+# field identified by 'dataVarsKey'). In this case, those parameter-expansion
+# vars are removed from of 'data' before transforming 'data' and 'policy. If
+# 'dataKeepsVars' is True, the variables will be added back to the 'data'
+# structure once expansion is done.
+def run(policyjson, data, stripComments = True,
+		dataUseVars = True,
+		dataVarsKey = '__env',
+		dataKeepsVars = False):
+	log(f"FUNC run starting")
+	log(f"- stripComments={stripComments}")
+	log(f"- dataUseVars={dataUseVars}")
+	log(f"- dataVarsKey={dataVarsKey}")
+	log(f"- dataKeepsVars={dataKeepsVars}")
+	log(f"- policyjson={policyjson}")
+	log(f"- data(JSON)={json.dumps(data)}")
+	# Serialize and deserialize the hierarchical 'data' object to be sure
+	# that parameter expansion doesn't have any side-effect beyond this
+	# call. Also, we take a string 'policyjson' input to emphasize that the
+	# user shouldn't have used our 'parse' method yet, because that
+	# post-processes the json.loads() output and we want that to occur
+	# _after_ parameter-expansion, not before.
+	data = json.loads(json.dumps(data))
+	policy = parse(policyjson)
+	if stripComments:
+		log("running strip_comments() on policy and data")
+		strip_comments(policy)
+		strip_comments(data)
+	if dataUseVars:
+		_vars = data.pop(dataVarsKey, {})
+		data = HcpJsonExpander.process_obj(_vars, data)
+		if dataKeepsVars:
+			data[dataVarsKey] = _vars
+		policy = HcpJsonExpander.process_obj(_vars, policy)
 	output = run_sub(policy['filters'], policy['start'], data)
 	if not output:
 		log("setting default output (run_sub returned 'None')")
@@ -909,55 +943,5 @@ def __run(policy, data):
 			'last_filter': None,
 			'reason': 'Default filter action'
 		}
-	return output
-def run(policy, data, stripComments = True):
-	log(f"FUNC run starting; {stripComments}")
-	if stripComments:
-		log("running strip_comments() on policy and data")
-		strip_comments(policy)
-		strip_comments(data)
-	log(f"policy={policy},data={data}")
-	output = __run(policy, data)
 	log(f"FUNC run ending; {output}")
-	return output
-
-# Wrapper function to deal with input that has embedded '__env'. That "env" is
-# decoded and fully self-expanded, then it is used to expand both the input and
-# the policy, after which the policy is run. The "env" section is removed from
-# the input before it undergoes expansion and policy filtering. If the
-# fully-self-expanded "env" should be in the data that undergoes policy
-# filtering, set 'includeEnv=True'. Expansion requires string (JSON)
-# representation, so this wrapper consumes unparsed string inputs rather than
-# python structs.
-def run_with_env(policyjson, datajson, includeEnv = False,
-		stripComments = True):
-	log(f"FUNC run_with_env starting; {includeEnv}, {stripComments}")
-	data = json.loads(datajson)
-	policy = json.loads(policyjson)
-	if stripComments:
-		log("running strip_comments() on policy and data")
-		strip_comments(policy)
-		strip_comments(data)
-	log(f"policy={policy},data={data}")
-	log("separating '__env' from data")
-	env = data.pop('__env', {})
-	HcpEnvExpander.env_check(env)
-	envjson, env = HcpEnvExpander.env_selfexpand(env)
-	log(f"expanded 'env' = {env}")
-	# Convert __env-less (and stripped) data back to a JSON string so it's
-	# ready for expansion
-	datajson = json.dumps(data)
-	datajson = HcpEnvExpander.env_expand(datajson, env)
-	data = json.loads(datajson)
-	log(f"expanded 'data' (without env) = {data}")
-	# Convert stripped policy back to JSON for expansion
-	policyjson = json.dumps(policy)
-	policyjson = HcpEnvExpander.env_expand(policyjson, env)
-	policy = loads(policyjson)
-	log(f"expanded 'policy' = {policy}")
-	if includeEnv:
-		log("putting '__env' back into data")
-		data['__env'] = env
-	output = __run(policy, data)
-	log(f"FUNC run_with_env ending; {output}")
 	return output

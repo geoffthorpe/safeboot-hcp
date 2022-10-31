@@ -5,6 +5,7 @@ if [[ -n $HCP_CABOODLE_ALONE ]]; then
 # Normal service containers have mounts for persistent storage and
 # inter-container comms, which implicitly creates those paths as they're
 # mounted. For caboodle though, we need to create them directly.
+mkdir -p /enrolldb
 mkdir -p $(show_hcp_env | egrep "_STATE=\/" | sed -e "s/^.*_STATE=//" | uniq)
 mkdir -p $(show_hcp_env | egrep "_SOCKDIR=\/" | sed -e "s/^.*_SOCKDIR=//" | uniq)
 
@@ -13,7 +14,7 @@ mkdir -p $(show_hcp_env | egrep "_SOCKDIR=\/" | sed -e "s/^.*_SOCKDIR=//" | uniq
 # logic from src/enrollsvc/common.sh).
 role_account_uid_file \
 	$HCP_EUSER_DB \
-	$HCP_EMGMT_STATE/uid_db_user \
+	/enrolldb/uid_db_user \
 	"EnrollDB User,,,,"
 
 # We don't consume testcreds created by the host and mounted in, we spin up our
@@ -47,14 +48,14 @@ if [[ ! -f /enrollcertchecker/CA.cert ]]; then
 	echo "Generating: Enrollment certificate verifier (CA)"
 	cp "/enrollcertissuer/CA.cert" /enrollcertchecker/
 fi
-if [[ ! -f $HCP_EMGMT_NGINX_CERT/server.pem ]]; then
+if [[ ! -f /enrollserver/server.pem ]]; then
 	echo "Generating: Enrollment server certificate"
 	hxtool issue-certificate \
 		--ca-certificate="FILE:/enrollcertissuer/CA.pem" \
 		--type=https-server \
 		--hostname=emgmt.hcphacking.xyz \
 		--generate-key=rsa --key-bits=2048 \
-		--certificate="FILE:$HCP_EMGMT_NGINX_CERT/server.pem"
+		--certificate="FILE:/enrollserver/server.pem"
 fi
 if [[ ! -f /enrollclient/client.pem ]]; then
 	echo "Generating: Enrollment client certificate"

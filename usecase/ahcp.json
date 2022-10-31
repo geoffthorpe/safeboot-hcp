@@ -1,0 +1,67 @@
+{
+    "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
+
+    "services": [
+        "fqdn_updater",
+        "attestsvc",
+        "webapi"
+    ],
+    "default": [
+        "start-presetup",
+        "setup-local",
+        "start-postsetup"
+    ],
+
+    "fqdn_updater": {
+        "exec": "/hcp/common/fqdn_updater.py",
+        "until": "/etc/hcp-fqdn-alive",
+        "nowait": 1,
+        "tag": "presetup",
+        "path": "/fqdn-bus",
+        "refresh": 5,
+        "expiry": 20,
+        "hostnames": [ "ahcp" ],
+        "default_domain": "hcphacking.xyz"
+    },
+
+    "attestsvc": {
+        "setup": [ {
+                "touchfile": "/attestdb/initialized"
+            }, {
+                "tag": "local",
+                "exec": "/hcp/attestsvc/setup_local.sh",
+                "touchfile": "/etc/hcp-attestsvc-local-setup"
+            } ],
+        "state": "/attestdb",
+        "dbuser": {
+            "handle": "/attestdb/uid-dbuser",
+            "id": "auser"
+        },
+        "webuser": {
+            "handle": "/attestdb/uid-webuser",
+            "id": "ahcpflask"
+        },
+        "enrollsvc": "git://erepl.hcphacking.xyz/enrolldb"
+    },
+
+    "webapi": {
+        "_": [
+            "The 'env' entries 'DIR', 'BINDIR', 'SAFEBOOT_DB_DIR' are to",
+            "support the safeboot scripts that can run underneath us." ],
+        "setup": { "touchfile": "/etc/hcp-attestsvc-local-setup" },
+        "exec": "/hcp/common/webapi.sh",
+        "tag": "postsetup",
+        "servername": "ahcp.hcphacking.xyz",
+        "port": 8080,
+        "app": "/hcp/attestsvc/hcp_api.py",
+        "uwsgi_env": {
+            "HOME": "/home/ahcpflask",
+            "HCP_TRACEFILE": "/home/ahcpflask",
+            "DIR": "/install-safeboot",
+            "BINDIR": "/install-safeboot",
+            "SAFEBOOT_DB_DIR": "/attestdb/db/current"
+        },
+        "uwsgi_uid": "ahcpflask",
+        "uwsgi_gid": "www-data"
+    }
+}

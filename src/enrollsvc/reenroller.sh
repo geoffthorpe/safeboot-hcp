@@ -1,35 +1,16 @@
 #!/bin/bash
 
-# The reenroller runs with dropped privs so it loses the caller's environment
-# and needs to pick it up again from this common.sh. It's "difficult" for a
-# python script to source a bash one, so this stub exists to source common.sh
-# and then run the python reenrollment code. And seeing as we have a bash
-# script to kick things off, we'll also have it do the outer loop, so that the
-# python reenrollment code only needs to implement a single pass and doesn't
-# need to retain any state over time. (So no issues with reloading
-# configuration, log rotation, restartability, ...)
+# The reenroller runs with dropped privs.
+# Here, we do the outer loop, so that the actual reenrollment code
+# (reenroller_sub.py) implements just a single pass and doesn't need to retain
+# any state.
 
 source /hcp/enrollsvc/common.sh
 
 expect_db_user
 
-# When we finally get rid of our dependence on env-vars for startup (and
-# base everything off the JSON input instead), this bash script and a few
-# others could be converted to python, in which case we'd use hcp_tracefile
-# and add a bunch of debug-logging about the JSON processing. But for now,
-# especially given that our stderr is the top-level/console stderr, we
-# stay relatively quiet.
-
-if [[ -z $HCP_ENROLLSVC_JSON || ! -f $HCP_ENROLLSVC_JSON ]]; then
-	echo "Error, reenroller has no HCP_ENROLLSVC_JSON" >&2
-	exit 1
-fi
-jsonpath=$HCP_ENROLLSVC_JSON
-
-# We're bash, not python, so we can't use hcp_common.py::dict_timedelta.
-# We use hcp.sh::dict_timedelta instead.
-jperiod=$(jq -r '.reenroller.period // {}' $jsonpath)
-jretry=$(jq -r '.reenroller.retry // {}' $jsonpath)
+jperiod=$(hcp_config_extract '.reenroller.period')
+jretry=$(hcp_config_extract '.reenroller.retry')
 
 S_OK=$(dict_timedelta "$jperiod")
 S_ERR=$(dict_timedelta "$jretry")

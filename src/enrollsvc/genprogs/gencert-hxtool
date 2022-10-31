@@ -8,10 +8,8 @@ import json
 from pathlib import Path
 
 sys.path.insert(1, '/hcp/common')
-import hcp_tracefile
-tfile = hcp_tracefile.tracefile("gencert-hxtool")
-sys.stderr = tfile
-from hcp_common import log, bail, dict_val_or, dict_pop_or, env_get, env_get_or_none
+from hcp_common import log, bail, current_tracefile, \
+		dict_val_or, dict_pop_or, env_get, env_get_or_none
 
 sys.path.insert(1, '/hcp/xtra')
 from HcpRecursiveUnion import union
@@ -101,7 +99,7 @@ for asset in certlist:
 	log(f" - running hxtool command;")
 	result = subprocess.run(cmd, cwd = output_dir, text = True,
 				stdout = subprocess.PIPE,
-				stderr = tfile)
+				stderr = current_tracefile)
 	log(f" - result={result}")
 	if result.returncode != 0:
 		bail(f"hxtool command failed {result.returncode}: {cmd}")
@@ -114,7 +112,7 @@ for asset in certlist:
 	log(f" - running {cmd};")
 	result = subprocess.run(cmd, cwd = output_dir, text = True,
 				stdout = subprocess.PIPE,
-				stderr = tfile)
+				stderr = current_tracefile)
 	if result.returncode != 0:
 		bail(f"openssl command for cert {result.returncode}: {cmd}")
 
@@ -126,7 +124,7 @@ for asset in certlist:
 	log(f" - running {cmd};")
 	result = subprocess.run(cmd, cwd = output_dir, text = True,
 				stdout = subprocess.PIPE,
-				stderr = tfile)
+				stderr = current_tracefile)
 	if result.returncode != 0:
 		bail(f"openssl command for issuer failed {result.returncode}: {cmd}")
 

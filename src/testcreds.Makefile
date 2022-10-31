@@ -10,16 +10,16 @@ MDIRS += $(HCP_TESTCREDS_OUT)
 HCP_TESTCREDS_DOCKER_RUN := \
 	docker run -i --rm --init --label $(HCP_IMAGE_PREFIX)all=1 \
 	--mount type=bind,source=$(HCP_TESTCREDS_OUT),destination=/testcreds \
-	$(call HCP_IMAGE,common) \
+	$(call HCP_IMAGE,precommon) \
 	bash -c
 
 # A pre-requisite for all assets is the "reference" file. This gets used as the
 # "--reference" argument to chown commands, to ensure that all files created
 # within the containers have the expected file-system ownership on the
-# host-side. It also, encapsulates the dependencies on $(HCP_OUT) being created
-# and the hcp_common image being built.
+# host-side. It also encapsulates the dependencies on output directories being
+# created and the hcp_precommon image being built.
 $(HCP_TESTCREDS_OUT)/reference: | $(HCP_TESTCREDS_OUT)
-$(HCP_TESTCREDS_OUT)/reference: | $(HCP_common_TFILE)
+$(HCP_TESTCREDS_OUT)/reference: | $(HCP_precommon_TFILE)
 $(HCP_TESTCREDS_OUT)/reference:
 	$Qecho "Unused file" > "$@"
 

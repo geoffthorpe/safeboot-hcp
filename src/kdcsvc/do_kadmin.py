@@ -9,21 +9,13 @@ import requests
 from uuid import uuid4
 
 sys.path.insert(1, '/hcp/common')
-to_trace = 'HCP_NO_TRACE' not in os.environ
-if to_trace:
-	from hcp_tracefile import tracefile
-	tfile = tracefile(f"kdcsvc_kadmin")
-	sys.stderr = tfile
-else:
-	tfile = sys.stderr
-import hcp_common
-log = hcp_common.log
-bail = hcp_common.bail
+from hcp_common import log, bail, current_tracefile, \
+		http2exit, exit2http, hcp_config_extract
 
 sys.path.insert(1, '/hcp/xtra')
 
 from HcpRecursiveUnion import union
-import HcpEnvExpander
+import HcpJsonExpander
 
 # Usage:
 # do_kadmin.py <cmd> <principals_list> <clientprofile>
@@ -46,10 +38,7 @@ mylog("\n" +
 
 # Load the server's config and extract the "preclient" and "postclient"
 # profiles. Let exceptions do our error-checking.
-serverprofile = {}
-if 'HCP_KDC_JSON' in os.environ:
-	configpath = os.environ['HCP_KDC_JSON']
-	serverprofile = json.load(open(configpath, 'r'))
+serverprofile = hcp_config_extract('.kdcsvc.kadmin', must_exist = True)
 serverprofile_pre = serverprofile.pop('preclient', {})
 serverprofile_post = serverprofile.pop('postclient', {})
 
@@ -68,11 +57,9 @@ mylog(f"client-adjusted resultprofile={resultprofile}")
 # to the merged and expanded profile _for the requested command_. Note that this includes
 # any "<common>" underlay and the merged environment attached as "__env".
 origenv = resultprofile.pop('__env', {})
-data_no_env = json.dumps(resultprofile)
-HcpEnvExpander.env_check(origenv)
-envjson, env = HcpEnvExpander.env_selfexpand(origenv)
-data_no_env = HcpEnvExpander.env_expand(data_no_env, env)
-resultprofile = json.loads(data_no_env)
+resultprofile = HcpJsonExpander.process_obj(origenv, resultprofile, '.',
+					varskey = None, fileskey = None)
+
 # So far, we've followed the enrollsvc example. Here add kdcsvc's own handling
 # of <common> and the extracting of the commands-specific subsection.
 commonprofile = resultprofile.pop('<common>', {})
@@ -88,7 +75,7 @@ mylog(f"param-expanded resultprofle={resultprofile}")
 # the only parameter not passed outside the profile) _into_ the profile.
 if 'realm' not in resultprofile[cmd]:
 	mylog(f"'realm' not in the profile")
-	sys.exit(500)
+	sys.exit(http2exit(500))
 realm = resultprofile[cmd]['realm']
 principals_list = json.loads(principals_json)
 resultprofile[cmd]['principals'] = principals_list
@@ -100,8 +87,8 @@ mylog(f"principals_list={principals_list}")
 if 'allowed' in resultprofile:
 	if cmd not in resultprofile['allowed']:
 		mylog(f"command {cmd} is not in the profile's 'allowed' list")
-		sys.exit(403)
-policy_url = hcp_common.env_get_or_none('HCP_KDC_POLICY')
+		sys.exit(http2exit(403))
+policy_url = hcp_config_extract('.kdcsvc.policy_url', must_exist = True)
 if policy_url:
 	uuid = uuid4().urn
 	os.environ['HCP_REQUEST_UID'] = uuid
@@ -115,7 +102,7 @@ if policy_url:
 	mylog(f"policy response={response}")
 	if response.status_code != 200:
 		mylog(f"policy-checker refused operation: {response.status_code}")
-		sys.exit(403)
+		sys.exit(http2exit(403))
 
 # Automatically suffix all the requested principals with the requested realm
 realm_suffix = f"@{realm}"
@@ -124,7 +111,8 @@ mylog(f"principals_args={principals_args}")
 # Verbosity is an option
 verbose = 'verbose' in clientdata and clientdata['verbose']
 
-args = [ 'kadmin', f"--config-file={os.environ['HCP_KDC_STATE']}/etc/kdc.conf",
+kdcstate = hcp_config_extract('.kdcsvc.state', must_exist = True)
+args = [ 'kadmin', f"--config-file={kdcstate}/etc/kdc.conf",
 		'-l', cmd ]
 
 def run_subprocess(cmd_args, base64wrap = None):
@@ -134,25 +122,28 @@ def run_subprocess(cmd_args, base64wrap = None):
 			all_args = args + [ base64wrap, tf ] + cmd_args
 			mylog(f"running: {all_args}")
 			c = subprocess.run(all_args,
-				stdout = subprocess.PIPE, stderr = tfile,
+				stdout = subprocess.PIPE,
+				stderr = current_tracefile,
 				text = True)
 			if c.returncode != 0:
 				mylog(f"FAIL, exitcode={c.returncode}")
-				sys.exit(500)
+				sys.exit(http2exit(500))
 			b64args = ['base64', '--wrap=0', tf]
 			mylog(f"running: {b64args}")
 			c = subprocess.run(b64args,
-				stdout = subprocess.PIPE, stderr = tfile,
+				stdout = subprocess.PIPE,
+				stderr = current_tracefile,
 				text = True)
 	else:
 		all_args = args + cmd_args
 		mylog(f"running: {all_args}")
 		c = subprocess.run(all_args,
-				stdout = subprocess.PIPE, stderr = tfile,
+				stdout = subprocess.PIPE,
+				stderr = current_tracefile,
 				text = True)
 	if c.returncode != 0:
 		mylog(f"FAIL, exitcode={c.returncode}")
-		sys.exit(500)
+		sys.exit(http2exit(500))
 	res = {
 		'cmd': cmd,
 		'realm': realm,
@@ -206,7 +197,7 @@ elif cmd == "get":
 			# Flush the entry we've been parsing
 			if current_princ in princs:
 				mylog(f"FAIL, princ occurs twice?!: {current_princ}")
-				sys.exit(500)
+				sys.exit(http2exit(500))
 			mylog(f"inserting {current_princ}")
 			if verbose:
 				princs[current_princ] = current_fields
@@ -227,12 +218,12 @@ elif cmd == "get":
 			# The first attribute must be the "Principal"
 			if a != "Principal":
 				mylog(f"FAIL, first entry is not 'Principal': {a}")
-				sys.exit(500)
+				sys.exit(http2exit(500))
 			current_princ = v
 		elif verbose:
 			if a in current_fields:
 				mylog(f"FAIL, attribute occurs twice?!: {a}")
-				sys.exit(500)
+				sys.exit(http2exit(500))
 			current_fields[a] = v
 	res['principals'] = princs
 	print(json.dumps(res))
@@ -248,7 +239,7 @@ elif cmd == 'ext_keytab':
 
 else:
 	mylog(f"Error, cmd={cmd} unrecognized")
-	sys.exit(500)
+	sys.exit(http2exit(500))
 
 mylog(f"JSON output produced, exiting with code 201")
-sys.exit(200)
+sys.exit(http2exit(200))

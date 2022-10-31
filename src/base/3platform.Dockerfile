@@ -8,7 +8,7 @@ RUN apt-get install -y openssl xxd procps iproute2 iputils-ping curl wget acl \
 # And some commonly-required middleware to minimize the amont of per-app
 # package installation is required.
 RUN apt-get install -y json-glib-tools libjson-perl libncurses5-dev \
-	python3 python3-yaml python3-distutils \
+	python3 python3-yaml python3-netifaces python3-psutil \
 	python3-cryptography python3-openssl \
 	python3-flask python3-requests uwsgi-plugin-python3
 

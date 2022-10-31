@@ -5,7 +5,6 @@ source /hcp/common/hcp.sh
 retries=0
 pause=1
 VERBOSE=0
-FQDN=${HCP_HOSTNAME}.${HCP_FQDN_DEFAULT_DOMAIN}
 usage() {
 	((${1:-1} == 0)) || exec 1>&2
 	pager=cat
@@ -73,9 +72,9 @@ EOF
 fi
 
 while :; do
-	((VERBOSE > 0)) && echo >&2 "Running: ssh-keyscan $FQDN > $myknownhosts"
+	((VERBOSE > 0)) && echo >&2 "Running: ssh-keyscan localhost > $myknownhosts"
 	res=0
-	ssh-keyscan $FQDN > $tout 2> $terr || res=$?
+	ssh-keyscan localhost > $tout 2> $terr || res=$?
 	if [[ $res == 0 ]]; then
 		((VERBOSE > 0)) && echo >&2 "Success"
 		exit 0

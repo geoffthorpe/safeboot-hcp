@@ -2,6 +2,10 @@
 
 source /hcp/common/hcp.sh
 
+export HCP_SWTPMSVC_STATE=$(hcp_config_extract ".swtpmsvc.state")
+export HCP_SWTPMSVC_SOCKDIR=$(hcp_config_extract_or ".swtpmsvc.sockdir" "")
+export HCP_SWTPMSVC_TPMSOCKET="$HCP_SWTPMSVC_SOCKDIR/tpm"
+
 retries=0
 pause=1
 VERBOSE=0

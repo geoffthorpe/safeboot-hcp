@@ -11,13 +11,13 @@ import tempfile
 import requests
 
 sys.path.insert(1, '/hcp/common')
-from hcp_tracefile import tracefile
-tfile = tracefile("enrollsvc-mgmt")
-sys.stderr = tfile
-from hcp_common import log
+from hcp_common import log, exit2http, current_tracefile
 
 sys.path.insert(1, '/hcp/xtra')
 from HcpRecursiveUnion import union
+
+sys.path.insert(1, '/hcp/enrollsvc')
+import db_common
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = False
@@ -125,7 +125,7 @@ def healthcheck():
 # This is the sudo preamble to pass to subprocess.run(), the actual operation
 # string ("add", "query", etc) and arguments follow this, and are appended by
 # each handler.
-db_user = os.environ['HCP_ENROLLSVC_USER_DB']
+db_user = db_common.dbuser
 sudoargs = [ 'sudo', '-u', db_user, '/hcp/enrollsvc/mgmt_sudo.sh' ]
 
 # The exit code from the sudo's process is expected to be the http status code,
@@ -134,8 +134,10 @@ sudoargs = [ 'sudo', '-u', db_user, '/hcp/enrollsvc/mgmt_sudo.sh' ]
 # before allowing it to be used, and we handle construction of the response.
 def check_status_code(c):
     log(f"check_status_code: returncode={c.returncode}")
-    # We accept success in the form of 200 or 201, ...
-    if c.returncode == 200 or c.returncode == 201:
+    httpcode = exit2http(c.returncode)
+    log(f"check_status_code: httpcode={httpcode}")
+    # We accept success in the 2xx form ...
+    if httpcode >= 200 and httpcode < 300:
         try:
             j = json.loads(c.stdout)
         except json.JSONDecodeError as e:
@@ -143,15 +145,13 @@ def check_status_code(c):
             log("--- document to JSONDecode ---")
             log(f"{e.doc}")
             log("--- document to JSONDecode ---")
-            abort(500)
-    # ... or failure in the form of 403, 409, or 500
-    elif c.returncode == 403 or c.returncode == 409 or c.returncode == 500:
-        abort(c.returncode)
+            return "Server JSON error", 500
+    # ... or failure in any other form
     else:
-        log(f"check_status_code: unrecognized code, changing to 500")
-        abort(500)
+        log(f"aborting")
+        return "Error", httpcode
     log(f"decoded from stdout: {j}")
-    return j, c.returncode, {'Content-Type': 'application/json'}
+    return j, httpcode, {'Content-Type': 'application/json'}
 
 @app.route('/v1/add', methods=['POST'])
 def my_add():
@@ -162,10 +162,11 @@ def my_add():
         return { "error": "hostname not in request" }
     form_ekpub = request.files['ekpub']
     form_hostname = request.form['hostname']
-    if 'profile' not in request.form:
-        form_profile = "{}"
-    else:
-        form_profile = request.form['profile']
+    form_profile = "{}"
+    if 'profile' in request.form:
+        tmpprofile = request.form['profile']
+        if len(tmpprofile) > 0:
+            form_profile = tmpprofile
     log(f"my_add: form_profile={form_profile}")
     form_data = json.loads(form_profile)
     request_data = get_request_data('/v1/add')
@@ -186,7 +187,8 @@ def my_add():
     opadd_args = sudoargs + [ 'add', local_ekpub, form_hostname, request_json]
     log(f"my_add: opadd_args={opadd_args}")
     c = subprocess.run(opadd_args,
-                       stdout = subprocess.PIPE, stderr = tfile,
+                       stdout = subprocess.PIPE,
+                       stderr = current_tracefile,
                        text = True)
     return check_status_code(c)
 
@@ -204,8 +206,9 @@ def my_query():
     request_json = json.dumps(request_data)
     log(f"my_query: request_json={request_json}")
     c = subprocess.run(sudoargs + [ 'query', request_json ],
-                       stdout=subprocess.PIPE, stderr = tfile,
-                       text=True)
+                       stdout = subprocess.PIPE,
+                       stderr = current_tracefile,
+                       text = True)
     return check_status_code(c)
 
 @app.route('/v1/delete', methods=['POST'])

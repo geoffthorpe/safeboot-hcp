@@ -11,10 +11,7 @@ import tempfile
 import requests
 
 sys.path.insert(1, '/hcp/common')
-from hcp_tracefile import tracefile
-tfile = tracefile("policysvc")
-sys.stderr = tfile
-from hcp_common import log
+from hcp_common import log, bail, hcp_config_extract
 
 sys.path.insert(1, '/hcp/xtra')
 import HcpJsonPolicy
@@ -22,23 +19,11 @@ import HcpJsonPolicy
 app = flask.Flask(__name__)
 app.config["DEBUG"] = False
 
-# Load, via env-var, a JSON input that policy checkers can consult. Note, each
-# policy check request will carry its own '__env' settings that need to be
-# applied to the policy (ie. parameter expansion), and this can't happen after
-# we've converted the JSON to a python object. So we carry around the JSON
-# string and let each invocation expand it before parsing it.
-policyjson = {}
-if 'HCP_POLICYSVC_JSON' in os.environ:
-    policyjsonpath = os.environ['HCP_POLICYSVC_JSON']
-    policyjson = open(policyjsonpath, "r").read()
-
-# There is also a bail() in hcp_common.py, but it is generic and doesn't use
-# the flask-specific abort() to control the http status code.
-def bail(val, msg=None):
-    if not msg:
-        msg = "Unclarified error"
-    print(f"FAIL:{val}: {msg}", file=sys.stderr)
-    abort(val, msg)
+# The policysvc is implemented via 'webapi', where the '.webapi.app' property
+# (ie. the flask app) is /hcp/policysvc/policy_api.py. In that case, we pull
+# the policy JSON path from '.webapi.config'.
+policyjsonpath = hcp_config_extract('.webapi.config', must_exist = True)
+policyjson = open(policyjsonpath, "r").read()
 
 @app.route('/healthcheck', methods=['GET'])
 def healthcheck():
@@ -54,7 +39,7 @@ def my_common():
         try:
             params = json.loads(request.form['params'])
         except ValueError:
-            bail(401, "Policy check: malformed 'params'")
+            return "Bad JSON input", 401
 
     # Before passing the request "params" through the policy filters, take the
     # extra information and embed it. This implies that the parameters cannot
@@ -69,11 +54,10 @@ def my_common():
     # Both the policy and the input data need to be in string (JSON)
     # representation. The policy already is, but params is a struct.
     paramsjson = json.dumps(params)
-    policy_result = HcpJsonPolicy.run_with_env(policyjson, paramsjson,
-                                                 includeEnv=True)
+    policy_result = HcpJsonPolicy.run(policyjson, params, dataKeepsVars = True)
     if policy_result['action'] != "accept":
         print(f"REJECT: {paramsjson} -> {policy_result}")
-        bail(403, "Policy check: blocked by filter rules")
+        return "Blocked by policy", 403
 
     # Success. Write something to the log that is not completely useless.
     print(f"ALLOW: {paramsjson} -> {policy_result}")

@@ -10,13 +10,6 @@ import filecmp
 import json
 
 sys.path.insert(1, '/hcp/common')
-to_trace = 'HCP_NO_TRACE' not in os.environ
-if to_trace:
-	from hcp_tracefile import tracefile
-	tfile = tracefile(f"attest_callback")
-	sys.stderr = tfile
-else:
-	tfile = sys.stderr
 import hcp_common
 log = hcp_common.log
 bail = hcp_common.bail

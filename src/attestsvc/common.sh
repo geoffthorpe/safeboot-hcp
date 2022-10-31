@@ -1,76 +1,50 @@
 source /hcp/common/hcp.sh
 
+# We pull the 'attestsvc' config once and then interrogate it locally.
+export HCP_ATTESTSVC_JSON=$(hcp_config_extract ".attestsvc")
+export HCP_ATTESTSVC_STATE=$(echo "$HCP_ATTESTSVC_JSON" | jq -r ".state")
+export HCP_ATTESTSVC_GLOBAL_INIT=$(echo "$HCP_ATTESTSVC_JSON" | jq -r ".setup[0].touchfile")
+export HCP_ATTESTSVC_LOCAL_INIT=$(echo "$HCP_ATTESTSVC_JSON" | jq -r ".setup[1].touchfile")
+export HCP_ATTESTSVC_USER_DB=$(echo "$HCP_ATTESTSVC_JSON" | jq -r ".dbuser.id")
+export HCP_ATTESTSVC_USER_DB_HANDLE=$(echo "$HCP_ATTESTSVC_JSON" | jq -r ".dbuser.handle")
+export HCP_ATTESTSVC_USER_FLASK=$(echo "$HCP_ATTESTSVC_JSON" | jq -r ".webuser.id")
+export HCP_ATTESTSVC_USER_FLASK_HANDLE=$(echo "$HCP_ATTESTSVC_JSON" | jq -r ".webuser.handle")
+export HCP_ATTESTSVC_REMOTE_REPO=$(echo "$HCP_ATTESTSVC_JSON" | jq -r ".enrollsvc")
+
+export HCP_ATTESTSVC_DB_DIR="$HCP_ATTESTSVC_STATE/db"
+
+function do_attestsvc_uid_setup {
+	role_account_uid_file \
+		$HCP_ATTESTSVC_USER_DB  \
+		$HCP_ATTESTSVC_USER_DB_HANDLE  \
+		"DB User,,,,"
+	role_account_uid_file \
+		$HCP_ATTESTSVC_USER_FLASK  \
+		$HCP_ATTESTSVC_USER_FLASK_HANDLE  \
+		"Flask User,,,,"
+}
+
 function expect_root {
-	if [[ `whoami` != "root" ]]; then
-		echo "Error, running as \"`whoami`\" rather than \"root\"" >&2
+	if [[ $WHOAMI != "root" ]]; then
+		echo "Error, running as \"$WHOAMI\" rather than \"root\"" >&2
 		exit 1
 	fi
 }
 
-# The root-written environment is stored here
-export ATTESTSVC_ENV=/etc/environment.attestsvc
-
-if [[ `whoami` != "root" ]]; then
-
-	# We're not root, so we source the env-vars that root put there.
-	if [[ -z "$HCP_ENVIRONMENT_SET" ]]; then
-		echo "Running in reduced non-root environment (sudo probably)."
-		source $ATTESTSVC_ENV
-	fi
-
-else # start of if(whoami==root)
-
-if [[ ! -d $HCP_ATTESTSVC_STATE ]]; then
-	echo "Error, HCP_ATTESTSVC_STATE ($HCP_ATTESTSVC_STATE) doesn't exist" >&2
-	exit 1
-fi
-if [[ -z $HCP_ATTESTSVC_USER_HCP ]]; then
-	echo "Error, HCP_ATTESTSVC_USER_HCP must be set" >&2
-	exit 1
-fi
-
-# All the HCP_USER-owned stuff goes into this sub-directory
-export HCP_USER_DIR=$HCP_ATTESTSVC_STATE/hcp
-
-role_account_uid_file \
-	$HCP_ATTESTSVC_USER_HCP \
-	$HCP_ATTESTSVC_STATE/uid_hcp_user \
-	"HCP User,,,,"
-
-# Generate env file if it doesn't exist yet
-if [[ ! -f $ATTESTSVC_ENV ]]; then
-	echo " - generating '$ATTESTSVC_ENV'"
-	touch $ATTESTSVC_ENV
-	chmod 644 $ATTESTSVC_ENV
-	echo "# HCP enrollsvc settings" > $ATTESTSVC_ENV
-	export_hcp_env >> $ATTESTSVC_ENV
-	echo "export HCP_ENVIRONMENT_SET=1" >> $ATTESTSVC_ENV
-
-fi
-
-function drop_privs_hcp {
-	exec su -c "$*" - $HCP_ATTESTSVC_USER_HCP
-}
-
-if [[ ! -f $HCP_ATTESTSVC_STATE/initialized ]]; then
-
-	echo "Initializing attestsvc state"
-
-	echo " - generating HCP_USER-owned data in '$HCP_USER_DIR'"
-	mkdir $HCP_USER_DIR
-	chown $HCP_ATTESTSVC_USER_HCP $HCP_USER_DIR
-
-	echo "   - initializing enrollment data clones"
-	(drop_privs_hcp /hcp/attestsvc/init_clones.sh)
-	touch $HCP_ATTESTSVC_STATE/initialized
-	echo "State now initialized"
-fi
-
-fi # end of if(whoami==root)
-
-function expect_hcp_user {
-	if [[ `whoami` != "$HCP_ATTESTSVC_USER_HCP" ]]; then
-		echo "Error, running as \"`whoami`\" rather than \"$HCP_ATTESTSVC_USER_HCP\"" >&2
+function expect_db_user {
+	if [[ $WHOAMI != "$HCP_ATTESTSVC_USER_DB" ]]; then
+		echo "Error, running as \"$WHOAMI\" rather than \"$HCP_ATTESTSVC_USER_DB\"" >&2
 		exit 1
 	fi
+}
+
+function expect_flask_user {
+	if [[ $WHOAMI != "$HCP_ATTESTSVC_USER_FLASK" ]]; then
+		echo "Error, running as \"$WHOAMI\" rather than \"$HCP_ATTESTSVC_USER_FLASK\"" >&2
+		exit 1
+	fi
+}
+
+function drop_privs_db {
+	exec su -c "$*" - $HCP_ATTESTSVC_USER_DB
 }

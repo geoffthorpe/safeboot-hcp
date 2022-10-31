@@ -2,7 +2,9 @@
 
 . /hcp/attestsvc/common.sh
 
-expect_hcp_user
+expect_db_user
+
+export HCP_ATTESTSVC_UPDATE_TIMER=$(hcp_config_extract ".replication_client.period")
 
 BACKOFF_TIMER=$(($HCP_ATTESTSVC_UPDATE_TIMER * 5))
 
@@ -38,10 +40,10 @@ function pull_updates {
 # "bury the lede" when someone sifts through the wreckage later trying to
 # figure out what happened.)
 while /bin/true; do
-	cd $HCP_USER_DIR
+	cd $HCP_ATTESTSVC_DB_DIR
 	cd next
 	if pull_updates; then
-		cd $HCP_USER_DIR
+		cd $HCP_ATTESTSVC_DB_DIR
 		rm -f transient-failure
 		cp -P current thirdwheel
 		cp -T -P next current
@@ -61,7 +63,7 @@ while /bin/true; do
 		# by a db failure. I.e. we need error-handling around our
 		# error-handling, to raise a different kind of alert.
 		datetime_log "Transient error. Trying to revert from incomplete update."
-		touch $HCP_USER_DIR/transient-failure
+		touch $HCP_ATTESTSVC_DB_DIR/transient-failure
 		git reset --hard
 		git clean -f -d -x
 		datetime_log "sleeping for $BACKOFF_TIMER seconds"

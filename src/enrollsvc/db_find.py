@@ -8,6 +8,7 @@ from hcp_common import log
 sys.path.insert(1, '/hcp/enrollsvc')
 import db_common
 bail = db_common.bail
+http2exit = db_common.http2exit
 
 # Usage:
 # db_find.py <clientjson>
@@ -48,4 +49,4 @@ result = {
 	'entries': entries
 }
 print(json.dumps(result, sort_keys = True))
-sys.exit(200)
+sys.exit(http2exit(200))

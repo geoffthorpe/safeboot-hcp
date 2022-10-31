@@ -15,7 +15,7 @@ $(eval $(call builder_add_codebase,\
 	true,\
 	true,\
 	true,\
-	install *.sh *.py $(HCP_POLICYSVC_INSTALL_DEST),\
+	install *.py $(HCP_POLICYSVC_INSTALL_DEST),\
 	))
 $(eval $(call builder_codebase_simpledep,\
 	policysvc,\

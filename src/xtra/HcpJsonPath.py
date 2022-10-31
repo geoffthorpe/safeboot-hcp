@@ -55,28 +55,48 @@ def valid_path(path):
 			return
 
 # Given a JSON path ("." for top-level, ".path.to.desired.field" for
-# lower-level elements), return the corresponding field from the input data.
-# Note that only the final field can be anything other than a 'dict' object,
-# all the intermediate nodes in the path must be 'dict' objects. This function
-# returns a 2-tuple to convey success/failure, as it shouldn't throw
-# exceptions. (Policy logic will process rules and extract and compare paths
-# between different structures, e.g. when determining if two structures are
-# "equal", and it is not "exceptional" for a path to be missing during
-# processing - that is just a sign that the "equal" comparison should return
-# False. So that's what we do, because try/except handling is a worse
-# experience for the caller.
-def extract_path(data, path):
+# lower-level elements), extract the corresponding field from the input data.
+# Note that only the final field in the path can be anything other than a
+# 'dict' object, all the intermediate nodes in the path must be 'dict' objects.
+#
+# By default, this function returns a 2-tuple (success,field) to convey
+# success/failure as well as the return the extracted data. Failure occurs when
+# the requested path does not exist in the data. (Policy logic is the main user
+# of this API, and in that context it is a better experience to receive these
+# 2-tuples than to use exception-handling.)
+#
+# However, if either of 'must_exist' or 'or_none' are passed in as 'True', then
+# this function returns the extracted data directly (rather than embedding it
+# in a 2-tuple with a success/failure boolean), when the failure case is
+# handled differently (ie. when the path doesn't exist in the data);
+# - in the 'must_exist' case, the path not existing in the data is represented
+#   an HcpJsonPathError exception being thrown.
+# - in the 'or_none' case, a 'default' value will be returned if the path does
+#   not exist in the data. This default value is 'None' by default(!) but it
+#   can be modified by passing in a 'default=<somethingelse>' parameter.
+def extract_path(data, path, must_exist = False, or_default = False,
+		default = None):
+	def convert(tup, s):
+		if not must_exist and not or_default:
+			return tup
+		if tup[0]:
+			return tup[1]
+		if or_default:
+			return default
+		raise HcpJsonPathError(s)
 	if path == '.':
-		return True, data
+		return convert((True, data), None)
 	while True:
 		if not isinstance(data, dict):
-			return False, None
+			return convert((False, None),
+				f"JSON path '{path}' has type conflict")
 		node, path = path_pop_node(path)
 		if node not in data:
-			return False, None
+			return convert((False, None),
+				f"JSON path '{path}' doesn't exist")
 		data = data[node]
 		if len(path) == 0:
-			return True, data
+			return convert((True, data), None)
 
 # Given a JSON path, set the corresponding field in the output data. Note,
 # the return value replaces the 'data' parameter, in order to handle the case
@@ -100,7 +120,7 @@ def overwrite_path(data, path, value):
 		cursor = cursor[node]
 
 # Fairly self-explanatory given the last two functions. Special case, if you
-# try to delete ".", it will return an empty dict ("{}") rather than None.  The
+# try to delete ".", it will return an empty dict ("{}") rather than None. The
 # latter would logically consistent, but in practice it would be difficult to
 # insulate run-time behaviour from bad inputs (in terms of cryptic run-time
 # exceptions rather than the preferred alternative: the user getting data

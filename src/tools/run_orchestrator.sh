@@ -1,6 +1,8 @@
 #!/bin/bash
 
-set -e
+source /hcp/common/hcp.sh
+
+JSONPATH=$(hcp_config_extract ".orchestrator.fleet")
 
 retries=0
 pause=1
@@ -12,7 +14,6 @@ option_unenroll=
 option_janitor=
 VERBOSE=0
 URL=
-JSONPATH="$HCP_ORCHESTRATOR_JSON"
 
 usage() {
 	((${1:-1} == 0)) || exec 1>&2

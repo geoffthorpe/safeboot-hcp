@@ -70,10 +70,6 @@ $(HCP_OUT)/docker-compose.env:
 	$Qecho "HCP_TESTCREDS_ENROLLCLIENT=$(HCP_TESTCREDS_ENROLLCLIENT)" >> $@
 	$Qecho "HCP_TESTCREDS_ENROLLSERVER=$(HCP_TESTCREDS_ENROLLSERVER)" >> $@
 	$Qecho "HCP_TOP=$(TOP)" >> $@
-	$Qecho "" >> $@
-	$Qecho "# Variables copied from (HCP_APPS_SRC)/usecase/common.env;" >> $@
-	$Qcat $(TOP)/usecase/common.env | egrep -v "^#" | \
-		sed -e "s/^export //" >> $@
 ALL += $(HCP_OUT)/docker-compose.env
 
 #########

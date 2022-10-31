@@ -1,0 +1,34 @@
+{
+    "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
+
+    "services": [
+        "fqdn_updater",
+        "client"
+    ],
+    "default": [
+        "start-presetup",
+        "start-postsetup"
+    ],
+    "args_for": "client",
+
+    "fqdn_updater": {
+        "exec": "/hcp/common/fqdn_updater.py",
+        "until": "/etc/hcp-fqdn-alive",
+        "nowait": 1,
+        "tag": "presetup",
+        "path": "/fqdn-bus",
+        "refresh": 5,
+        "expiry": 20,
+        "hostnames": [ "do-not-contact-me-aclient" ],
+        "default_domain": "hcphacking.xyz",
+        "bad_address": "100.100.100.100"
+    },
+
+    "client": {
+        "exec": "/hcp/tools/run_client.sh",
+        "tag": "postsetup",
+        "attest_url": "http://ahcp.hcphacking.xyz:8080",
+        "tcti": "swtpm:path=/tpm_socket_aclient/tpm",
+        "callbacks": [ "/hcp/tools/attest_callback_common.py" ]
+    }
+}

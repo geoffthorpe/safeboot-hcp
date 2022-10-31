@@ -1,0 +1,253 @@
+{
+    "_": [
+        " vim: set expandtab shiftwidth=4 softtabstop=4: ",
+        "",
+        "So this is the 'emgmt' definition, the authoritative/read-write",
+        "half of 'enrollsvc'. It's probably the most elaborate definition",
+        "in HCP, so deserves some explanation.",
+        "* 'fqdn_updater', this is present in the other containers too, it",
+        "  jerks around with /etc/hosts so that the containers can see",
+        "  each other at/with whatever FQDNs they want. Eg. this can allow",
+        "  them to run with production hostnames and data. Also, this is a",
+        "  'pre_setup' service, in that it needs to run even for setup to",
+        "  occur, so it isn't part of the 'setup' or 'start' (post-setup)",
+        "  flow.",
+        "* 'enrollsvc', this is actually to perform setup. It sets up",
+        "  privilege separation and bakes some trusted config into the",
+        "  rootfs (so that non-root processes can load it without trusting",
+        "  their callers). The actual service is provied by 'webapi', it's",
+        "  a flask app.",
+        "* 'webapi', the flask app that provides the 'emgmt' service. This",
+        "  is mostly stateless - actual work is passed through a curated",
+        "  sudo rule to 'enrollsvc' functions running as a different user,",
+        "  that get their config from the 'enrollsvc' data, not 'webapi'.",
+        "* 'reenroller', this periodically looks for enrollments that due",
+        "  to be reenrolled and reenrolls them.",
+        "* 'purger', this periodically looks for debug files that are old",
+        "  enough and 'purges' them."
+    ],
+    "services": [
+        "fqdn_updater",
+        "enrollsvc",
+        "webapi",
+        "reenroller",
+        "purger"
+    ],
+    "default": [
+        "start-presetup",
+        "setup-global",
+        "setup-local",
+        "start-postsetup"
+    ],
+
+    "fqdn_updater": {
+        "exec": "/hcp/common/fqdn_updater.py",
+        "until": "/etc/hcp-fqdn-alive",
+        "nowait": 1,
+        "tag": "presetup",
+        "path": "/fqdn-bus",
+        "refresh": 5,
+        "expiry": 20,
+        "hostnames": [ "emgmt" ],
+        "default_domain": "hcphacking.xyz",
+        "extra_fqdns": [ "useless.alias.forfun.zyx", "why.not.this.wuntu.huh" ],
+        "bad_address": "100.100.100.100"
+    },
+
+    "enrollsvc": {
+        "_": [
+            "This is a setup-only 'service', its settings get consumed by",
+            "setup hooks, and when services start up, there is nothing here to",
+            "start (webapi.sh, reenroller, and purger are self-sufficient at",
+            "that point). That said, it will create the users that non-root",
+            "tasks start as, and it will write this JSON structure into those",
+            "home directories, so for example sudo'd handlers invoked by the",
+            "webapi will get this JSON struct as their context, which is why",
+            "the 'db_add' section is in here.",
+            "Regarding 'setup' and the 'tag' values. The idea is that setup",
+            "of persistent data requires launcher running with 'setup-global'.",
+            "Even if the container then closes, global setup is done. OTOH, if",
+            "you run 'setup-local' and allow the container to exit, its",
+            "effects are lost. So you run launcher with 'setup-local start' to",
+            "lanch services that depend on local setup." ],
+        "setup": [ {
+                "tag": "global",
+                "exec": "/hcp/enrollsvc/setup_global.sh",
+                "touchfile": "/enrolldb/initialized"
+            }, {
+                "tag": "local",
+                "exec": "/hcp/enrollsvc/setup_local.sh",
+                "touchfile": "/etc/hcp-enrollsvc-local-setup"
+            } ],
+        "state": "/enrolldb",
+        "realm": "HCPHACKING.XYZ",
+        "dbuser": {
+            "handle": "/enrolldb/uid-dbuser",
+            "id": "emgmtdb"
+        },
+        "webuser": {
+            "handle": "/enrolldb/uid-webuser",
+            "id": "emgmtflask"
+        },
+        "policy_url": "http://policy.emgmt.hcphacking.xyz:9080",
+        "tpm_vendors": "/vendors",
+        "db_add": {
+            "_": [
+                "Settings specific to the enrollment 'add' operation.",
+                " - preclient: template enrollment profile. The (possibly empty)",
+                "       profile in the client's request gets overlaid.",
+                " - postclient: last-word enrollment profile. This gets overlaid",
+                "       after the profile from the client's request." ],
+            "preclient": {
+                "__env": {
+                    "ENROLL_ISSUERCERT": "/usr/share/ca-certificates/HCP/certissuer.pem",
+                    "ENROLL_CERTPREFIX": "hostcert-",
+                    "ENROLL_KDC": "secondary.kdc"
+                },
+                "genprogs": "gencert-hxtool",
+                "gencert-hxtool": {
+                    "list": [ "default-https-hostclient" ],
+                    "prefix": "{ENROLL_CERTPREFIX}",
+                    "<common>": {
+                        "generate-key": "rsa",
+                        "key-bits": "2048"
+                    },
+                    "default-pkinit-kdc": {
+                        "type": "pkinit-kdc",
+                        "name": "pkinit-kdc",
+                        "pk-init-principal": "krbtgt/{ENROLL_REALM}@{ENROLL_REALM}"
+                    },
+                    "default-https-server": {
+                        "type": "https-server",
+                        "hostname": "{ENROLL_HOSTNAME}"
+                    },
+                    "default-https-hostclient": {
+                        "type": "https-client",
+                        "subject": "UID=host,{ENROLL_HOSTNAME2DC}",
+                        "hostname": "{ENROLL_HOSTNAME}"
+                    }
+                }
+            },
+            "postclient": {
+                "__env": {
+                    "ENROLL_CA_ISSUER_PRIV": "{GENCERT_CA_PRIV}",
+                    "ENROLL_REALM": "HCPHACKING.XYZ",
+                    "ENROLL_DOMAIN": "hcphacking.xyz"
+                },
+                "genprogs_pre": "genhostname genrootfskey",
+                "genprogs_post": "gencert-issuer genmetadata genreenroll",
+                "genreenroll": {
+                    "_": "(artificially low for devel purposes)",
+                    "minutes": 2
+                },
+                "gencert-hxtool": {
+                    "<common>": {
+                        "ca-certificate": "{ENROLL_CA_ISSUER_PRIV}"
+                    }
+                },
+                "gencert-issuer": {
+                    "source": "{ENROLL_CA_ISSUER_PRIV}",
+                    "dest": "certissuer.pem"
+                },
+                "genconf-krb5": {
+                    "logging": {
+                        "default": "STDERR"
+                    },
+                    "libdefaults": {
+                        "#1": "'default_realm' is obvious.",
+                        "#2": "The others are to suppress interference from 'hostname'",
+                        "#3": "and other name-resolution interferences.",
+                        "default_realm": "{ENROLL_REALM}",
+                        "dns_lookup_kdc": "no",
+                        "dns_lookup_realm": "no",
+                        "ignore_acceptor_hostname": "yes",
+                        "dns_canonicalize_hostname": "no",
+                        "rdns": "no"
+                    },
+                    "appdefaults": {
+                        "pkinit_anchors": "FILE:{ENROLL_ISSUERCERT}"
+                    },
+                    "domain_realm": {
+                        ".hcphacking.xyz": "HCPHACKING.XYZ"
+                    },
+                    "realms": {
+                        "{ENROLL_REALM}": {
+                            "kdc": "{ENROLL_KDC}.{ENROLL_DOMAIN}",
+                            "pkinit_require_eku": "true",
+                            "pkinit_require_krbtgt_otherName": "true",
+                            "pkinit_win2k": "no",
+                            "pkinit_win2k_require_binding": "yes"
+                        }
+                    }
+                },
+                "genkrb5keytab": {
+                    "kdcsvc": "http://primary.kdc.hcphacking.xyz:9090",
+                    "principal": "host/{ENROLL_HOSTNAME}"
+                }
+            }
+        }
+    },
+
+    "webapi": {
+        "setup": { "touchfile": "/etc/hcp-enrollsvc-local-setup" },
+        "exec": "/hcp/common/webapi.sh",
+        "tag": "postsetup",
+        "servername": "emgmt.hcphacking.xyz",
+        "port": 8443,
+        "https": {
+            "certificate": "/enrollserver/server.pem",
+            "client_CA": "/enrollcertchecker/CA.cert",
+            "healthclient": "/enrollclient/client.pem"
+        },
+        "app": "/hcp/enrollsvc/mgmt_api.py",
+        "uwsgi_env": {
+            "HOME": "/home/emgmtflask",
+            "HCP_TRACEFILE": "/home/emgmtflask"
+        },
+        "uwsgi_uid": "emgmtflask",
+        "uwsgi_gid": "www-data"
+    },
+
+    "reenroller": {
+        "setup": { "touchfile": "/etc/hcp-enrollsvc-local-setup" },
+        "exec": "/hcp/enrollsvc/reenroller.sh",
+        "nowait": 1,
+        "tag": "postsetup",
+        "uid": "emgmtdb",
+        "period": {
+            "seconds": 30
+        },
+        "retry": {
+            "minutes": 5
+        }
+    },
+
+    "purger": {
+        "exec": "/hcp/common/purger.py",
+        "nowait": 1,
+        "tag": "postsetup",
+	"dir": "/purger",
+	"period": 60,
+	"retry": 120,
+	"purgerlogdir": "/purger/logs",
+	"purgerlogfmt": "log-{t.year:04}{t.month:02}{t.day:02}{t.hour:02}",
+	"purgerlogjson": [
+            {
+                "glob": "/purger/logs/log-*",
+                "hours": 5
+            },
+            {
+                "glob": "/home/emgmtdb/debug-*",
+                "hours": 2
+            },
+            {
+                "glob": "/home/emgmtflask/debug-*",
+                "hours": 2
+            },
+            {
+                "glob": "/root/debug-*",
+                "hours": 2
+            }
+	]
+    }
+}

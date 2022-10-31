@@ -4,11 +4,9 @@ import json
 import glob
 
 sys.path.insert(1, '/hcp/common')
-import hcp_tracefile
-tfile = hcp_tracefile.tracefile("dbjanitor")
-sys.stderr = tfile
 import hcp_common
 log = hcp_common.log
+http2exit = hcp_common.http2exit
 
 sys.path.insert(1, '/hcp/enrollsvc')
 import db_common
@@ -76,4 +74,4 @@ if caught:
 result = json.dumps({ 'hn2ek': hn2ek}, sort_keys = True)
 log(f"db_janitor: emitting result={result}")
 print(result)
-sys.exit(200)
+sys.exit(http2exit(200))

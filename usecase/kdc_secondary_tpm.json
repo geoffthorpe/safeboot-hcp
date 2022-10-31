@@ -1,0 +1,32 @@
+{
+    "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
+
+    "services": [
+        "fqdn_updater",
+        "swtpmsvc"
+    ],
+    "default": [
+        "start-presetup",
+        "start-postsetup"
+    ],
+
+    "fqdn_updater": {
+        "exec": "/hcp/common/fqdn_updater.py",
+        "until": "/etc/hcp-fqdn-alive",
+        "nowait": 1,
+        "tag": "presetup",
+        "path": "/fqdn-bus",
+        "refresh": 5,
+        "expiry": 20,
+        "hostnames": [ "do-not-contact-me-kdcsecondarytpm" ],
+        "default_domain": "hcphacking.xyz"
+    },
+
+    "swtpmsvc": {
+        "setup": { "touchfile": "/tpm_kdc_secondary/tpm/ek.pub" },
+        "exec": "/hcp/swtpmsvc/run_swtpm.sh",
+        "state": "/tpm_kdc_secondary",
+        "sockdir": "/tpm_socket_kdc_secondary",
+        "tag": "postsetup"
+    }
+}
