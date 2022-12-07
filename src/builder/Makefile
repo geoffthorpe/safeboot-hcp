@@ -57,6 +57,8 @@ endif
 #      running the corresponding "reset" Makefile target.
 # $5 = if non-empty, enabled "extra targets" on this codebase. I.e. fine-grain
 #      bootstrap/configure/compile/install targets for each codebase.
+# $6 = if non-empty, a specific "builder" container to use, rather than the
+#      default: $(HCP_BUILDER_DNAME).
 # Note, HCP_BUILD_RESULT_{TGZ,DFILE}_$N are the paths to the resulting
 # tarball/Dockerfile.
 define builder_initialize
@@ -69,6 +71,11 @@ $(eval HCP_BUILD_SRC_$N := $(strip $2))
 $(eval HCP_BUILD_INSTALL_DEST_$N := $(strip $3))
 $(eval HCP_BUILD_RESET_$N := $(strip $4))
 $(eval HCP_BUILD_XTRATARGETS_$N := $(strip $5))
+$(eval LOCAL_BUILD_BUILDER_$N := $(strip $6))
+$(if $(LOCAL_BUILD_BUILDER_$N),
+$(eval HCP_BUILD_BUILDER_$N := $(LOCAL_BUILD_BUILDER_$N))
+,
+$(eval HCP_BUILD_BUILDER_$N := $(HCP_BUILDER_DNAME)))
 $(eval HCP_BUILD_RESULT_PREFIX_$N := $(HCP_BUILD_OUT_$N)/$(HCP_BUILD_TGZ_$N))
 $(eval HCP_BUILD_RESULT_TGZ_$N := $(HCP_BUILD_RESULT_PREFIX_$N).tar.gz)
 $(HCP_BUILD_OUT_$N): | $(HCP_OUT)
@@ -91,7 +98,7 @@ define builder_finalize
 $(eval N := $(strip $1))
 $(eval HCP_BUILD_INSTALL_RUN_$N := $(HCP_BUILD_DOCKER_RUN_$N) \
 	--mount type=bind,source=$(HCP_BUILD_OUT_$N),destination=/put_it_here \
-	$(HCP_BUILDER_DNAME) \
+	$(HCP_BUILD_BUILDER_$N) \
 	bash -c)
 $(eval HCP_BUILD_TGZ_CMD_$N := cd /put_it_here ;)
 $(eval HCP_BUILD_TGZ_CMD_$N += tar zcf $(HCP_BUILD_TGZ_$N).tar.gz $(HCP_BUILD_INSTALL_DEST_$N) ;)
@@ -155,7 +162,7 @@ $(eval LOCAL_RESET_DISABLE := $(strip $(10)))
 $(eval HCP_BUILD_MODULES_$N += $(LOCAL_NAME))
 $(eval LOCAL_RUN := $(HCP_BUILD_DOCKER_RUN_$N))
 $(eval LOCAL_RUN += --mount type=bind,source=$(LOCAL_SRCPATH),destination=/src-$(LOCAL_NAME))
-$(eval LOCAL_RUN += $(HCP_BUILDER_DNAME))
+$(eval LOCAL_RUN += $(HCP_BUILD_BUILDER_$N))
 $(eval LOCAL_RUN += bash -c)
 $(eval HCP_BUILD_DEP_$N_$(LOCAL_NAME)_BOOTSTRAPPED := $(HCP_BUILD_OUT_$N)/$(LOCAL_NAME).bootstrapped)
 $(eval HCP_BUILD_DEP_$N_$(LOCAL_NAME)_CONFIGURED := $(HCP_BUILD_OUT_$N)/$(LOCAL_NAME).configured)

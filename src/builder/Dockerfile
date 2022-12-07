@@ -5,3 +5,6 @@ RUN apt-get install -y gcc g++ make \
 	libjson-c-dev libcurl4-openssl-dev libqrencode-dev \
 	uuid-dev gnu-efi binutils-dev libjson-glib-dev \
 	libfile-slurp-perl libncurses5-dev comerr-dev libdb-dev
+RUN sed -i "s/# deb-src/deb-src/g" /etc/apt/sources.list && \
+	apt-get update && \
+	apt-get install -y build-essential devscripts dpkg-dev
