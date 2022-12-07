@@ -304,6 +304,7 @@ services:
             interval: 10s
     caboodle_networked:
         extends: caboodle_alone
+        init: false
         environment:
           - HCP_CONFIG_FILE=/usecase/caboodle_networked.json
         volumes:
@@ -311,6 +312,8 @@ services:
           - ${HCP_TESTCREDS_ENROLLVERIFIER}:/enrollverifier:ro
         networks:
           - hcpnetwork
+        ports:
+          - "3000:3000"
         healthcheck:
             test: /hcp/caboodle/networked_healthcheck.sh
             timeout: 3s

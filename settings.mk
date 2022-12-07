@@ -93,9 +93,50 @@ HCP_BUILDER_MAKE_PARALLEL := -j 16
 # (un)desirable in the context where the images get used, kinda like
 # type-safety. And like type-safety, it's most useful during development to
 # catch and eliminate unintentional interdependencies. But like type-safety it
-# may have hygeine value at run-time, different images for different roles, at
-# the expense of managing multiple images rather than one.)
+# may also have hygeine value at run-time, with different images for different
+# roles, at the expense of managing multiple images rather than one.)
 HCP_APPS_GRANULAR := 1
+
+# If the following symbol is defined, we will (a) build the 'gui' code, and (b)
+# derive the 'caboodle' image from it. The 'gui' code is an HCP-ification of
+# the linuxserver.io 'webtop' image and underlying layers. The approach used by
+# linuxserver.io and many other container-based solutions is that the resulting
+# function (ie. a desktop) determines the choice of underlying OS and how to
+# build the image. Here, roles are reversed. We've already selected our
+# base-platform for the HCP services and tools, and we want a graphical desktop
+# (accessed from a host browser via http+rdp+html5 and a localhost port) that
+# is totally compatible with the HCP code under test, eg. in case we want to
+# run IDEs, graphical debuggers, manually interactively with the HCP tools,
+# etc. So we derive the 'webtop' image from our own base-platform. With this
+# approach we also get a desktop that is running within the same DNS and PKI
+# environment as the HCP use-case, rather than on the "outside looking in", so
+# service FQDNs, trust-roots, [etc] all "just work", rather than requiring
+# efforts to convince host-side tools (eg browsers) to interact with the
+# use-case.
+HCP_USE_WEBTOP := 1
+
+# If USE_WEBTOP is defined, what desktop/window-manager to install and run? The
+# following seem to work well;
+#      mate-desktop-environment: ~300MB debs, ~1GB installed
+# mate-desktop-environment-core: ~180MB debs, ~682MB installed
+#                         xfce4:  ~55MB debs, ~200MB installed
+# The following aren't attempted yet;
+#                          lxde: ~310MB debs, ~1GB installed
+# The following failed and I put up no resistance (probably
+# systemd-dependency);
+#            kde-plasma-desktop: ~580MB debs, ~1.9GB installed
+#                  kde-standard: ~710MB debs, ~2.4GB installed
+#                      kde-full: ~1.6GB debs, ~4.6GB installed
+#                    gnome-core: ~410MB debs, ~1.4GB installed
+#                         gnome: ~610MB debs, ~2.2GB installed
+# The following two symbols define (a) the software to install (these arguments
+# are passed directly to 'apt-get install', so it's a good place to add other
+# tools you'll want pre-installed), and (b) the blocking command to launch the
+# corresponding desktop. (Note, the webtop recipes suppress "snap" versions of
+# firefox, and the inclusion of 'firefox-esr' adds ~60MB of download and ~230MB
+# of installed footprint.)
+HCP_WEBTOP_PKGS := mate-desktop-environment firefox-esr vim-gtk3 idle
+HCP_WEBTOP_CMD := /usr/bin/mate-session
 
 # If the following is enabled, the submodule-building support will assume it
 # "owns" the submodules. I.e. it will not only autoconf, configure, compile,

@@ -1,0 +1,34 @@
+ARG XRDP_PULSE_VERSION=v0.6
+
+RUN apt build-dep -y pulseaudio xrdp
+
+RUN \
+  echo "**** build pulseaudio modules ****" && \
+  mkdir -p /buildout/var/lib/xrdp-pulseaudio-installer && \
+  tmp=$(mktemp -d); cd "$tmp" && \
+  pulseaudio_version=$(dpkg-query -W -f='${source:Version}' pulseaudio|sed -e 's/^[0-9]*://') && \
+  pulseaudio_upstream_version=$(dpkg-query -W -f='${source:Upstream-Version}' pulseaudio) && \
+  set -- $(apt-cache policy pulseaudio | fgrep -A1 '***' | tail -1) && \
+  mirror=$2 && \
+  suite=${3#*/} && \
+  dget -u "$mirror/pool/$suite/p/pulseaudio/pulseaudio_$pulseaudio_version.dsc" && \
+  cd "pulseaudio-$pulseaudio_upstream_version" && \
+  meson build && \
+  cd - && \
+  git clone https://github.com/neutrinolabs/pulseaudio-module-xrdp.git && \
+  cd pulseaudio-module-xrdp && \
+  git checkout ${XRDP_PULSE_VERSION} && \
+  ./bootstrap && \
+  ./configure PULSE_DIR="$tmp/pulseaudio-$pulseaudio_upstream_version" && \
+  make && \
+  install -t "/buildout/var/lib/xrdp-pulseaudio-installer" -D -m 644 src/.libs/*.so
+
+RUN \
+  echo "**** build xrdp with fuse disabled ****" && \
+  cd /tmp && \
+  apt-get source xrdp && \
+  cd xrdp-* && \
+  sed -i 's/--enable-fuse/--disable-fuse/g' debian/rules && \
+  debuild -b -uc -us && \
+  cp -ax ../xrdp_*.deb /buildout/xrdp.deb
+

@@ -24,7 +24,13 @@ $(HCP_BUILDER_OUT)/Dockerfile:
 	$Qecho "FROM $(HCP_BASE_DNAME)" > $@
 	$Qcat $(HCP_BUILDER_SRC)/Dockerfile >> $@
 
+$(HCP_BUILDER_OUT)/deb_src_ify.sh: | $(HCP_BUILDER_OUT)
+$(HCP_BUILDER_OUT)/deb_src_ify.sh: $(HCP_BUILDER_SRC)/deb_src_ify.sh
+$(HCP_BUILDER_OUT)/deb_src_ify.sh:
+	$Qcp $< $@
+
 $(HCP_BUILDER_OUT)/built: $(HCP_BUILDER_OUT)/Dockerfile
+$(HCP_BUILDER_OUT)/built: $(HCP_BUILDER_OUT)/deb_src_ify.sh
 $(HCP_BUILDER_OUT)/built: $(HCP_BASE_TOUCHFILE)
 $(HCP_BUILDER_OUT)/built:
 	$Qecho "Building container image $(HCP_BUILDER_DNAME)"
@@ -41,7 +47,7 @@ $(eval $(call pp_rule_docker_image_rm,\
 # Cleanup
 ifneq (,$(wildcard $(HCP_BUILDER_OUT)))
 clean_builder: | preclean
-	$Qrm -f $(HCP_BUILDER_OUT)/Dockerfile
+	$Qrm -f $(HCP_BUILDER_OUT)/Dockerfile $(HCP_BUILDER_OUT)/deb_src_ify.sh
 	$Qrmdir $(HCP_BUILDER_OUT)
 clean_base: clean_builder
 endif

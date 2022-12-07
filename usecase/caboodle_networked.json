@@ -4,14 +4,12 @@
     "services": [
         "fqdn_updater",
         "attester",
-        "do_nothing"
+        "webtop"
     ],
     "default": [
         "start-presetup",
         "start-attester",
-        "setup-global",
-        "setup-local",
-        "start-postsetup"
+        "exec-webtop"
     ],
 
     "fqdn_updater": {
@@ -47,8 +45,7 @@
         "callbacks": [ "/hcp/tools/attest_callback_common.py" ]
     },
 
-    "do_nothing": {
-        "exec": "/hcp/common/do_nothing.sh",
-        "tag": "postsetup"
+    "webtop": {
+        "exec": "/init"
     }
 }
