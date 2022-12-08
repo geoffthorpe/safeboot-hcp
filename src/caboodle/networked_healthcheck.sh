@@ -2,7 +2,7 @@
 
 source /hcp/common/hcp.sh
 
-# This healthcheck relies on attestation to provide the 'user2' pkinit-client
+# This healthcheck relies on attestation to provide the 'abc' pkinit-client
 # certificate, as well as availability of the (secondary) KDC. (Because kinit
 # uses the former to get a TGT from the latter.)
 
@@ -74,10 +74,10 @@ EOF
 fi
 
 while :; do
-	((VERBOSE > 0)) && echo >&2 "Running: kinit -C ... user2 klist"
+	((VERBOSE > 0)) && echo >&2 "Running: kinit -C ... abc klist"
 	res=0
-	kinit -C FILE:/etc/ssl/hostcerts/hostcert-pkinit-user-user2-key.pem \
-		user2 klist > $tout 2> $terr || res=$?
+	kinit -C FILE:/etc/ssl/hostcerts/hostcert-pkinit-user-abc-key.pem \
+		abc klist > $tout 2> $terr || res=$?
 
 	if [[ $res == 0 ]]; then
 		((VERBOSE > 0)) && echo >&2 "Success"

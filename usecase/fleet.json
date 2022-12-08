@@ -98,7 +98,7 @@
 			"enroll_hostname": "caboodlenet.hcphacking.xyz",
 			"enroll_profile": {
 				"__env": {
-					"ENROLL_PKINIT_USER_PRINC": "user2"
+					"ENROLL_PKINIT_USER_PRINC": "abc"
 				},
 				"gencert-hxtool": {
 					"list": [

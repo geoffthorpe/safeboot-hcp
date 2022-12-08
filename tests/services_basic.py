@@ -175,8 +175,8 @@ dc_cmd("inject sshd pubkey into client's 'known_hosts'",
 	_input = x.stdout)
 
 cmdstr = 'kinit -C ' + \
-	'FILE:/etc/ssl/hostcerts/hostcert-pkinit-user-user2-key.pem user2 ' + \
-	'ssh -l user2 sherver.hcphacking.xyz ' + \
+	'FILE:/etc/ssl/hostcerts/hostcert-pkinit-user-abc-key.pem abc ' + \
+	'ssh -l abc sherver.hcphacking.xyz ' + \
 	'echo hello'
 x = dc_cmd("Use HCP cred to get TGT, then GSSAPI to ssh from client to sherver",
 	'caboodle_networked', 'exec',

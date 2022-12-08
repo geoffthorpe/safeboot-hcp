@@ -19,6 +19,7 @@ role_account_uid_file user1 $HCP_SSHSVC_STATE/uid-user1 "Test User 1,,,,"
 role_account_uid_file user2 $HCP_SSHSVC_STATE/uid-user2 "Test User 2,,,,"
 role_account_uid_file user3 $HCP_SSHSVC_STATE/uid-user3 "Test User 3,,,,"
 role_account_uid_file alicia $HCP_SSHSVC_STATE/uid-alicia "Alicia Not-Alice,,,,"
+role_account_uid_file abc $HCP_SSHSVC_STATE/abc "ABC User,,,,"
 
 # Mark it all as done (services may be polling on the existence of this file).
 touch "$HCP_SSHSVC_GLOBAL_INIT"
