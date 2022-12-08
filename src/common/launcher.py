@@ -32,6 +32,16 @@ args_for = hcp_config_extract('args_for', or_default = True, default = '')
 if not isinstance(args_for, str):
     bail(f"'args_for' should be a str (not a {type(args_for)})")
 
+lights_out = hcp_config_extract('lights_out', or_default = True)
+if isinstance(lights_out, str):
+    lights_out = [ lights_out ]
+elif isinstance(lights_out, list):
+    for i in lights_out:
+        if not isinstance(i, str):
+            bail(f"'lights_out' should contain only str entries (not {type(i)})")
+elif lights_out != None:
+    bail(f"'lights_out' should be a str or list (not a {type(lights_out)})")
+
 # Each child entry can optionally have an 'env' section to cause it to be
 # launched with modified environment. 'env' can have 3 optional sections;
 # 'pathadd', 'set', and 'unset'.
@@ -320,6 +330,18 @@ def run_start(tag = None):
         local_started = x
         time.sleep(0.5)
 
+def run_exec(name):
+    global children_all
+    for i in children_all:
+        if i['name'] != name:
+            continue
+        cmdargs = i['exec']
+        log(f"HCP launcher: execv to '{name}' (PID:{os.getpid()})")
+        pre_subprocess(i)
+        os.execv(cmdargs[0], cmdargs)
+        mybail(f"HCP launcher: '{name}' isn't supposed to return")
+    mybail(f"HCP launcher: '{name}' wasn't found")
+
 # What to do depends on the arguments we get. This script is often the
 # 'entrypoint' of a container image, though it can be invoked directly (and is,
 # in the 'caboodle' use-case). If we get cmd-line arguments, they could be for
@@ -378,6 +400,8 @@ while len(actions) > 0:
     elif action == 'custom':
         new_tostart = ( 'custom', actions )
         actions = []
+    elif action.startswith('exec-'):
+        new_tostart = ( 'exec-', action.replace('exec-', '') )
     elif action.startswith('-'):
         # There must be an 'args_for' service nominated to have its 'args' set.
         if not args_for or args_for not in services:
@@ -436,7 +460,10 @@ try:
             run_start(tag = i[1])
         elif i[0] == 'custom':
             run_custom(i[1])
-            bail(f"HCP launcher: run_custom({actions}) shouldn't return")
+            bail(f"HCP launcher: run_custom({i[1]}) shouldn't return")
+        elif i[0] == 'exec-':
+            run_exec(i[1])
+            bail(f"HCP launcher: run_exec({i[1]}) shouldn't return")
         else:
             bail(f"HCP launcher: internal bug, bad 'tostart': {i}")
 
@@ -498,3 +525,7 @@ if res:
         bail(f"HCP launcher: child {n} failed: {res}")
 
 mylog("HCP launcher: done")
+
+if lights_out:
+    p = lights_out[0]
+    os.execv(p, lights_out)
