@@ -4,6 +4,8 @@
 
 TOP := $(shell pwd)
 Q := $(if $(strip $V),,@)
+export DOCKER_BUILDKIT := 1
+export BUILDKIT_PROGRESS := plain
 
 default: all
 
