@@ -9,7 +9,7 @@ source /hcp/common/hcp.sh
 
 echo "Starting 'weak_fqdn_updater.sh'"
 
-TOUCHFILE=$(hcp_config_extract_or ".fqdn_updater.until" "")
+TFILE=$(hcp_config_extract_or ".fqdn_updater.until" "")
 
 # We expect to be running with 1 link other than 'lo'. Find the first
 # non-localhost IP address;
@@ -72,5 +72,5 @@ for i in /fqdn-bus/fqdn-*.json; do
 	consume_fqdn_json $i
 done
 
-echo "Setting touch file: $TOUCHFILE"
-touch "$TOUCHFILE"
+echo "Setting touch file: $TFILE"
+touch "$TFILE"

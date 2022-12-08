@@ -1,7 +1,11 @@
 # $1 - name of the image (can be referred to later as $(call HCP_IMAGE,<name>))
-# $2 - name of ancestor image, or;
+# $2 - ancestor image;
+#      - SYM:<symbol>, if it should derive from HCP_<symbol>_DNAME using
+#        HCP_<symbol>_TFILE for dependencies, or
+#      - EXT:<basename>, if it should derive from <basename>, without
+#        dependencies, or
+#      - <name>, if the ancestor was also defined by app_image(), or
 #      - empty, if it should derive from base-platform,
-#      - EXT:<basename>, if it should derive from <basename>
 # $3 - source packages to inject
 # $4 - if non-empty, provides args for an ENTRYPOINT command in the Dockerfile
 # $5 - if non-empty, provides args for a CMD command in the Dockerfile
@@ -21,21 +25,26 @@ $(eval HCP_$(LOCAL_NAME)_TFILE := $(LOCAL_TFILE))
 $(eval HCP_$(LOCAL_NAME)_DFILE := $(LOCAL_DFILE))
 $(eval LOCAL_ANCESTOR := $(strip $2))
 $(eval LOCAL_EXTBASENAME := $(patsubst EXT:%,%,$(filter EXT:%,$(LOCAL_ANCESTOR))))
+$(eval LOCAL_EXTBASE_TFILE :=)
+$(eval LOCAL_SYMBASENAME := $(patsubst SYM:%,%,$(filter SYM:%,$(LOCAL_ANCESTOR))))
+$(if $(LOCAL_SYMBASENAME),\
+$(eval LOCAL_ANCESTOR_TFILE := $(HCP_$(LOCAL_SYMBASENAME)_TFILE))\
+$(eval LOCAL_ANCESTOR := $(HCP_$(LOCAL_SYMBASENAME)_DNAME))\
+,
 $(if $(LOCAL_EXTBASENAME),\
 $(eval LOCAL_EXTBASE_TFILE := $(LOCAL_CTX)/_extpulled)
 $(eval LOCAL_ANCESTOR_TFILE := $(LOCAL_EXTBASE_TFILE))\
 $(eval LOCAL_ANCESTOR := $(LOCAL_EXTBASENAME))\
 ,\
-$(eval LOCAL_EXTBASE_TFILE :=)\
 $(if $(LOCAL_ANCESTOR),\
 $(eval HCP_$(LOCAL_NAME)_DEP := $(LOCAL_ANCESTOR))\
 $(eval HCP_$(LOCAL_ANCESTOR)_DEPENDEES += $(LOCAL_NAME))\
 $(eval LOCAL_ANCESTOR_TFILE := $(HCP_$(LOCAL_ANCESTOR)_TFILE))\
 $(eval LOCAL_ANCESTOR := $(call HCP_IMAGE,$(LOCAL_ANCESTOR)))\
 ,\
-$(eval LOCAL_ANCESTOR_TFILE := $(HCP_BASE_TOUCHFILE))\
+$(eval LOCAL_ANCESTOR_TFILE := $(HCP_BASE_TFILE))\
 $(eval LOCAL_ANCESTOR := $(HCP_BASE_DNAME))\
-))
+)))
 $(eval LOCAL_PKGS := $(strip $3))
 $(eval LOCAL_DFILE_ENTRYPOINT := $(strip $4))
 $(eval LOCAL_DFILE_CMD := $(strip $5))

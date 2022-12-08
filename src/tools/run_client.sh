@@ -13,7 +13,7 @@ function set_callbacks {
 	CALLBACKS=($(jq -r '.[]' <<< "$JSON_CALLBACKS"))
 }
 set_callbacks "$(hcp_config_extract_or '.client.callbacks' '[]')"
-TOUCHFILE=$(hcp_config_extract ".client.touchfile" "")
+TFILE=$(hcp_config_extract ".client.touchfile" "")
 
 retries=0
 pause=1
@@ -62,7 +62,7 @@ Usage: $PROG [OPTIONS] [names ...]
     -C <callbacks>   JSON list of callbacks to execute (eg. \"[ \\\"/bin/foo\\\", \\\"/your/cb\\\" ]\")"
         (default: $JSON_CALLBACKS )
     -Z <path>        Touchfile once complete
-        (default: $TOUCHFILE)
+        (default: $TFILE)
 EOF
 	exit "${1:-1}"
 }
@@ -75,7 +75,7 @@ U)	URL="$OPTARG";;
 T)	TCTI="$OPTARG";;
 A)	ANCHOR="$OPTARG";;
 C)	set_callbacks "$OPTARG";;
-Z)	TOUCHFILE="$OPTARG";;
+Z)	TFILE="$OPTARG";;
 h)	usage 0;;
 v)	((VERBOSE++)) || true;;
 w)	wantfail=1;;
@@ -97,7 +97,7 @@ Starting $PROG:
  - TCTI=$TCTI
  - ANCHOR=$ANCHOR
  - JSON_CALLBACKS=$JSON_CALLBACKS
- - TOUCHFILE=$TOUCHFILE
+ - TFILE=$TFILE
 EOF
 fi
 
@@ -215,9 +215,9 @@ if ! (
 			exit 1
 		fi
 	done
-	if [[ -n $TOUCHFILE ]]; then
-		echo "Completion touchfile: $TOUCHFILE"
-		touch $TOUCHFILE
+	if [[ -n $TFILE ]]; then
+		echo "Completion touchfile: $TFILE"
+		touch $TFILE
 	fi
 ); then
 	echo "Error of some kind."

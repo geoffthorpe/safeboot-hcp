@@ -31,7 +31,7 @@ $(HCP_BUILDER_OUT)/deb_src_ify.sh:
 
 $(HCP_BUILDER_OUT)/built: $(HCP_BUILDER_OUT)/Dockerfile
 $(HCP_BUILDER_OUT)/built: $(HCP_BUILDER_OUT)/deb_src_ify.sh
-$(HCP_BUILDER_OUT)/built: $(HCP_BASE_TOUCHFILE)
+$(HCP_BUILDER_OUT)/built: $(HCP_BASE_TFILE)
 $(HCP_BUILDER_OUT)/built:
 	$Qecho "Building container image $(HCP_BUILDER_DNAME)"
 	$Qdocker build -t $(HCP_BUILDER_DNAME) \
