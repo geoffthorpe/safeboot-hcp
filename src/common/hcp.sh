@@ -15,16 +15,18 @@ hlog() {
 	if [[ $1 -gt $hcp_current_log_level ]]; then
 		return
 	fi
-	whoami=$(whoami)
-	pid=$BASHPID
-	procname=$(ps -p $pid -o comm=)
-	datestr=$(date --utc +%Y-%m-%d-%H)
-	fname="/tmp/debug-$whoami-$datestr-$pid-$procname"
-	if [[ $fname != $hcp_current_tracefile ]]; then
-		echo "[tracefile forking to $fname]" >&2
-		exec 2>> $fname
-		echo "[tracefile forked from $hcp_current_tracefile]" >&2
-		hcp_current_tracefile=fname
+	if [[ -z $HCP_NOTRACEFILE ]]; then
+		whoami=$(whoami)
+		pid=$BASHPID
+		procname=$(ps -p $pid -o comm=)
+		datestr=$(date --utc +%Y-%m-%d-%H)
+		fname="/tmp/debug-$whoami-$datestr-$pid-$procname"
+		if [[ $fname != $hcp_current_tracefile ]]; then
+			echo "[tracefile forking to $fname]" >&2
+			exec 2>> $fname
+			echo "[tracefile forked from $hcp_current_tracefile]" >&2
+			hcp_current_tracefile=fname
+		fi
 	fi
 	echo -E "$2" >&2
 }
