@@ -19,9 +19,12 @@ hlog() {
 		whoami=$(whoami)
 		pid=$BASHPID
 		procname=$(ps -p $pid -o comm=)
-		datestr=$(date --utc +%Y-%m-%d-%H)
-		fname="/tmp/debug-$whoami-$datestr-$pid-$procname"
+		dirdate=$(date --utc +%Y-%m-%d-%H)
+		fdate=$(date --utc +%M-%S)
+		fdir="/tmp/debug-$whoami-$dirdate"
+		fname="$fdir/$fdate-$procname.$pid"
 		if [[ $fname != $hcp_current_tracefile ]]; then
+			mkdir -p $fdir
 			echo "[tracefile forking to $fname]" >&2
 			exec 2>> $fname
 			echo "[tracefile forked from $hcp_current_tracefile]" >&2

@@ -37,7 +37,6 @@ def logrotate():
 		return
 	uid = os.geteuid()
 	whoami = pwd.getpwuid(uid).pw_name
-	fname = f"debug-{whoami}-"
 	now = datetime.now(timezone.utc)
 	pid = os.getpid()
 	procname = '_unknown_'
@@ -45,9 +44,15 @@ def logrotate():
 		if proc.info['pid'] == pid:
 			procname = proc.info['name']
 			break
-	fname = f"/tmp/{fname}{procname}-{now.year:04}-{now.month:02}-" + \
-		f"{now.day:02}-{now.hour:02}-{pid}"
+	dtdir = f"{now.year:04}-{now.month:02}-{now.day:02}-{now.hour:02}"
+	dtf = f"{now.minute:02}-{now.second:02}"
+	fdir = f"/tmp/debug-{whoami}-{dtdir}"
+	fname = f"{fdir}/{dtf}-{procname}.{pid}"
 	if current_log_path != fname:
+		try:
+			os.makedirs(fdir, mode = 0o755)
+		except FileExistsError:
+			pass
 		tracefile = open(f"{fname}", 'a')
 		print(f"[tracefile forking to {fname}]", file = sys.stderr)
 		sys.stderr.flush()
