@@ -36,6 +36,9 @@ services:
     common:
         image: ${HCP_IMAGE_caboodle}
         init: true
+        # Need SYS_PTRACE if you're going to debug
+        cap_add:
+          - SYS_PTRACE
         volumes:
           - fqdn:/fqdn-bus:rw
           - ${HCP_TOP}/usecase:/usecase:ro
