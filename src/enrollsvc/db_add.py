@@ -174,8 +174,12 @@ origenv = resultprofile.pop('__env', {})
 resultprofile = HcpJsonExpander.process_obj(origenv, resultprofile, '.',
 			varskey = None, fileskey = None)
 resultprofile['__env'] = origenv
-os.environ['ENROLL_JSON'] = json.dumps(resultprofile)
 log(f"{z}: param-expanded resultprofle={resultprofile}")
+
+# The only thing left to do to resultprofile is determine which genprogs to
+# run, and the genprogs themselves don't need to know that, so export the
+# resultprofile now so that safeboot and/or genprogs scripts can get at it.
+os.environ['ENROLL_JSON'] = json.dumps(resultprofile)
 
 # And we now deal with genprogs[_{pre,post}]
 genprogs_pre = ""
