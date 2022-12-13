@@ -97,6 +97,39 @@ def method_etc(filematch):
 		'postinstall': lambda assets: gen_postinstall(filematch, assets)
 	}
 
+# Similar to method_etc(), but handles krb5.keytab updates via ktutil
+def method_keytab(filematch):
+	def krb5update(assets):
+		if len(assets) != 1:
+			bail("method_keytab::fn expects single assets only")
+		a = assets[0]
+		log(f"krb5update({a})")
+		if not a['dest'].endswith('.updated'):
+			bail("method_keytab::fn expects '{foo}'.updated assets")
+		# k = destination keytab
+		k = a['dest'].replace('.updated', '')
+		log(f"- dest: {k}")
+		# Copy keys into destination
+		args = [ 'ktutil', 'copy', a['dest'], k ]
+		log(f"running subprocess: {args}")
+		c = subprocess.run(args)
+		# purge keys older than 1 day (TODO: configurable!)
+		args = [ 'ktutil', f"--keytab={k}", 'purge', '--age=1d' ]
+		log(f"running subprocess: {args}")
+		c = subprocess.run(args)
+		# Before callbacks run, fix the asset paths to the real destination
+		a['dest'] = k
+		# invoke any callbacks
+		gen_postinstall(filematch, assets)
+	return {
+		'fn': lambda fname, _class: [ {
+			'name': fname,
+			'dest': f"/etc/{fname}.updated",
+			'mode': 0o644 } ],
+		'preinstall': lambda assets: gen_preinstall(filematch, assets),
+		'postinstall': krb5update
+	}
+
 # Subroutine of method_hostcerts, which processes the common prefix of both
 # files (the cert "*.pem" and the key "*-key.pem"). This returns 3-tuple
 # (owner, destpath, destprefix), where owner is a userid (int) or None
@@ -181,8 +214,8 @@ def map_hostcert(prefix):
 				d = lazy_makedirs(f"/etc/hcp/https-server")
 			else:
 				d = lazy_makedirs(f"/etc/hcp/https-hostclient")
-			args = ['hxtool', 'print', '--content',
-					f"{prefix}.pem"]
+			args = [ 'hxtool', 'print', '--content',
+					f"{prefix}.pem" ]
 			log(f"running subprocess: {args}")
 			c = subprocess.run(args,
 				capture_output = True,
@@ -353,7 +386,7 @@ classes = [
 		'_': 'Covers the assets produced by genkrb5keytab',
 		'name': 'genkrb5keytab',
 		'glob': 'krb5.keytab',
-		'method': method_etc('HCP_ATTESTCLIENT_HOOK_KRB5KEYTAB')
+		'method': method_keytab('HCP_ATTESTCLIENT_HOOK_KRB5KEYTAB')
 	}
 ]
 
