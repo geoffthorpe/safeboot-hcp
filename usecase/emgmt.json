@@ -114,8 +114,12 @@
                     },
                     "default-pkinit-kdc": {
                         "type": "pkinit-kdc",
-                        "name": "pkinit-kdc",
                         "pk-init-principal": "krbtgt/{ENROLL_REALM}@{ENROLL_REALM}"
+                    },
+                    "default-pkinit-iprop": {
+                        "type": "pkinit-client",
+                        "pk-init-principal": "iprop/{ENROLL_HOSTNAME}@{ENROLL_REALM}",
+                        "subject": "CN=iprop,{ENROLL_HOSTNAME2DC}"
                     },
                     "default-https-server": {
                         "type": "https-server",

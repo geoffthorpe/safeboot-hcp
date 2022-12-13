@@ -175,7 +175,7 @@ dc_cmd("inject sshd pubkey into client's 'known_hosts'",
 	_input = x.stdout)
 
 cmdstr = 'kinit -C ' + \
-	'FILE:/etc/ssl/hostcerts/hostcert-pkinit-user-abc-key.pem abc ' + \
+	'FILE:/config/.hcp/pkinit/user-key.pem abc ' + \
 	'ssh -l abc sherver.hcphacking.xyz ' + \
 	'echo hello'
 x = dc_cmd("Use HCP cred to get TGT, then GSSAPI to ssh from client to sherver",

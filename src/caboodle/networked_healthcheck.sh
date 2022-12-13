@@ -76,8 +76,9 @@ fi
 while :; do
 	((VERBOSE > 0)) && echo >&2 "Running: kinit -C ... abc klist"
 	res=0
-	kinit -C FILE:/etc/ssl/hostcerts/hostcert-pkinit-user-abc-key.pem \
-		abc klist > $tout 2> $terr || res=$?
+	homedir=$(cd ~abc && pwd)
+	kinit -C FILE:/$homedir/.hcp/pkinit/user-key.pem abc \
+		klist > $tout 2> $terr || res=$?
 
 	if [[ $res == 0 ]]; then
 		((VERBOSE > 0)) && echo >&2 "Success"

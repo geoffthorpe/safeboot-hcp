@@ -25,7 +25,7 @@ cat > $HCP_KDCSVC_STATE/etc/kdc.conf << EOF
 	iprop-acl = $HCP_KDCSVC_STATE/etc/iprop-secondaries
 	enable-pkinit = yes
 	synthetic_clients = true
-	pkinit_identity = FILE:/etc/ssl/hostcerts/hostcert-pkinit-kdc-key.pem
+	pkinit_identity = FILE:/etc/hcp/pkinit/kdc-key.pem
 	pkinit_anchors = FILE:/usr/share/ca-certificates/HCP/certissuer.pem
 	#pkinit_pool = PKCS12:/path/to/useful-intermediate-certs.pfx
 	#pkinit_pool = FILE:/path/to/other-useful-intermediate-certs.pem

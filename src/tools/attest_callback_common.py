@@ -8,6 +8,7 @@ import sys
 import re
 import filecmp
 import json
+import pwd
 
 sys.path.insert(1, '/hcp/common')
 import hcp_common
@@ -35,7 +36,7 @@ else:
 
 log("Starting attest_callback_common")
 
-# Generic pre/post hook handling. If "{envprefix}_PRE" or "{envprefix}_POST"
+# Generic pre/post hook handling. If "{fname}_PRE" or "{fname}_POST"
 # are defined (in the environment), their values are interpreted as executable
 # paths that shoud be run if any of this asset's files have changed in the
 # enrollment received from the last attestation. A JSON presentation of the
@@ -44,22 +45,22 @@ log("Starting attest_callback_common")
 # occur, for example, when automatic reenrollment occurs, meaning that a new
 # certificate might be issued for the same/unchanging private key.)
 #    [
-#        ( "/etc/ssl/hostcerts/hostcert-foo-bar.pem", True),
-#        ( "/etc/ssl/hostcerts/hostcert-foo-bar-key.pem", False)
+#        ( "/etc/hcp/https-server/foo.hcphacking.xyz.pem", True),
+#        ( "/etc/hcp/https-server/foo.hcphacking.xyz-key.pem", False)
 #    ]
-def gen_preinstall(envprefix, assets):
-	if envprefix and f"{envprefix}_PRE" in os.environ:
-		prog = os.environ[f"{envprefix}_PRE"]
+def gen_preinstall(fname, assets):
+	if fname and f"{fname}_PRE" in os.environ:
+		prog = os.environ[f"{fname}_PRE"]
 		subprocess.run([prog, fname], text = True,
 				input = json.dumps(assets))
-def gen_postinstall(envpostfix, assets):
-	if envpostfix and f"{envpostfix}" in os.environ:
-		prog = os.environ[f"{envpostfix}"]
+def gen_postinstall(fname, assets):
+	if fname and f"{fname}" in os.environ:
+		prog = os.environ[f"{fname}"]
 		subprocess.run([prog, fname], text = True,
 				input = json.dumps(assets))
 
 # Method for assets that need typical /etc/<foo> handling
-def method_etc(envprefix):
+def method_etc(filematch):
 	return {
 		# This method belongs to a 'class' that already has a glob
 		# pattern to identify files of interest in the current
@@ -91,16 +92,163 @@ def method_etc(envprefix):
 		# - input: list/array of asset records (same dicts as those
 		#   returned from 'fn', but with a boolean-valued 'is_changed'
 		#   added to it)
-		'preinstall': lambda assets: gen_preinstall(envprefix, assets),
+		'preinstall': lambda assets: gen_preinstall(filematch, assets),
 		# (Optional) like preinstall, but run after installing.
-		'postinstall': lambda assets: gen_postinstall(envprefix, assets)
+		'postinstall': lambda assets: gen_postinstall(filematch, assets)
 	}
 
-# Installer for host certificates (and keys)
+# Subroutine of method_hostcerts, which processes the common prefix of both
+# files (the cert "*.pem" and the key "*-key.pem"). This returns 3-tuple
+# (owner, destpath, destprefix), where owner is a userid (int) or None
+# (for root), and destpath/destprefix determines the output paths;
+#    cert -> f"{destpath}/{destprefix}.pem"
+#     key -> f"{destpath}/{destprefix}-key.pem"
+# The mapping implemented here needs to be kept in sync with other,
+# interdependent configuration like emgmt.json, emgmt_pol.policy.json,
+# fleet.json, etc.
+#
+# Root/host-scoped creds have a "default-" prefix that take the form;
+# "default-<cat>-<subcat>". As a general rule, they are mapped to an
+# the installation prefix; /etc/hcp/<cat>/<subcat>".
+
+# Exception: if the category is 'https' and the subcategory begins with
+# 'server' or 'hostclient', the dNSName field of the certificate is extracted
+# and used in the mapping;
+#     default-https-server*   -->  /etc/hcp/https-server/<dNSName>
+#   default-https-hostclient* -->  /etc/hcp/https-hostclient/<dNSName>
+#
+# User-scoped creds take the form; "user-<cat>-<subcat>-<user>". The order may
+# seem strange, but this is because unix IDs can legally contain '-' characters
+# so we want it to be the last component in the split(). This means <cat> and
+# <subcat> can't use '-' characters, so underscores are a good alternative. If
+# the corresponding user ID exists on the system, the installed creds will be
+# owned by that user. The installation mapping depends on that (whether the
+# user exists) _as well as whether the user has a home directory_.
+# If <user> exists and has a $HOME directory;
+#     $HOME/.hcp/<cat>/<subcat>
+# If <user> exists and has no $HOME directory;
+#     /etc/hcp/creds/role/<user>/<cat>/<subcat>
+# If <user> doesn't exist;
+#     /etc/hcp/creds/unknown/<user>/<cat>/<subcat>
+#
+# Creds that don't match the above formats are ignored.
+#
+# Eg.
+#   default-pkinit-kdc.pem       ->   /etc/hcp/pkinit/kdc.pem
+#   default-pkinit-iprop.pem     ->   /etc/hcp/pkinit/iprop.pem
+# (and now skipping the '.pem' for brevity)
+#   default-https-server3        ->   /etc/hcp/https-server/<HOSTNAME>
+#   default-https-hostclient-bob ->   /etc/hcp/https-hostclient/<HOSTNAME>
+#   default-https-foo            ->   /etc/hcp/https/foo
+#   user-pkinit-id-bob           ->   ~bob/.hcp/pkinit/id
+#   user-pkinit-admin-bob        ->   ~bob/.hcp/pkinit/admin
+#   user-email-authn-bob         ->   ~bob/.hcp/email/auth
+#   user-pkinit-id-roleacct7     ->   /etc/hcp/creds/role/roleacct7/pkinit/id
+#   user-pkinit-authz-www-data   ->   /etc/hcp/creds/role/www-data/pkinit/authz
+#   user-email-authn-foo         ->   /etc/hcp/creds/unknown/foo/email/authn
+
 re_pem_prog = re.compile('\\.pem$')
 re_key_prog = re.compile('-key\\.pem$')
-def method_hostcerts(envprefix):
-	bdir = '/etc/ssl/hostcerts'
+
+def lazy_makedirs(d):
+	if not os.path.isdir(d):
+		log(f"lazy_makedirs() creating: {d}")
+		os.makedirs(d, mode = 0o755)
+	return d
+def map_hostcert(prefix):
+	log(f"map_hostcert({prefix})")
+	if not prefix.startswith('hostcert-'):
+		log(f"skipping, we only map 'hostcert-*' prefixes")
+		return 0, None, None
+	trimmed = prefix.replace('hostcert-', '')
+	split3 = trimmed.split('-', maxsplit = 2)
+	split4 = trimmed.split('-', maxsplit = 3)
+	log(f"split3={split3}")
+	log(f"split4={split4}")
+	# None == 'root'
+	uid = 1
+	if split3[0] == 'default':
+		if len(split3) != 3:
+			log(f"map_hostcert({prefix}), no default mapping")
+			return 0, None, None
+		log(f"following 'default' handling")
+		cat = split3[1]
+		subcat = split3[2]
+		if cat == 'https' and (subcat.startswith('server') or \
+					subcat.startswith('hostclient')):
+			log(f"following 'https' handling")
+			if subcat.startswith('server'):
+				d = lazy_makedirs(f"/etc/hcp/https-server")
+			else:
+				d = lazy_makedirs(f"/etc/hcp/https-hostclient")
+			args = ['hxtool', 'print', '--content',
+					f"{prefix}.pem"]
+			log(f"running subprocess: {args}")
+			c = subprocess.run(args,
+				capture_output = True,
+				text = True)
+			log(f"- returned {c}")
+			resprefix = 'no.hostname.found'
+			for l in c.stdout.split('\n'):
+				s = l.strip()
+				if s.startswith('dNSName: '):
+					resprefix = s.replace('dNSName: ', '')
+					break
+		else:
+			d = lazy_makedirs(f"/etc/hcp/{cat}")
+			resprefix = subcat
+	elif split4[0] == 'user':
+		if len(split4) != 4:
+			log(f"map_hostcert({prefix}), no user mapping")
+			return 0, None, None
+		log(f"following 'user' handling")
+		cat = split4[1]
+		subcat = split4[2]
+		username = split4[3]
+		resprefix = subcat
+		userexists = True
+		try:
+			pwdinfo = pwd.getpwnam(username)
+		except KeyError:
+			userexists = False
+		if userexists:
+			log(f"user {username} exists")
+			pwdirexists = False
+			if pwdinfo:
+				pwdir = pwdinfo.pw_dir
+				pwdirexists = os.path.isdir(pwdir)
+			uid = pwdinfo.pw_uid
+			if pwdirexists:
+				log(f"home dir is {pwdir}")
+				if not os.path.isdir(f"{pwdir}/.hcp"):
+					os.mkdir(f"{pwdir}/.hcp")
+					os.chown(f"{pwdir}/.hcp", uid, -1)
+				if not os.path.isdir(f"{pwdir}/.hcp/{cat}"):
+					os.mkdir(f"{pwdir}/.hcp/{cat}")
+					os.chown(f"{pwdir}/.hcp/{cat}", uid, -1)
+				d = f"{pwdinfo.pw_dir}/.hcp/{cat}"
+			else:
+				log(f"no home dir ({pwdir} doesn't exist)")
+				lazy_makedirs(f"/etc/hcp/creds/role")
+				if not os.path.isdir(f"/etc/hcp/creds/role/{uid}"):
+					os.mkdir(f"/etc/hcp/creds/role/{uid}")
+					os.chown(f"/etc/hcp/creds/role/{uid}",
+						uid, -1)
+				if not os.path.isdir(f"/etc/hcp/creds/role/{uid}/{cat}"):
+					os.mkdir(f"/etc/hcp/creds/role/{uid}/{cat}")
+					os.chown(f"/etc/hcp/creds/role/{uid}/{cat}",
+						uid, -1)
+				d = f"/etc/hcp/creds/role/{uid}/{cat}"
+		else:
+			log(f"user {username} doesn't exist")
+			d = lazy_makedirs(f"/etc/hcp/creds/unknown/{username}/{cat}")
+	else:
+		log(f"map_hostcert({prefix}), unrecognized form")
+		return 0, None, None
+	return uid, d, resprefix
+
+# Installer for host certificates (and keys)
+def method_hostcerts(filematch):
 	def fn(fname, _class):
 		log(f"hostcerts::fn({fname}) starting")
 		# The glob matches on both the cert and key files, so we only
@@ -113,38 +261,42 @@ def method_hostcerts(envprefix):
 		if re_key_prog.search(fname):
 			log("matches 'key' regex, returning empty")
 			return []
-		keyname = re_pem_prog.sub('-key.pem', fname)
-		fullcert = f"{bdir}/{fname}"
-		fullkey = f"{bdir}/{keyname}"
-		if not os.path.isdir(bdir):
-			log("lazy initialization of '{bdir}'")
-			os.mkdir(bdir)
-		res = [ {
-				'name': fname,
-				'dest': fullcert,
+		prefix = re_pem_prog.sub('', fname)
+		# Now, we have an arbitrary cert/key pair and want to figure
+		# out not just where it should go but also who it should be
+		# owned by. Defer this to the map_hostcert() function. Pass it
+		# the common prefix to the cert and key, it returns a 3-tuple
+		# of uid, directory path and file-prefix.  To the latter we
+		# append the '.pem' and '-key.pem' that we removed from the
+		# input.
+		uid, destpath, destprefix = map_hostcert(prefix)
+		res = []
+		if uid != 0:
+			res = [ {
+				'name': f"{prefix}.pem",
+				'dest': f"{destpath}/{destprefix}.pem",
+				'uid': uid,
 				'mode': 0o644
-			}, {
-				'name': keyname,
-				'dest': fullkey,
+				}, {
+				'name': f"{prefix}-key.pem",
+				'dest': f"{destpath}/{destprefix}-key.pem",
+				'uid': uid,
 				'mode': 0o600
-			} ]
-		log("returning {res}")
+				} ]
+		log(f"returning {res}")
 		return res;
 	return {
 		'fn': fn,
-		'preinstall': lambda assets: gen_preinstall(envprefix, assets),
-		'postinstall': lambda assets: gen_postinstall(envprefix, fname)
+		'preinstall': lambda assets: gen_preinstall(filematch, assets),
+		'postinstall': lambda assets: gen_postinstall(filematch, assets)
 	}
 
 # Method for the HCP cert issuer (CA)
-def method_certissuer(envprefix):
+def method_certissuer(filematch):
 	# This should only be called once, given that our glob is an exact-match.
 	def fn(fname, _class):
 		log(f"certissuer::fn({fname}) starting")
-		bdir = f"/usr/share/ca-certificates/HCP"
-		if not os.path.isdir(bdir):
-			log("lazy initialization of '{bdir}'")
-			os.mkdir(bdir)
+		bdir = lazy_makedirs(f"/usr/share/ca-certificates/HCP")
 		# The asset record needs name/dest/mode. The top-level loop
 		# will supplement it with 'is_changed' before running
 		# preinstall and installing the files. Here, we also supplement
@@ -174,10 +326,10 @@ def method_certissuer(envprefix):
 				log(f"updated CA {x}")
 		log("running 'update-ca-certificates'")
 		subprocess.run(['update-ca-certificates'])
-		gen_postinstall(envprefix, assets)
+		gen_postinstall(filematch, assets)
 	return {
 		'fn': fn,
-		'preinstall': lambda assets: gen_preinstall(envprefix, assets),
+		'preinstall': lambda assets: gen_preinstall(filematch, assets),
 		'postinstall': postinstall
 	}
 
@@ -215,19 +367,25 @@ for c in classes:
 	print(f"Class: {c['name']}")
 	meth = c['method']
 	matches = glob.glob(c['glob'])
-	log(f"class=c['name']: glob={matches}")
+	log(f"class={c['name']}: glob={matches}")
 	for fname in matches:
+		log(f"fname={fname}")
 		items = meth['fn'](fname, c)
-		log(f"fname={fname}: items={items}")
+		log(f"meth({fname}) -> items={items}")
 		if len(items) == 0:
 			continue
 		anything_changed = False
 		log("running the 'what changed' loop")
 		for x in items:
-			# We augment the asset record with a 'has_changed' attribute, which
-			# can be harnessed by the postinstall() hook.
+			# We augment the asset record with a 'has_changed'
+			# attribute, which can be harnessed by the
+			# postinstall() hook.
+			if not 'uid' in x:
+				x['uid'] = 1
 			x['is_changed'] = not os.path.isfile(x['dest']) or \
-					not filecmp.cmp(x['name'], x['dest'])
+				not filecmp.cmp(x['name'], x['dest']) or \
+				pwd.getpwuid(os.stat(x['dest']).st_uid).pw_uid \
+					!= x['uid']
 			verbose(f" - asset: {x['name']} ({x['mode']:o}) " +
 				f"[{x['is_changed'] and 'changed' or 'unchanged'}]")
 			anything_changed = anything_changed or x['is_changed']
@@ -244,8 +402,12 @@ for c in classes:
 			log(f"x={x}")
 			if x['is_changed']:
 				print(f" - install: {x['name']},{x['mode']:o}")
+				print(f"      dest: {x['dest']}")
 				shutil.copyfile(x['name'], x['dest'])
 				os.chmod(x['dest'], x['mode'])
+				uid = x['uid']
+				if uid != 1:
+					os.chown(x['dest'], uid, -1)
 		if 'postinstall' in meth and meth['postinstall']:
 			verbose(f" [postinstall]")
 			meth['postinstall'](items)

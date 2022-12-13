@@ -124,7 +124,7 @@
         "exec": [
             "kinit",
             "-C",
-            "FILE:/etc/ssl/hostcerts/hostcert-pkinit-iprop-key.pem",
+            "FILE:/etc/hcp/pkinit/iprop-key.pem",
             "iprop/secondary.kdc.hcphacking.xyz@HCPHACKING.XYZ",
             "ipropd-slave"
         ],

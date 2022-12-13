@@ -11,28 +11,23 @@
 			"genprogs": "genconf-krb5 gencert-hxtool",
 			"gencert-hxtool": {
 				"list": [ "default-https-hostclient" ],
-				"pkinit-client-user": {
-					"name": "pkinit-user-{ENROLL_PKINIT_USER_PRINC}",
+				"user-pkinit-user": {
+					"name": "user-pkinit-user-{ENROLL_PKINIT_USER_PRINC}",
 					"type": "pkinit-client",
 					"pk-init-principal": "{ENROLL_PKINIT_USER_PRINC}@{ENROLL_REALM}",
 					"subject": "CN={ENROLL_PKINIT_USER_PRINC},{ENROLL_HOSTNAME2DC}"
 				},
-				"pkinit-client-admin": {
-					"name": "pkinit-admin-{ENROLL_PKINIT_USER_PRINC}",
+				"user-pkinit-admin": {
+					"name": "user-pkinit-admin-{ENROLL_PKINIT_USER_PRINC}",
 					"type": "pkinit-client",
 					"pk-init-principal": "{ENROLL_PKINIT_USER_PRINC}/admin@{ENROLL_REALM}",
 					"subject": "CN={ENROLL_PKINIT_USER_PRINC},{ENROLL_HOSTNAME2DC}"
 				},
-				"https-client-user": {
-					"name": "https-client-{ENROLL_HTTPS_CLIENT_PRINC}",
+				"user-https-client": {
+					"name": "user-https-client-{ENROLL_HTTPS_CLIENT_PRINC}",
 					"type": "https-client",
 					"subject": "UID={ENROLL_HTTPS_CLIENT_PRINC},{ENROLL_DOMAIN2DC}",
 					"email": "{ENROLL_HTTPS_CLIENT_PRINC}@{ENROLL_DOMAIN}"
-				},
-				"pkinit-iprop": {
-					"type": "pkinit-client",
-					"pk-init-principal": "iprop/{ENROLL_HOSTNAME}@{ENROLL_REALM}",
-					"subject": "CN=iprop,{ENROLL_HOSTNAME2DC}"
 				}
 			}
 		}
@@ -50,9 +45,9 @@
 				"gencert-hxtool": {
 					"list": [
 						"default-https-hostclient",
-						"https-client-user",
-						"pkinit-client-user",
-						"pkinit-client-admin"
+						"user-https-client",
+						"user-pkinit-user",
+						"user-pkinit-admin"
 					]
 				}
 			}
@@ -70,7 +65,7 @@
 					"list": [
 						"default-pkinit-kdc",
 						"default-https-server",
-						"pkinit-client-user"
+						"user-pkinit-user"
 					]
 				}
 			}
@@ -87,7 +82,7 @@
 					"list": [
 						"default-pkinit-kdc",
 						"default-https-server",
-						"pkinit-iprop"
+						"default-pkinit-iprop"
 					]
 				}
 			}
@@ -103,7 +98,7 @@
 				"gencert-hxtool": {
 					"list": [
 						"default-https-hostclient",
-						"pkinit-client-user"
+						"user-pkinit-user"
 					]
 				}
 			}
@@ -118,7 +113,10 @@
 				},
 				"genprogs": "genconf-krb5 gencert-hxtool genkrb5keytab",
 				"gencert-hxtool": {
-					"list": [ "default-https-server", "pkinit-client-user" ]
+					"list": [
+						"default-https-server",
+						"user-pkinit-user"
+					]
 				}
 			}
 		}
