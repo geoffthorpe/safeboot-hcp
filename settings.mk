@@ -16,7 +16,7 @@ HCP_IMAGE=$(HCP_IMAGE_PREFIX)$1:$(HCP_IMAGE_TAG)
 # - This baseline container image also gets used as a "utility" container, used
 #   particularly when needing to run cleanup shell-commands and "any image will
 #   do".
-HCP_BASE ?= debian:bullseye-slim
+HCP_BASE ?= debian:bullseye
 #HCP_BASE ?= internal.dockerhub.mycompany.com/library/debian:buster-slim
 
 # Define this to inhibit all dependency on top-level Makefiles and this
@@ -66,6 +66,10 @@ HCP_HEIMDAL_SOURCE := 1
 #  sameersbn/apt-cacher-ng:3.3-20200524
 #
 #HCP_APT_PROXY := http://172.17.0.1:3142
+
+# If defined, the "2apt-usable" layer will install "man" and "manpages" packages, and
+# verif that the choice of HCP_BASE doesn't disable man pages.
+HCP_APT_MANPAGES := 1
 
 # These flags get passed to "make" when compiling submodules. "-j" on its own
 # allows make to spawn arbitrarily many processes at once, whereas "-j 4" caps

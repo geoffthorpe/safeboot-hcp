@@ -131,6 +131,10 @@ $(HCP_BASE_2APT_OUT)/apt-proxy.sh: | $(HCP_BASE_2APT_OUT)
 $(HCP_BASE_2APT_OUT)/apt-proxy.sh: $(HCP_BASE_2APT_SRC)/apt-proxy.sh
 $(HCP_BASE_2APT_OUT)/apt-proxy.sh:
 	$Qcp $< $@
+$(HCP_BASE_2APT_OUT)/apt-manpages.sh: | $(HCP_BASE_2APT_OUT)
+$(HCP_BASE_2APT_OUT)/apt-manpages.sh: $(HCP_BASE_2APT_SRC)/apt-manpages.sh
+$(HCP_BASE_2APT_OUT)/apt-manpages.sh:
+	$Qcp $< $@
 $(HCP_BASE_2APT_OUT)/timezone: | $(HCP_BASE_2APT_OUT)
 $(HCP_BASE_2APT_OUT)/timezone: /etc/timezone
 $(HCP_BASE_2APT_OUT)/timezone:
@@ -143,11 +147,14 @@ $(HCP_BASE2_TFILE): $(HCP_BASE_OUT)/0import.built
 endif
 $(HCP_BASE2_TFILE): $(HCP_BASE_OUT)/2apt-usable.Dockerfile
 $(HCP_BASE2_TFILE): $(HCP_BASE_2APT_OUT)/apt-proxy.sh
+$(HCP_BASE2_TFILE): $(HCP_BASE_2APT_OUT)/apt-manpages.sh
 $(HCP_BASE2_TFILE): $(HCP_BASE_2APT_OUT)/timezone
 $(HCP_BASE2_TFILE):
 	$Qdocker build -t $(HCP_BASE2_DNAME) \
 	               -f $(HCP_BASE_OUT)/2apt-usable.Dockerfile \
 		       --build-arg HCP_APT_PROXY=$(HCP_APT_PROXY) \
+		       --build-arg HCP_APT_MANPAGES=$(HCP_APT_MANPAGES) \
+		       --build-arg HCP_BASE=$(HCP_BASE) \
 	               $(HCP_BASE_2APT_OUT)/
 	$Qtouch $@
 $(eval $(call pp_rule_docker_image_rm,\
