@@ -18,15 +18,15 @@
         "path": "/fqdn-bus",
         "refresh": 5,
         "expiry": 20,
-        "hostnames": [ "do-not-contact-me-caboodlenetworkedtpm" ],
+        "hostnames": [ "do-not-contact-me-workstation1tpm" ],
         "default_domain": "hcphacking.xyz"
     },
 
     "swtpmsvc": {
-        "setup": { "touchfile": "/tpm_caboodlenet/tpm/ek.pub" },
+        "setup": { "touchfile": "/tpm_workstation1/tpm/ek.pub" },
         "exec": "/hcp/swtpmsvc/run_swtpm.sh",
-        "state": "/tpm_caboodlenet",
-        "sockdir": "/tpm_socket_caboodlenet",
+        "state": "/tpm_workstation1",
+        "sockdir": "/tpm_socket_workstation1",
         "tag": "postsetup"
     }
 }

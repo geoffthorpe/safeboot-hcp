@@ -145,20 +145,20 @@ dc_cmd("start sherver",
 dc_cmd("wait for sherver to come up",
 	'sherver', 'exec', [ '/hcp/sshsvc/healthcheck.sh' ] + rargs)
 
-dc_cmd("create and enroll 'caboodle_networked' TPM",
-	'orchestrator', 'run', '-- -c -e caboodlenet'.split())
+dc_cmd("create and enroll 'workstation1' TPM",
+	'orchestrator', 'run', '-- -c -e workstation1'.split())
 
-dc_cmd("start TPM for client machine (caboodle_networked)",
-	None, 'up', [ 'caboodle_networked_tpm' ])
+dc_cmd("start TPM for client machine (workstation1)",
+	None, 'up', [ 'workstation1_tpm' ])
 
 dc_cmd("wait for client TPM to come up",
-	'caboodle_networked_tpm', 'exec', [ '/hcp/swtpmsvc/healthcheck.sh' ] + rargs)
+	'workstation1_tpm', 'exec', [ '/hcp/swtpmsvc/healthcheck.sh' ] + rargs)
 
-dc_cmd("start client machine (caboodle_networked)",
-	None, 'up', [ 'caboodle_networked' ])
+dc_cmd("start client machine (workstation1)",
+	None, 'up', [ 'workstation1' ])
 
 dc_cmd("waiting for the client machine to be up",
-	'caboodle_networked', 'exec',
+	'workstation1', 'exec',
 	[ '/hcp/caboodle/networked_healthcheck.sh' ] + rargs)
 
 x = dc_cmd("obtaining the sshd server's randomly-generated public key",
@@ -170,7 +170,7 @@ cmdstr = 'mkdir -p /root/.ssh && ' + \
 	'chmod 600 /root/.ssh && ' + \
 	'cat - > /root/.ssh/known_hosts'
 dc_cmd("inject sshd pubkey into client's 'known_hosts'",
-	'caboodle_networked', 'exec',
+	'workstation1', 'exec',
 	[ 'bash', '-c', cmdstr ],
 	_input = x.stdout)
 
@@ -179,7 +179,7 @@ cmdstr = 'kinit -C ' + \
 	'ssh -l abc sherver.hcphacking.xyz ' + \
 	'echo hello'
 x = dc_cmd("Use HCP cred to get TGT, then GSSAPI to ssh from client to sherver",
-	'caboodle_networked', 'exec',
+	'workstation1', 'exec',
 	[ 'bash', '-c', '-l', cmdstr ],
 	captureStdout = True)
 if x.stdout.strip() != 'hello':

@@ -16,8 +16,8 @@ volumes:
     tpmsocket_kdc_primary:
     tpm_kdc_secondary:
     tpmsocket_kdc_secondary:
-    tpm_caboodlenet:
-    tpmsocket_caboodlenet:
+    tpm_workstation1:
+    tpmsocket_workstation1:
     tpm_sherver:
     tpmsocket_sherver:
 
@@ -144,7 +144,7 @@ services:
           - tpm_aclient:/tpm_aclient
           - tpm_kdc_primary:/tpm_kdc_primary
           - tpm_kdc_secondary:/tpm_kdc_secondary
-          - tpm_caboodlenet:/tpm_caboodlenet
+          - tpm_workstation1:/tpm_workstation1
           - tpm_sherver:/tpm_sherver
         environment:
           - HCP_CONFIG_FILE=/usecase/orchestrator.json
@@ -304,6 +304,48 @@ services:
             timeout: 3s
             interval: 10s
 
+# 'workstation1' has a linux desktop (http://localhost:3000) for the 'abc'
+# user, which runs under kinit via a "user-pkinit-user-abc" certificate that
+# comes from enrollment of the TPM (and is obtained via attestation). This
+# container is also used (non-interactively) by the 'services_basic' test case.
+    workstation1:
+        extends: common
+        image: ${HCP_IMAGE_caboodle}
+        hostname: workstation1
+        # TODO: we don't want to do this, but the linuxserver.io:webtop startup (upon
+        # which we are usually based), which is 's6-overlay'-based, insists on
+        # being PID 1. We exec to it from our own launcher, but that's not PID 1 if we
+        # use docker's 'init'.
+        init: false
+        environment:
+          - HCP_CONFIG_FILE=/usecase/workstation1.json
+        volumes:
+          - ${HCP_TOP}/vendors:/vendors:ro
+          - tpmsocket_workstation1:/tpm_socket_workstation1
+          - ${HCP_TESTCREDS_ENROLLVERIFIER}:/enrollverifier:ro
+        networks:
+          - hcpnetwork
+        ports:
+          - "3000:3000"
+        healthcheck:
+            test: /hcp/caboodle/networked_healthcheck.sh
+            timeout: 3s
+            interval: 10s
+    workstation1_tpm:
+        extends: common
+        image: ${HCP_IMAGE_swtpmsvc}
+        hostname: workstation1_tpm
+        network_mode: "none"
+        volumes:
+          - tpm_workstation1:/tpm_workstation1
+          - tpmsocket_workstation1:/tpm_socket_workstation1
+        environment:
+          - HCP_CONFIG_FILE=/usecase/workstation1_tpm.json
+        healthcheck:
+            test: /hcp/swtpmsvc/healthcheck.sh
+            timeout: 3s
+            interval: 10s
+
 # Caboodle instance
     caboodle_alone:
         extends: common
@@ -317,40 +359,5 @@ services:
           - ${HCP_TOP}/vendors:/vendors:ro
         healthcheck:
             test: /bin/true
-            timeout: 3s
-            interval: 10s
-    caboodle_networked:
-        extends: caboodle_alone
-        hostname: caboodle_networked
-        # TODO: we don't want to do this, but the linuxserver.io:webtop startup (upon
-        # which we are usually based), which is 's6-overlay'-based, insists on
-        # being PID 1. We exec to it from our own launcher, but that's not PID 1 if we
-        # use docker's 'init'.
-        init: false
-        environment:
-          - HCP_CONFIG_FILE=/usecase/caboodle_networked.json
-        volumes:
-          - tpmsocket_caboodlenet:/tpm_socket_caboodlenet
-          - ${HCP_TESTCREDS_ENROLLVERIFIER}:/enrollverifier:ro
-        networks:
-          - hcpnetwork
-        ports:
-          - "3000:3000"
-        healthcheck:
-            test: /hcp/caboodle/networked_healthcheck.sh
-            timeout: 3s
-            interval: 10s
-    caboodle_networked_tpm:
-        extends: common
-        image: ${HCP_IMAGE_swtpmsvc}
-        hostname: caboodle_networked_tpm
-        network_mode: "none"
-        volumes:
-          - tpm_caboodlenet:/tpm_caboodlenet
-          - tpmsocket_caboodlenet:/tpm_socket_caboodlenet
-        environment:
-          - HCP_CONFIG_FILE=/usecase/caboodle_networked_tpm.json
-        healthcheck:
-            test: /hcp/swtpmsvc/healthcheck.sh
             timeout: 3s
             interval: 10s

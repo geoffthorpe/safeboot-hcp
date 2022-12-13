@@ -20,7 +20,7 @@
         "path": "/fqdn-bus",
         "refresh": 5,
         "expiry": 20,
-        "hostnames": [ "caboodlenet" ],
+        "hostnames": [ "workstation1" ],
         "default_domain": "hcphacking.xyz",
         "bad_address": "100.100.100.100"
     },
@@ -41,7 +41,7 @@
         "exec": "/hcp/tools/run_client.sh",
         "touchfile": "/etc/hcp-attested",
         "attest_url": "http://ahcp.hcphacking.xyz:8080",
-        "tcti": "swtpm:path=/tpm_socket_caboodlenet/tpm",
+        "tcti": "swtpm:path=/tpm_socket_workstation1/tpm",
         "callbacks": [ "/hcp/tools/attest_callback_common.py" ]
     },
 
