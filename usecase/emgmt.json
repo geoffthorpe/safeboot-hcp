@@ -186,7 +186,7 @@
                 },
                 "genkrb5keytab": {
                     "kdcsvc": "http://primary.kdc.hcphacking.xyz:9090",
-                    "principal": "host/{ENROLL_HOSTNAME}"
+                    "principals": [ "host/{ENROLL_HOSTNAME}" ]
                 }
             }
         }
