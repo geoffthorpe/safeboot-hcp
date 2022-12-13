@@ -25,6 +25,7 @@ if [[ ! -f /etc/ssh/sshd_config.d/hcp_ssh_svc.conf ]]; then
 # We need to enable GSSAPI authn to use Kerberos
 GSSAPIAuthentication yes
 GSSAPICleanupCredentials yes
+PasswordAuthentication no
 EOF
 fi
 
