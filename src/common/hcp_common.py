@@ -10,6 +10,11 @@ from datetime import datetime, timezone, timedelta
 sys.path.insert(1, '/hcp/xtra')
 import HcpJsonPath
 
+# Equivalent for the 'touch' command
+def touch(p):
+	with open(p, 'a'):
+		os.utime(p, None)
+
 # This is rudimentary: level 0 is for stuff that will go to stderr no matter
 # what, level 1 is for stuff that should go to stderr if you actually want to
 # debug anything, and level 2 is for stuff whose absence might be desirable if

@@ -146,7 +146,7 @@ import ipaddress as ip
 print("Running FQDN publishing and discovery mechanism")
 
 sys.path.insert(1, '/hcp/common')
-from hcp_common import log, bail, hcp_config_extract
+from hcp_common import touch, log, bail, hcp_config_extract
 
 # We pull our config structure as a whole, once, then dig into it locally. I.e.
 # we don't pull each attribute via hcp_config_extract()
@@ -325,8 +325,7 @@ def loop():
             publish()
             recolt()
             if myuntil:
-                with open(myuntil, 'a'):
-                    os.utime(myuntil, None)
+                touch (myuntil)
             log(f"Updated, sleeping for {myrefresh} seconds")
             time.sleep(myrefresh)
         except Exception as e:
