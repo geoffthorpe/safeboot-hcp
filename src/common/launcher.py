@@ -62,9 +62,10 @@ def childenv_init(child):
             else:
                 newenv[k] = ep[k]
     if 'unset' in e:
-        eu = e['unset']
+        es = e['unset']
         for k in es:
-            newenv.pop[k]
+            if k in newenv:
+                newenv.pop(k)
     child['newenv'] = newenv
 
 # Iterate through the 'services' array in the JSON, extracting and checking the
@@ -178,13 +179,17 @@ for i in services:
                 bail(f"'{i}:env' supports pathadd/set/unset (not '{s}')")
             v = child['env'][s]
             if not isinstance(v, dict):
-                bail(f"'{i}:env:{v}' must be a dict (not a {type(v)})")
+                bail(f"'{i}:env:{s}' must be a dict (not a {type(v)})")
             for e in v:
                 if not isinstance(e, str):
-                    bail(f"'{i}:env:{v}', '{e}' must be a str (not a {type(e)})")
+                    bail(f"'{i}:env:{s}', '{e}' must be a str (not a {type(e)})")
                 ev = v[e]
-                if not isinstance(ev, str):
-                    bail(f"'{i}:env:{v}:{e}' must be a str (not a {type(ev)})")
+                if s == 'unset':
+                    if ev != None:
+                        bail(f"'{i}:env:{s}:{e}' must be None (not {type(ev)})")
+                else:
+                    if not isinstance(ev, str):
+                        bail(f"'{i}:env:{s}:{e}' must be a str (not a {type(ev)})")
         childenv_init(child)
     # Child curated, now where does it go, and does it fit there?
     if child['setup']:
