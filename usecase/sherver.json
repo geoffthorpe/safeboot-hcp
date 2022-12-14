@@ -21,6 +21,9 @@
         "until": "/etc/hcp-fqdn-alive",
         "nowait": 1,
         "tag": "presetup",
+        "env": {
+            "unset": { "HCP_NOTRACEFILE": null }
+        },
         "path": "/fqdn-bus",
         "refresh": 5,
         "expiry": 20,
@@ -34,6 +37,11 @@
         "until": "/etc/hcp-attested",
         "nowait": 1,
         "tag": "attester",
+        "env": {
+            "unset": {
+                "HCP_NOTRACEFILE": null
+            }
+        },
         "period": 120,
         "env": {
             "set": {
@@ -44,6 +52,9 @@
     "client": {
         "exec": "/hcp/tools/run_client.sh",
         "touchfile": "/etc/hcp-attested",
+        "env": {
+            "unset": { "HCP_NOTRACEFILE": null }
+        },
         "attest_url": "http://ahcp.hcphacking.xyz:8080",
         "tcti": "swtpm:path=/tpm_socket_sherver/tpm",
         "callbacks": [ "/hcp/tools/attest_callback_common.py" ]

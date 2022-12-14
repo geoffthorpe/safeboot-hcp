@@ -15,6 +15,9 @@
         "until": "/etc/hcp-fqdn-alive",
         "nowait": 1,
         "tag": "presetup",
+        "env": {
+            "unset": { "HCP_NOTRACEFILE": null }
+        },
         "path": "/fqdn-bus",
         "refresh": 5,
         "expiry": 20,

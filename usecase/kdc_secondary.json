@@ -23,6 +23,9 @@
         "until": "/etc/hcp-fqdn-alive",
         "nowait": 1,
         "tag": "presetup",
+        "env": {
+            "unset": { "HCP_NOTRACEFILE": null }
+        },
         "path": "/fqdn-bus",
         "refresh": 5,
         "expiry": 20,
@@ -36,11 +39,19 @@
         "until": "/etc/hcp-attested",
         "nowait": 1,
         "tag": "attester",
+        "env": {
+            "unset": {
+                "HCP_NOTRACEFILE": null
+            }
+        },
         "period": 120
     },
     "client": {
         "exec": "/hcp/tools/run_client.sh",
         "touchfile": "/etc/hcp-attested",
+        "env": {
+            "unset": { "HCP_NOTRACEFILE": null }
+        },
         "attest_url": "http://ahcp.hcphacking.xyz:8080",
         "tcti": "swtpm:path=/tpm_socket_kdc_secondary/tpm",
         "callbacks": [ "/hcp/tools/attest_callback_common.py" ]
@@ -91,7 +102,7 @@
         "exec": "/hcp/common/webapi.sh",
         "tag": "postsetup",
         "servername": "secondary.kdc.hcphacking.xyz",
-        "port": 9090,
+        "port": 9190,
         "app": "/hcp/kdcsvc/mgmt_api.py",
         "uwsgi_env": {
             "HCP_TRACEFILE": "/tmp"

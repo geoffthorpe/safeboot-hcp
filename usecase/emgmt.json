@@ -45,6 +45,9 @@
         "until": "/etc/hcp-fqdn-alive",
         "nowait": 1,
         "tag": "presetup",
+        "env": {
+            "unset": { "HCP_NOTRACEFILE": null }
+        },
         "path": "/fqdn-bus",
         "refresh": 5,
         "expiry": 20,
@@ -102,7 +105,8 @@
                 "__env": {
                     "ENROLL_ISSUERCERT": "/usr/share/ca-certificates/HCP/certissuer.pem",
                     "ENROLL_CERTPREFIX": "hostcert-",
-                    "ENROLL_KDC": "secondary.kdc"
+                    "ENROLL_KDC": "secondary.kdc",
+                    "ENROLL_KDC_PORT": "88"
                 },
                 "genprogs": "gencert-hxtool",
                 "gencert-hxtool": {
@@ -176,7 +180,7 @@
                     },
                     "realms": {
                         "{ENROLL_REALM}": {
-                            "kdc": "{ENROLL_KDC}.{ENROLL_DOMAIN}",
+                            "kdc": "{ENROLL_KDC}.{ENROLL_DOMAIN}:{ENROLL_KDC_PORT}",
                             "pkinit_require_eku": "true",
                             "pkinit_require_krbtgt_otherName": "true",
                             "pkinit_win2k": "no",

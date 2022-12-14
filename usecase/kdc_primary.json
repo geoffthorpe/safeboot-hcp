@@ -23,6 +23,9 @@
         "until": "/etc/hcp-fqdn-alive",
         "nowait": 1,
         "tag": "presetup",
+        "env": {
+            "unset": { "HCP_NOTRACEFILE": null }
+        },
         "path": "/fqdn-bus",
         "refresh": 5,
         "expiry": 20,
@@ -36,11 +39,19 @@
         "until": "/etc/hcp-attested",
         "nowait": 1,
         "tag": "attester",
+        "env": {
+            "unset": {
+                "HCP_NOTRACEFILE": null
+            }
+        },
         "period": 120
     },
     "client": {
         "exec": "/hcp/tools/run_client.sh",
         "touchfile": "/etc/hcp-attested",
+        "env": {
+            "unset": { "HCP_NOTRACEFILE": null }
+        },
         "attest_url": "http://ahcp.hcphacking.xyz:8080",
         "tcti": "swtpm:path=/tpm_socket_kdc_primary/tpm",
         "callbacks": [ "/hcp/tools/attest_callback_common.py" ]
@@ -105,6 +116,17 @@
     },
 
     "kdcsvc_TGS": {
+        "_": [
+            "NB: for kicks, we listen on port 89 instead of port 88, so as to",
+            "support the 'monolith' use-case (where everything runs co-tenant",
+            "in one container), as we need the config to have no overlapping",
+            "ports. The use-case intends for the primary KDC to only be used",
+            "(directly) by the secondary KDC to kinit and authenticate to the",
+            "primary's 'ipropd-master'. Once replication is running, it could",
+            "get these from itself, but ... chicken-and-egg. Other than that,",
+            "the primary's TGS shouldn't be needed at all, so we give it the",
+            "non-standard port and make sure that the secondary gets an",
+            "appropriately-tweaked krb5.conf." ],
         "setup": { "touchfile": "/etc/hcp-kdcsvc-local-setup" },
         "env": {
             "pathadd": {
@@ -113,7 +135,7 @@
             }
         },
         "exec": "kdc",
-        "args": [ "--config-file=/kdc/etc/kdc.conf" ],
+        "args": [ "--config-file=/kdc/etc/kdc.conf", "--ports=89" ],
         "tag": "postsetup"
     },
 

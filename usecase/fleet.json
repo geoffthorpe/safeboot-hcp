@@ -59,6 +59,7 @@
 			"enroll_profile": {
 				"__env": {
 					"ENROLL_KDC": "primary.kdc",
+					"ENROLL_KDC_PORT": "89",
 					"ENROLL_PKINIT_USER_PRINC": "foo"
 				},
 				"gencert-hxtool": {
@@ -76,7 +77,8 @@
 			"enroll_hostname": "secondary.kdc.hcphacking.xyz",
 			"enroll_profile": {
 				"__env": {
-					"ENROLL_KDC": "primary.kdc"
+					"ENROLL_KDC": "primary.kdc",
+					"ENROLL_KDC_PORT": "89"
 				},
 				"gencert-hxtool": {
 					"list": [
