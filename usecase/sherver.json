@@ -8,11 +8,11 @@
         "sshd"
     ],
     "default_targets": [
-        "start-presetup",
+        "start-fqdn",
         "start-attester",
         "setup-global",
         "setup-local",
-        "start-postsetup"
+        "start-services"
     ],
     "args_for": "sshd",
 
@@ -20,7 +20,7 @@
         "exec": "/hcp/common/fqdn_updater.py",
         "until": "/etc/hcp-fqdn-alive",
         "nowait": 1,
-        "tag": "presetup",
+        "tag": "fqdn",
         "env": {
             "unset": { "HCP_NOTRACEFILE": null }
         },
@@ -77,6 +77,6 @@
         "setup": { "touchfile": "/etc/hcp-sherver-local-setup" },
         "exec": "/usr/sbin/sshd",
         "args": [ "-e", "-D" ],
-        "tag": "postsetup"
+        "tag": "services"
     }
 }

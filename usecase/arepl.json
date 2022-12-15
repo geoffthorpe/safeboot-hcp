@@ -7,17 +7,17 @@
         "replication_client"
     ],
     "default_targets": [
-        "start-presetup",
+        "start-fqdn",
         "setup-global",
         "setup-local",
-        "start-postsetup"
+        "start-services"
     ],
 
     "fqdn_updater": {
         "exec": "/hcp/common/fqdn_updater.py",
         "until": "/etc/hcp-fqdn-alive",
         "nowait": 1,
-        "tag": "presetup",
+        "tag": "fqdn",
         "env": {
             "unset": { "HCP_NOTRACEFILE": null }
         },
@@ -32,7 +32,7 @@
     "attestsvc": {
         "setup": [ {
                 "tag": "global",
-                "exec": "/hcp/attestsvc/setup_global.sh",
+                "exec": [ "/hcp/attestsvc/setup_global.sh", "--retry" ],
                 "touchfile": "/attestdb/initialized"
             }, {
                 "tag": "local",
@@ -54,7 +54,7 @@
     "replication_client": {
         "setup": { "touchfile": "/etc/hcp-attestsvc-local-setup" },
         "exec": "/hcp/attestsvc/updater_loop.sh",
-        "tag": "postsetup",
+        "tag": "services",
         "uid": "auser",
 	"period": 2
     }

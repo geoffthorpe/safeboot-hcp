@@ -72,7 +72,7 @@ def dc_cmd(s, cont, cmd, args, isBinary = False,
 	return c
 
 dc_cmd("initializing enrollsvc state",
-	'emgmt', 'run', [ 'start-presetup', 'setup-global' ])
+	'emgmt', 'run', [ 'start-fqdn', 'setup-global' ])
 
 dc_cmd("starting enrollsvc containers",
 	None, 'up', [ 'emgmt', 'emgmt_pol', 'erepl' ])
@@ -81,7 +81,7 @@ dc_cmd("waiting for replication service to come up",
 	'erepl', 'exec', [ '/hcp/enrollsvc/repl_healthcheck.sh' ] + rargs)
 
 dc_cmd("initializing attestsvc state",
-	'arepl', 'run', [ 'start-presetup', 'setup-global' ])
+	'arepl', 'run', [ 'start-fqdn', 'setup-global' ])
 
 dc_cmd("starting attestsvc containers",
 	None, 'up', [ 'arepl', 'ahcp' ])

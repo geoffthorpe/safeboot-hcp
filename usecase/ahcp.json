@@ -7,16 +7,17 @@
         "webapi"
     ],
     "default_targets": [
-        "start-presetup",
+        "start-fqdn",
+        "setup-global",
         "setup-local",
-        "start-postsetup"
+        "start-services"
     ],
 
     "fqdn_updater": {
         "exec": "/hcp/common/fqdn_updater.py",
         "until": "/etc/hcp-fqdn-alive",
         "nowait": 1,
-        "tag": "presetup",
+        "tag": "fqdn",
         "env": {
             "unset": { "HCP_NOTRACEFILE": null }
         },
@@ -29,6 +30,11 @@
 
     "attestsvc": {
         "setup": [ {
+                "tag": "global",
+                "exec": [
+                    "/hcp/common/wait_touchfile.py",
+                    "/attestdb/initialized"
+                ],
                 "touchfile": "/attestdb/initialized"
             }, {
                 "tag": "local",
@@ -53,7 +59,7 @@
             "support the safeboot scripts that can run underneath us." ],
         "setup": { "touchfile": "/etc/hcp-attestsvc-local-setup" },
         "exec": "/hcp/common/webapi.sh",
-        "tag": "postsetup",
+        "tag": "services",
         "servername": "ahcp.hcphacking.xyz",
         "port": 8080,
         "app": "/hcp/attestsvc/hcp_api.py",

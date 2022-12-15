@@ -182,7 +182,7 @@ services:
         image: ${HCP_IMAGE_kdcsvc}
         hostname: kdc_primary
         volumes:
-          - kdc_primary:/kdc
+          - kdc_primary:/kdc_primary
           - tpmsocket_kdc_primary:/tpm_socket_kdc_primary
           - ${HCP_TESTCREDS_ENROLLCERTCHECKER}:/enrollcertchecker:ro
           - ${HCP_TESTCREDS_ENROLLCLIENT}:/enrollclient:ro
@@ -231,7 +231,7 @@ services:
         image: ${HCP_IMAGE_kdcsvc}
         hostname: kdc_secondary
         volumes:
-          - kdc_secondary:/kdc
+          - kdc_secondary:/kdc_secondary
           - tpmsocket_kdc_secondary:/tpm_socket_kdc_secondary
           - ${HCP_TESTCREDS_ENROLLCERTCHECKER}:/enrollcertchecker:ro
           - ${HCP_TESTCREDS_ENROLLCLIENT}:/enrollclient:ro

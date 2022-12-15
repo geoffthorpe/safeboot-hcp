@@ -12,18 +12,7 @@ if [[ -d A || -d B || -h current || -h next || -h thirdwheel ]]; then
 fi
 
 echo "First-time initialization of $HCP_ATTESTSVC_DB_DIR. Two clones and two symlinks." >&2
-waitcount=0
-until git clone -o origin $HCP_ATTESTSVC_REMOTE_REPO A; do
-	waitcount=$((waitcount+1))
-	if [[ $waitcount -eq 1 ]]; then
-		echo "Warning: attestsvc 'init_clones' can't clone from enrollsvc, waiting" >&2
-	fi
-	if [[ $waitcount -eq 11 ]]; then
-		echo "Warning: attestsvc 'init_clones' waited for another 10 seconds" >&2
-		waitcount=1
-	fi
-	sleep 1
-done
+git clone -o origin $HCP_ATTESTSVC_REMOTE_REPO A
 git clone -o twin A B
 ln -s A current
 ln -s B next

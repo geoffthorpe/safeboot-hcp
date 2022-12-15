@@ -6,8 +6,8 @@
         "client"
     ],
     "default_targets": [
-        "start-presetup",
-        "start-postsetup"
+        "start-fqdn",
+        "start-client"
     ],
     "args_for": "client",
 
@@ -15,7 +15,7 @@
         "exec": "/hcp/common/fqdn_updater.py",
         "until": "/etc/hcp-fqdn-alive",
         "nowait": 1,
-        "tag": "presetup",
+        "tag": "fqdn",
         "env": {
             "unset": { "HCP_NOTRACEFILE": null }
         },
@@ -29,7 +29,7 @@
 
     "client": {
         "exec": "/hcp/tools/run_client.sh",
-        "tag": "postsetup",
+        "tag": "client",
         "env": {
             "unset": { "HCP_NOTRACEFILE": null }
         },

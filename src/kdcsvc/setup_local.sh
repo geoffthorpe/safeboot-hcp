@@ -20,11 +20,6 @@ if ! ln -s "$HCP_KDCSVC_STATE/etc/sudoers" /etc/sudoers.d/hcp > /dev/null 2>&1 &
 	echo "Error, couldn't create symlink '/etc/sudoers.d/hcp'" >&2
 	exit 1
 fi
-if [[ $HCP_KDCSVC_STATE != /kdc ]] &&
-		! ln -s "$HCP_KDC_STATE" /kdc > /dev/null 2>&1; then
-	echo "Error, couldn't ensure /kdc exists" >&2
-	exit 1
-fi
 
 # When a web handler (in mgmt_api.py, running as "www-data") runs 'sudo
 # do_kadmin', we inhibit any transfer of environment through the sudo barrier

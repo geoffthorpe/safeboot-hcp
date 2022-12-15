@@ -34,17 +34,17 @@
         "purger"
     ],
     "default_targets": [
-        "start-presetup",
+        "start-fqdn",
         "setup-global",
         "setup-local",
-        "start-postsetup"
+        "start-services"
     ],
 
     "fqdn_updater": {
         "exec": "/hcp/common/fqdn_updater.py",
         "until": "/etc/hcp-fqdn-alive",
         "nowait": 1,
-        "tag": "presetup",
+        "tag": "fqdn",
         "env": {
             "unset": { "HCP_NOTRACEFILE": null }
         },
@@ -199,7 +199,7 @@
     "webapi": {
         "setup": { "touchfile": "/etc/hcp-enrollsvc-local-setup" },
         "exec": "/hcp/common/webapi.sh",
-        "tag": "postsetup",
+        "tag": "services",
         "servername": "emgmt.hcphacking.xyz",
         "port": 8443,
         "https": {
@@ -220,7 +220,7 @@
         "setup": { "touchfile": "/etc/hcp-enrollsvc-local-setup" },
         "exec": "/hcp/enrollsvc/reenroller.sh",
         "nowait": 1,
-        "tag": "postsetup",
+        "tag": "services",
         "uid": "emgmtdb",
         "period": {
             "seconds": 30
@@ -233,7 +233,7 @@
     "purger": {
         "exec": "/hcp/common/purger.py",
         "nowait": 1,
-        "tag": "postsetup",
+        "tag": "services",
 	"dir": "/purger",
 	"period": 60,
 	"retry": 120,

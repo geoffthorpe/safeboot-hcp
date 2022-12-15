@@ -10,11 +10,11 @@
         "kdcsvc_iprop_primary"
     ],
     "default_targets": [
-        "start-presetup",
+        "start-fqdn",
         "start-attester",
         "setup-global",
         "setup-local",
-        "start-postsetup"
+        "start-services"
     ],
     "args_for": "kdcsvc_TGS",
 
@@ -22,7 +22,7 @@
         "exec": "/hcp/common/fqdn_updater.py",
         "until": "/etc/hcp-fqdn-alive",
         "nowait": 1,
-        "tag": "presetup",
+        "tag": "fqdn",
         "env": {
             "unset": { "HCP_NOTRACEFILE": null }
         },
@@ -61,13 +61,13 @@
         "setup": [ {
                 "tag": "global",
                 "exec": "/hcp/kdcsvc/setup_global.sh",
-                "touchfile": "/kdc/initialized"
+                "touchfile": "/kdc_primary/initialized"
             }, {
                 "tag": "local",
                 "exec": "/hcp/kdcsvc/setup_local.sh",
-                "touchfile": "/etc/hcp-kdcsvc-local-setup"
+                "touchfile": "/etc/hcp-kdc_primary-local-setup"
             } ],
-        "state": "/kdc",
+        "state": "/kdc_primary",
         "mode": "primary",
         "secondaries": [ "secondary.kdc.hcphacking.xyz" ],
         "realm": "HCPHACKING.XYZ",
@@ -102,9 +102,9 @@
     },
 
     "webapi": {
-        "setup": { "touchfile": "/etc/hcp-kdcsvc-local-setup" },
+        "setup": { "touchfile": "/etc/hcp-kdc_primary-local-setup" },
         "exec": "/hcp/common/webapi.sh",
-        "tag": "postsetup",
+        "tag": "services",
         "servername": "primary.kdc.hcphacking.xyz",
         "port": 9090,
         "app": "/hcp/kdcsvc/mgmt_api.py",
@@ -127,7 +127,7 @@
             "the primary's TGS shouldn't be needed at all, so we give it the",
             "non-standard port and make sure that the secondary gets an",
             "appropriately-tweaked krb5.conf." ],
-        "setup": { "touchfile": "/etc/hcp-kdcsvc-local-setup" },
+        "setup": { "touchfile": "/etc/hcp-kdc_primary-local-setup" },
         "env": {
             "pathadd": {
                 "PATH": "/install-heimdal/libexec:/install-heimdal/bin",
@@ -135,12 +135,12 @@
             }
         },
         "exec": "kdc",
-        "args": [ "--config-file=/kdc/etc/kdc.conf", "--ports=89" ],
-        "tag": "postsetup"
+        "args": [ "--config-file=/kdc_primary/etc/kdc.conf", "--ports=89" ],
+        "tag": "services"
     },
 
     "kdcsvc_iprop_primary": {
-        "setup": { "touchfile": "/etc/hcp-kdcsvc-local-setup" },
+        "setup": { "touchfile": "/etc/hcp-kdc_primary-local-setup" },
         "env": {
             "pathadd": {
                 "PATH": "/install-heimdal/libexec:/install-heimdal/bin",
@@ -149,11 +149,11 @@
         },
         "exec": "ipropd-master",
         "args": [
-            "--config-file=/kdc/etc/kdc.conf",
+            "--config-file=/kdc_primary/etc/kdc.conf",
             "--keytab=HDBGET:",
             "--hostname=primary.kdc.hcphacking.xyz",
             "--verbose"
         ],
-        "tag": "postsetup"
+        "tag": "services"
     }
 }

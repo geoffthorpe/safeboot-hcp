@@ -7,7 +7,7 @@
         "webtop"
     ],
     "default_targets": [
-        "start-presetup",
+        "start-fqdn",
         "start-attester",
         "exec-webtop"
     ],
@@ -16,7 +16,7 @@
         "exec": "/hcp/common/fqdn_updater.py",
         "until": "/etc/hcp-fqdn-alive",
         "nowait": 1,
-        "tag": "presetup",
+        "tag": "fqdn",
         "env": {
             "unset": { "HCP_NOTRACEFILE": null }
         },

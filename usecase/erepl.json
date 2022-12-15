@@ -7,16 +7,17 @@
         "git-daemon"
     ],
     "default_targets": [
-        "start-presetup",
+        "start-fqdn",
+        "setup-global",
         "setup-local",
-        "start-postsetup"
+        "start-services"
     ],
 
     "fqdn_updater": {
         "exec": "/hcp/common/fqdn_updater.py",
         "until": "/etc/hcp-fqdn-alive",
         "nowait": 1,
-        "tag": "presetup",
+        "tag": "fqdn",
         "env": {
             "unset": { "HCP_NOTRACEFILE": null }
         },
@@ -29,6 +30,11 @@
 
     "enrollsvc": {
         "setup": [ {
+                "tag": "global",
+                "exec": [
+                    "/hcp/common/wait_touchfile.py",
+                    "/enrolldb/initialized"
+                ],
                 "touchfile": "/enrolldb/initialized"
             }, {
                 "tag": "local",
@@ -56,7 +62,7 @@
             "--port=9418",
             "--base-path=/enrolldb/db"
         ],
-        "tag": "postsetup",
+        "tag": "services",
         "uid": "emgmtdb"
     }
 }

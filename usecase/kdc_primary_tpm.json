@@ -6,15 +6,15 @@
         "swtpmsvc"
     ],
     "default_targets": [
-        "start-presetup",
-        "start-postsetup"
+        "start-fqdn",
+        "start-services"
     ],
 
     "fqdn_updater": {
         "exec": "/hcp/common/fqdn_updater.py",
         "until": "/etc/hcp-fqdn-alive",
         "nowait": 1,
-        "tag": "presetup",
+        "tag": "fqdn",
         "env": {
             "unset": { "HCP_NOTRACEFILE": null }
         },
@@ -26,10 +26,16 @@
     },
 
     "swtpmsvc": {
-        "setup": { "touchfile": "/tpm_kdc_primary/tpm/ek.pub" },
+        "setup": {
+            "exec": [
+                "/hcp/common/wait_touchfile.py",
+                "/tpm_kdc_primary/tpm/ek.pub"
+            ],
+            "touchfile": "/tpm_kdc_primary/tpm/ek.pub"
+        },
         "exec": "/hcp/swtpmsvc/run_swtpm.sh",
         "state": "/tpm_kdc_primary",
         "sockdir": "/tpm_socket_kdc_primary",
-        "tag": "postsetup"
+        "tag": "services"
     }
 }

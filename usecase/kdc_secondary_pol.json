@@ -6,15 +6,15 @@
         "webapi"
     ],
     "default_targets": [
-        "start-presetup",
-        "start-postsetup"
+        "start-fqdn",
+        "start-services"
     ],
 
     "fqdn_updater": {
         "exec": "/hcp/common/fqdn_updater.py",
         "until": "/etc/hcp-fqdn-alive",
         "nowait": 1,
-        "tag": "presetup",
+        "tag": "fqdn",
         "env": {
             "unset": { "HCP_NOTRACEFILE": null }
         },
@@ -27,7 +27,7 @@
 
     "webapi": {
         "exec": "/hcp/common/webapi.sh",
-        "tag": "postsetup",
+        "tag": "services",
         "servername": "policy.secondary.kdc.hcphacking.xyz",
         "port": 9280,
         "app": "/hcp/policysvc/policy_api.py",

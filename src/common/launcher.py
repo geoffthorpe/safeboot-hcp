@@ -153,8 +153,10 @@ for i in services:
                 bail(f"'{i}:setup[]' entries must be dicts (not {type(s)})")
             if 'exec' in s:
                 setupbin = s['exec']
-                if not isinstance(setupbin, str):
-                    bail(f"'{i}:setup[]:exec' must be str (not {type(setupbin)})")
+                if isinstance(setupbin, str):
+                    setupbin = [ setupbin ]
+                elif not isinstance(setupbin, list):
+                    bail(f"'{i}:setup[]:exec' must be str or list (not {type(setupbin)})")
             else:
                 s['exec'] = None
             if 'touchfile' not in s:
@@ -269,7 +271,7 @@ def run_setup(tag = None):
                 log(f"HCP launcher: '{n}:{touchfile}' running setup: {s['exec']}")
                 # Run the setup routine
                 pre_subprocess(i)
-                p = subprocess.run([s['exec']])
+                p = subprocess.run(s['exec'])
                 post_subprocess(i)
                 if p.returncode != 0:
                     mybail(f"HCP launcher: '{n}:{touchfile}' setup failed, code: {p.returncode}")
