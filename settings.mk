@@ -39,7 +39,7 @@ HCP_RELAX := 1
 # line to its Dockerfile using these arguments. This provides for "make
 # yourself at home" stuff to be added to all the subsequent HCP-produced
 # containers.
-HCP_3PLATFORM_XTRA ?= vim
+HCP_3PLATFORM_XTRA ?= vim net-tools
 
 # If defined, the "3platform" layer in hcp/base will not install "tpm2-tools"
 # from Debian package sources, instead the tpm2-tss and tpm2-tools submodules
