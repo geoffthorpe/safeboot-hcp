@@ -148,13 +148,19 @@ print("Running FQDN publishing and discovery mechanism")
 sys.path.insert(1, '/hcp/common')
 from hcp_common import touch, log, bail, hcp_config_extract
 
+myid = hcp_config_extract('id', or_default = True, default = 'unknown_id')
+etc = f"/etc/hcp/{myid}"
+myuntil = f"{etc}/touch-fqdn-alive"
+
 # We pull our config structure as a whole, once, then dig into it locally. I.e.
 # we don't pull each attribute via hcp_config_extract()
 myconfig = hcp_config_extract('.fqdn_updater', must_exist = True)
 log(f"myconfig={myconfig}")
-myuntil = None
+test_myuntil = None
 if 'until' in myconfig:
-    myuntil = myconfig['until']
+    test_myuntil = myconfig['until']
+    if test_myuntil != myuntil:
+        bail(f"Misconfiguration: {myuntil} != {test_myuntil}")
 mydir = myconfig['path']
 myrefresh = myconfig['refresh']
 myretry = myrefresh

@@ -26,6 +26,9 @@
         "* 'purger', this periodically looks for debug files that are old",
         "  enough and 'purges' them."
     ],
+
+    "id": "emgmt",
+
     "services": [
         "fqdn_updater",
         "enrollsvc",
@@ -42,7 +45,7 @@
 
     "fqdn_updater": {
         "exec": "/hcp/common/fqdn_updater.py",
-        "until": "/etc/hcp-fqdn-alive",
+        "until": "/etc/hcp/emgmt/touch-fqdn-alive",
         "nowait": 1,
         "tag": "fqdn",
         "env": {
@@ -80,7 +83,7 @@
             }, {
                 "tag": "local",
                 "exec": "/hcp/enrollsvc/setup_local.sh",
-                "touchfile": "/etc/hcp-enrollsvc-local-setup"
+                "touchfile": "/etc/hcp/emgmt/touch-enrollsvc-local-setup"
             } ],
         "state": "/enrolldb",
         "realm": "HCPHACKING.XYZ",
@@ -103,7 +106,7 @@
                 "       after the profile from the client's request." ],
             "preclient": {
                 "__env": {
-                    "ENROLL_ISSUERCERT": "/usr/share/ca-certificates/HCP/certissuer.pem",
+                    "ENROLL_ISSUERCERT": "/usr/share/ca-certificates/{ENROLL_ID}/certissuer.pem",
                     "ENROLL_CERTPREFIX": "hostcert-",
                     "ENROLL_KDC": "secondary.kdc",
                     "ENROLL_KDC_PORT": "88"
@@ -197,7 +200,7 @@
     },
 
     "webapi": {
-        "setup": { "touchfile": "/etc/hcp-enrollsvc-local-setup" },
+        "setup": { "touchfile": "/etc/hcp/emgmt/touch-enrollsvc-local-setup" },
         "exec": "/hcp/common/webapi.sh",
         "tag": "services",
         "servername": "emgmt.hcphacking.xyz",
@@ -217,7 +220,7 @@
     },
 
     "reenroller": {
-        "setup": { "touchfile": "/etc/hcp-enrollsvc-local-setup" },
+        "setup": { "touchfile": "/etc/hcp/emgmt/touch-enrollsvc-local-setup" },
         "exec": "/hcp/enrollsvc/reenroller.sh",
         "nowait": 1,
         "tag": "services",

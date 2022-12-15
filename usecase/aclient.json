@@ -1,6 +1,8 @@
 {
     "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
 
+    "id": "aclient",
+
     "services": [
         "fqdn_updater",
         "client"
@@ -13,7 +15,7 @@
 
     "fqdn_updater": {
         "exec": "/hcp/common/fqdn_updater.py",
-        "until": "/etc/hcp-fqdn-alive",
+        "until": "/etc/hcp/aclient/touch-fqdn-alive",
         "nowait": 1,
         "tag": "fqdn",
         "env": {

@@ -1,6 +1,8 @@
 {
     "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
 
+    "id": "arepl",
+
     "services": [
         "fqdn_updater",
         "attestsvc",
@@ -15,7 +17,7 @@
 
     "fqdn_updater": {
         "exec": "/hcp/common/fqdn_updater.py",
-        "until": "/etc/hcp-fqdn-alive",
+        "until": "/etc/hcp/arepl/touch-fqdn-alive",
         "nowait": 1,
         "tag": "fqdn",
         "env": {
@@ -37,7 +39,7 @@
             }, {
                 "tag": "local",
                 "exec": "/hcp/attestsvc/setup_local.sh",
-                "touchfile": "/etc/hcp-attestsvc-local-setup"
+                "touchfile": "/etc/hcp/arepl/touch-attestsvc-local-setup"
             } ],
         "state": "/attestdb",
         "dbuser": {
@@ -52,7 +54,7 @@
     },
 
     "replication_client": {
-        "setup": { "touchfile": "/etc/hcp-attestsvc-local-setup" },
+        "setup": { "touchfile": "/etc/hcp/arepl/touch-attestsvc-local-setup" },
         "exec": "/hcp/attestsvc/updater_loop.sh",
         "tag": "services",
         "uid": "auser",

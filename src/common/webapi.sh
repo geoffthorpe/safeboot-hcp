@@ -2,6 +2,8 @@
 
 source /hcp/common/hcp.sh
 
+myinstance=$(hcp_config_extract_or ".id" "unknown_id")
+
 myservername=$(hcp_config_extract ".webapi.servername")
 myport=$(hcp_config_extract ".webapi.port")
 myhttps=$(hcp_config_extract_or ".webapi.https" "")
@@ -16,7 +18,22 @@ if [[ -n $myhttps ]]; then
 	myhealthclient=$(hcp_config_extract ".webapi.https.healthclient")
 fi
 
-myunique="$myservername.$myport"
+# We use uwsgi as the flask application server for our http end-points. We use
+# nginx as our TLS (https) front-end, optionally. Instance-specific paths for
+# the nginx/uwsgi configs are defined here and populated later on.
+#
+# - etcnginx and lognginx are directories, cloned from /etc/nginx and
+#   /var/log/nginx respectively, with all files in the former filtered to
+#   replace any mention of /etc/nginx or /var/log/nginx to their new locations.
+# - etcuwsgi is a 'uwsgi.ini' file, fully generated from this script.
+# - myuwsgisock is a path in /tmp to use for the unix domain socket between
+#   nginx and uwsgi.
+myetc="/etc/hcp/$myinstance"
+etcnginx="$myetc/nginx"
+etcuwsgi="$myetc/uwsgi.ini"
+myvarlog="/var/log/$myinstance"
+lognginx="$myvarlog/nginx"
+myuwsgisock="/tmp/$myinstance.uwsgi.sock"
 
 # Special handling. If we're invoked with the "healthcheck" argument, we're
 # being asked to healthcheck the thing that we already started running (when
@@ -133,25 +150,25 @@ fi
 
 # Setup nginx iff we're enabling https
 if [[ -n $myhttps ]]; then
-	myuwsgisock="/tmp/$myunique.uwsgi.sock"
-	# Copy /etc/nginx to a 'myunique'-specific directory
-	if [[ -d "/etc/hcp-$myunique-nginx" ]]; then
-		if [[ -d "/etc/hcp.old-$myunique-nginx" ]]; then
+	# /etc/nginx is the template for our instance-specific install
+	if [[ -d $etcnginx ]]; then
+		if [[ -d "$etcnginx.old" ]]; then
 			echo " - deleting really old nginx config" >&2
-			rm -rf "/etc/hcp.old-$myunique-nginx"
+			rm -rf "$etcnginx.old"
 		fi
 		echo " - moving old nginx config" >&2
-		mv "/etc/hcp-$myunique-nginx" "/etc/hcp.old-$myunique-nginx"
+		mv "$etcnginx" "$etcnginx.old"
 	fi
 	echo " - producing nginx config" >&2
-	cp -a /etc/nginx "/etc/hcp-$myunique-nginx"
-	# search and replace our paths
-	find "/etc/hcp-$myunique-nginx" -type f -exec perl -pi.bak \
-		-e "s,/etc/nginx,/etc/hcp-$myunique-nginx,g" {} \;
-	find "/etc/hcp-$myunique-nginx" -type f -exec perl -pi.bak \
-		-e "s,/var/log/nginx,/var/log/hcp-$myunique-nginx,g" {} \;
+	cp -a /etc/nginx "$etcnginx"
+	# Search the configuration files for occurences of "/etc/nginx" or
+	# "/var/log/nginx" and repoint them to our own.
+	find "$etcnginx" -type f -exec perl -pi.bak \
+		-e "s,/etc/nginx,$etcnginx,g" {} \;
+	find "$etcnginx" -type f -exec perl -pi.bak \
+		-e "s,/var/log/nginx,$lognginx,g" {} \;
 	# create our site file
-	cat > "/etc/hcp-$myunique-nginx/sites-enabled/$myservername" << EOF
+	cat > "$etcnginx/sites-enabled/$myservername" << EOF
 server {
 	listen                 $myport ssl;
 	server_name	       $myservername;
@@ -172,31 +189,32 @@ server {
 	}
 }
 EOF
-	# Ensure there's a 'myunique'-specific log directory. Note, we copy
+	# Ensure there's an 'instance'-specific log directory. Note, we copy
 	# the baseline to ensure we have the perms we need, not because we want
 	# the content. (Normally, the access.log and error.log files will be
 	# empty.)
-	if [[ ! -d "/var/log/hcp-$myunique-nginx" ]]; then
+	if [[ ! -d "$lognginx" ]]; then
 		echo " - making new nginx log dir" >&2
-		cp -a /var/log/nginx "/var/log/hcp-$myunique-nginx"
+		mkdir -p "$(dirname "$lognginx")"
+		cp -a /var/log/nginx "$lognginx"
 	fi
 	echo " - starting nginx" >&2
-	nginx -c "/etc/hcp-$myunique-nginx/nginx.conf"
+	nginx -c "$etcnginx/nginx.conf"
 fi
 
 # Produce the uwsgi config. This varies slightly depending on whether we have
 # an nginx https front-end (in which case we listen for native comms on a
 # domain socket) or not (in which case we listen for HTTP on a TCP port).
-if [[ -f "/etc/hcp-$myunique-uwsgi.ini" ]]; then
-	if [[ -f "/etc/hcp.old-$myunique-uwsgi.ini" ]]; then
+if [[ -f "$etcuwsgi" ]]; then
+	if [[ -f "$etcuwsgi.old" ]]; then
 		echo " - deleting really old uwsgi config" >&2
-		rm "/etc/hcp.old-$myunique-uwsgi.ini"
+		rm "$etcuwsgi.old"
 	fi
 	echo " - moving old uwsgi config" >&2
-	mv "/etc/hcp-$myunique-uwsgi.ini" "/etc/hcp.old-$myunique-uwsgi.ini"
+	mv "$etcuwsgi" "$etcuwsgi.old"
 fi
 echo " - producing uwsgi config" >&2
-cat - > "/etc/hcp-$myunique-uwsgi.ini" <<EOF
+cat - > "$etcuwsgi" <<EOF
 [uwsgi]
 master = true
 processes = 2
@@ -211,20 +229,20 @@ EOF
 myenvkeys=($(echo "$myenv" | jq -r "keys[] // empty"))
 for keyname in ${myenvkeys[@]}; do
 	val=$(echo "$myenv" | jq -r ".[\"$keyname\"] // empty")
-	echo "env = $keyname=$val" >> "/etc/hcp-$myunique-uwsgi.ini"
+	echo "env = $keyname=$val" >> "$etcuwsgi"
 done
 if [[ -n $myhttps ]]; then
-	cat - >> "/etc/hcp-$myunique-uwsgi.ini" <<EOF
+	cat - >> "$etcuwsgi" <<EOF
 socket = $myuwsgisock
 chmod-socket = 660
 vacuum = true
 EOF
 else
-	cat - >> "/etc/hcp-$myunique-uwsgi.ini" <<EOF
+	cat - >> "$etcuwsgi" <<EOF
 plugin = http
 http = :$myport
 stats = :$((myport+1))
 EOF
 fi
 echo " - starting uwsgi" >&2
-exec uwsgi_python3 --ini "/etc/hcp-$myunique-uwsgi.ini"
+exec uwsgi_python3 --ini "$etcuwsgi"

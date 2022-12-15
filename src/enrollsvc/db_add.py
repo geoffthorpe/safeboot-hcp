@@ -16,7 +16,7 @@ from hcp_common import log, current_tracefile, http2exit, \
 
 sys.path.insert(1, '/hcp/xtra')
 
-from HcpHostname import valid_hostname, dc_hostname, pop_hostname
+from HcpHostname import valid_hostname, dc_hostname, pop_hostname, pop_domain
 from HcpRecursiveUnion import union
 import HcpJsonExpander
 
@@ -152,18 +152,22 @@ if 'ENROLL_DOMAIN' in resultprofile['__env']:
 else:
 	_, domain = pop_hostname(hostname)
 	resultprofile['__env']['ENROLL_DOMAIN'] = domain
+_id, _domain = pop_domain(hostname, domain)
+if not _domain:
+	_id = "unknown_id"
 domain2dc = dc_hostname(domain)
 xtra_env = {
 	'__env': {
-		'ENROLL_HOSTNAME': f"{hostname}",
-		'SIGNING_KEY_DIR': f"{signing_key_dir}",
-		'SIGNING_KEY_PUB': f"{signing_key_pub}",
-		'SIGNING_KEY_PRIV': f"{signing_key_priv}",
-		'GENCERT_CA_DIR': f"{gencert_ca_dir}",
-		'GENCERT_CA_CERT': f"{gencert_ca_cert}",
-		'GENCERT_CA_PRIV': f"{gencert_ca_priv}",
-		'ENROLL_HOSTNAME2DC': f"{hostname2dc}",
-		'ENROLL_DOMAIN2DC': f"{domain2dc}"
+		'ENROLL_ID': _id,
+		'ENROLL_HOSTNAME': hostname,
+		'SIGNING_KEY_DIR': signing_key_dir,
+		'SIGNING_KEY_PUB': signing_key_pub,
+		'SIGNING_KEY_PRIV': signing_key_priv,
+		'GENCERT_CA_DIR': gencert_ca_dir,
+		'GENCERT_CA_CERT': gencert_ca_cert,
+		'GENCERT_CA_PRIV': gencert_ca_priv,
+		'ENROLL_HOSTNAME2DC': hostname2dc,
+		'ENROLL_DOMAIN2DC': domain2dc
 	}
 }
 resultprofile=union(resultprofile, xtra_env)

@@ -1,5 +1,7 @@
 source /hcp/common/hcp.sh
 
+export HCP_ID=$(hcp_config_extract_or "id" "unknown_id")
+
 # We pull the 'kdcsvc' config once and then interrogate it locally.
 export HCP_KDCSVC_JSON=$(hcp_config_extract ".kdcsvc")
 export HCP_KDCSVC_STATE=$(echo "$HCP_KDCSVC_JSON" | jq -r ".state")

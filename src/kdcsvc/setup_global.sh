@@ -25,8 +25,8 @@ cat > $HCP_KDCSVC_STATE/etc/kdc.conf << EOF
 	iprop-acl = $HCP_KDCSVC_STATE/etc/iprop-secondaries
 	enable-pkinit = yes
 	synthetic_clients = true
-	pkinit_identity = FILE:/etc/hcp/pkinit/kdc-key.pem
-	pkinit_anchors = FILE:/usr/share/ca-certificates/HCP/certissuer.pem
+	pkinit_identity = FILE:/etc/hcp/$HCP_ID/pkinit/kdc-key.pem
+	pkinit_anchors = FILE:/usr/share/ca-certificates/$HCP_ID/certissuer.pem
 	#pkinit_pool = PKCS12:/path/to/useful-intermediate-certs.pfx
 	#pkinit_pool = FILE:/path/to/other-useful-intermediate-certs.pem
 	pkinit_allow_proxy_certificate = no
@@ -38,15 +38,22 @@ cat > $HCP_KDCSVC_STATE/etc/kdc.conf << EOF
 	virtual_hostbased_princ_mindots = 1
 	virtual_hostbased_princ_maxdots = 5
 EOF
-cat /etc/krb5.conf >> $HCP_KDCSVC_STATE/etc/kdc.conf
+cat /etc/hcp/$HCP_ID/krb5.conf >> $HCP_KDCSVC_STATE/etc/kdc.conf
 
 # Produce sudoers
+echo "Creating $HCP_KDCSVC_STATE/etc/sudoers.env"
+cat > $HCP_KDCSVC_STATE/etc/sudoers.env << EOF
+export HCP_CONFIG_FILE=$HCP_CONFIG_FILE
+export HCP_CONFIG_SCOPE=$HCP_CONFIG_SCOPE
+export KRB5_CONFIG=$KRB5_CONFIG
+EOF
 echo "Creating $HCP_KDCSVC_STATE/etc/sudoers"
 cat > $HCP_KDCSVC_STATE/etc/sudoers << EOF
 # sudo rules for kdcsvc-mgmt > /etc/sudoers.d/hcp
-Cmnd_Alias HCP = /hcp/kdcsvc/do_kadmin.sh
+Cmnd_Alias HCP = /hcp/kdcsvc/do_kadmin.py
 Defaults !lecture
 Defaults !authenticate
+Defaults env_file=$HCP_KDCSVC_STATE/etc/sudoers.env
 www-data ALL = (root) HCP
 EOF
 

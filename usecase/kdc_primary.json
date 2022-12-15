@@ -1,6 +1,8 @@
 {
     "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
 
+    "id": "primary.kdc",
+
     "services": [
         "fqdn_updater",
         "attester",
@@ -20,7 +22,7 @@
 
     "fqdn_updater": {
         "exec": "/hcp/common/fqdn_updater.py",
-        "until": "/etc/hcp-fqdn-alive",
+        "until": "/etc/hcp/primary.kdc/touch-fqdn-alive",
         "nowait": 1,
         "tag": "fqdn",
         "env": {
@@ -35,8 +37,14 @@
     },
 
     "attester": {
+        "_": [
+            "We set 'retry' to 5 for devel purposes, so that unsynchronized",
+            "startup doesn't take too long. For prod, you'd probably want to",
+            "dial this down - otherwise any downtime of the attestation",
+            "could be followed by a DoS against efforts to bring it back up."
+        ],
         "exec": "/hcp/common/attester.py",
-        "until": "/etc/hcp-attested",
+        "until": "/etc/hcp/primary.kdc/touch-attested",
         "nowait": 1,
         "tag": "attester",
         "env": {
@@ -44,11 +52,12 @@
                 "HCP_NOTRACEFILE": null
             }
         },
-        "period": 120
+        "period": 120,
+        "retry": 5
     },
     "client": {
         "exec": "/hcp/tools/run_client.sh",
-        "touchfile": "/etc/hcp-attested",
+        "touchfile": "/etc/hcp/primary.kdc/touch-attested",
         "env": {
             "unset": { "HCP_NOTRACEFILE": null }
         },
@@ -65,7 +74,7 @@
             }, {
                 "tag": "local",
                 "exec": "/hcp/kdcsvc/setup_local.sh",
-                "touchfile": "/etc/hcp-kdc_primary-local-setup"
+                "touchfile": "/etc/hcp/primary.kdc/touch-kdcsvc-local-setup"
             } ],
         "state": "/kdc_primary",
         "mode": "primary",
@@ -102,7 +111,7 @@
     },
 
     "webapi": {
-        "setup": { "touchfile": "/etc/hcp-kdc_primary-local-setup" },
+        "setup": { "touchfile": "/etc/hcp/primary.kdc/touch-kdcsvc-local-setup" },
         "exec": "/hcp/common/webapi.sh",
         "tag": "services",
         "servername": "primary.kdc.hcphacking.xyz",
@@ -119,20 +128,22 @@
         "_": [
             "NB: for kicks, we listen on port 89 instead of port 88, so as to",
             "support the 'monolith' use-case (where everything runs co-tenant",
-            "in one container), as we need the config to have no overlapping",
-            "ports. The use-case intends for the primary KDC to only be used",
+            "in one container), which requires there be no overlapping ports.",
+            "This use-case intends for the primary KDC to only be used",
             "(directly) by the secondary KDC to kinit and authenticate to the",
             "primary's 'ipropd-master'. Once replication is running, it could",
             "get these from itself, but ... chicken-and-egg. Other than that,",
             "the primary's TGS shouldn't be needed at all, so we give it the",
-            "non-standard port and make sure that the secondary gets an",
-            "appropriately-tweaked krb5.conf." ],
-        "setup": { "touchfile": "/etc/hcp-kdc_primary-local-setup" },
+            "non-standard port, make everyone else's krb5.conf point to the",
+            "secondary, but point the secondary to the primary and specify",
+            "this non-standard port." ],
+        "setup": { "touchfile": "/etc/hcp/primary.kdc/touch-kdcsvc-local-setup" },
         "env": {
             "pathadd": {
                 "PATH": "/install-heimdal/libexec:/install-heimdal/bin",
                 "LD_LIBRARY_PATH": "/install-heimdal/lib"
-            }
+            },
+            "set": { "KRB5_CONFIG": "/etc/hcp/primary.kdc/krb5.conf" }
         },
         "exec": "kdc",
         "args": [ "--config-file=/kdc_primary/etc/kdc.conf", "--ports=89" ],
@@ -140,14 +151,18 @@
     },
 
     "kdcsvc_iprop_primary": {
-        "setup": { "touchfile": "/etc/hcp-kdc_primary-local-setup" },
+        "setup": { "touchfile": "/etc/hcp/primary.kdc/touch-kdcsvc-local-setup" },
         "env": {
             "pathadd": {
                 "PATH": "/install-heimdal/libexec:/install-heimdal/bin",
                 "LD_LIBRARY_PATH": "/install-heimdal/lib"
-            }
+            },
+            "set": { "KRB5_CONFIG": "/etc/hcp/primary.kdc/krb5.conf" }
         },
-        "exec": "ipropd-master",
+        "exec": [
+            "/hcp/common/restarter.py", "-t", "5",
+            "ipropd-master"
+        ],
         "args": [
             "--config-file=/kdc_primary/etc/kdc.conf",
             "--keytab=HDBGET:",

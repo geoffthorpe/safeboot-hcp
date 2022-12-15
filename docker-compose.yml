@@ -41,6 +41,7 @@ services:
           - ${HCP_TOP}/usecase:/usecase:ro
         environment:
           - VERBOSE=2
+          - HCP_NOTRACEFILE=1
 
 # Enrollment svc, mgmt interface
     emgmt:
@@ -86,7 +87,7 @@ services:
         hostname: erepl
         networks:
           - hcpnetwork
-        volumes:
+        volumes: # TODO: mount this at /enrolldb-ro? (For monolith...)
           - enrolldb:/enrolldb:ro
         environment:
           - HCP_CONFIG_FILE=/usecase/erepl.json
@@ -317,8 +318,12 @@ services:
         # being PID 1. We exec to it from our own launcher, but that's not PID 1 if we
         # use docker's 'init'.
         init: false
+        # TODO: remove the KRB5_CONFIG setting. It's only there to support the
+        # healthcheck, until I find a way to represent/handle that.
         environment:
           - HCP_CONFIG_FILE=/usecase/workstation1.json
+          - HCP_NOTRACEFILE=1
+          - KRB5_CONFIG=/etc/hcp/workstation1/krb5.conf
         volumes:
           - ${HCP_TOP}/vendors:/vendors:ro
           - tpmsocket_workstation1:/tpm_socket_workstation1

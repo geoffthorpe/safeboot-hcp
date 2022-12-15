@@ -1,5 +1,11 @@
 #!/bin/bash
 
+log "Inside custom-startwm.sh"
+
+# We assume that code running as root, before dropping privs to run this code,
+# had saved the environment we will need here;
+source $HOME/hcp.env
+
 source /hcp/common/hcp.sh
 
 /startpulse.sh &

@@ -1,6 +1,8 @@
 {
     "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
 
+    "id": "secondary.kdc",
+
     "services": [
         "fqdn_updater",
         "attester",
@@ -20,7 +22,7 @@
 
     "fqdn_updater": {
         "exec": "/hcp/common/fqdn_updater.py",
-        "until": "/etc/hcp-fqdn-alive",
+        "until": "/etc/hcp/secondary.kdc/touch-fqdn-alive",
         "nowait": 1,
         "tag": "fqdn",
         "env": {
@@ -35,8 +37,14 @@
     },
 
     "attester": {
+        "_": [
+            "We set 'retry' to 5 for devel purposes, so that unsynchronized",
+            "startup doesn't take too long. For prod, you'd probably want to",
+            "dial this down - otherwise any downtime of the attestation",
+            "could be followed by a DoS against efforts to bring it back up."
+        ],
         "exec": "/hcp/common/attester.py",
-        "until": "/etc/hcp-attested",
+        "until": "/etc/hcp/secondary.kdc/touch-attested",
         "nowait": 1,
         "tag": "attester",
         "env": {
@@ -44,11 +52,12 @@
                 "HCP_NOTRACEFILE": null
             }
         },
-        "period": 120
+        "period": 120,
+        "retry": 5
     },
     "client": {
         "exec": "/hcp/tools/run_client.sh",
-        "touchfile": "/etc/hcp-attested",
+        "touchfile": "/etc/hcp/secondary.kdc/touch-attested",
         "env": {
             "unset": { "HCP_NOTRACEFILE": null }
         },
@@ -65,7 +74,7 @@
             }, {
                 "tag": "local",
                 "exec": "/hcp/kdcsvc/setup_local.sh",
-                "touchfile": "/etc/hcp-kdcsvc-local-setup"
+                "touchfile": "/etc/hcp/secondary.kdc/touch-kdcsvc-local-setup"
             } ],
         "state": "/kdc_secondary",
         "mode": "secondary",
@@ -98,7 +107,9 @@
     },
 
     "webapi": {
-        "setup": { "touchfile": "/etc/hcp-kdcsvc-local-setup" },
+        "setup": {
+            "touchfile": "/etc/hcp/secondary.kdc/touch-kdcsvc-local-setup"
+        },
         "exec": "/hcp/common/webapi.sh",
         "tag": "services",
         "servername": "secondary.kdc.hcphacking.xyz",
@@ -112,12 +123,15 @@
     },
 
     "kdcsvc_TGS": {
-        "setup": { "touchfile": "/etc/hcp-kdcsvc-local-setup" },
+        "setup": {
+            "touchfile": "/etc/hcp/secondary.kdc/touch-kdcsvc-local-setup"
+        },
         "env": {
             "pathadd": {
                 "PATH": "/install-heimdal/libexec:/install-heimdal/bin",
                 "LD_LIBRARY_PATH": "/install-heimdal/lib"
-            }
+            },
+            "set": { "KRB5_CONFIG": "/etc/hcp/secondary.kdc/krb5.conf" }
         },
         "exec": "kdc",
         "args": [ "--config-file=/kdc_secondary/etc/kdc.conf" ],
@@ -125,17 +139,21 @@
     },
 
     "kdcsvc_iprop_secondary": {
-        "setup": { "touchfile": "/etc/hcp-kdcsvc-local-setup" },
+        "setup": {
+            "touchfile": "/etc/hcp/secondary.kdc/touch-kdcsvc-local-setup"
+        },
         "env": {
             "pathadd": {
                 "PATH": "/install-heimdal/libexec:/install-heimdal/bin",
                 "LD_LIBRARY_PATH": "/install-heimdal/lib"
-            }
+            },
+            "set": { "KRB5_CONFIG": "/etc/hcp/secondary.kdc/krb5.conf" }
         },
         "exec": [
+            "/hcp/common/restarter.py", "-t", "5",
             "kinit",
             "-C",
-            "FILE:/etc/hcp/pkinit/iprop-key.pem",
+            "FILE:/etc/hcp/secondary.kdc/pkinit/iprop-key.pem",
             "iprop/secondary.kdc.hcphacking.xyz@HCPHACKING.XYZ",
             "ipropd-slave"
         ],

@@ -1,6 +1,8 @@
 {
     "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
 
+    "id": "policy.emgmt",
+
     "services": [
         "fqdn_updater",
         "webapi"
@@ -12,7 +14,7 @@
 
     "fqdn_updater": {
         "exec": "/hcp/common/fqdn_updater.py",
-        "until": "/etc/hcp-fqdn-alive",
+        "until": "/etc/hcp/policy.emgmt/touch-fqdn-alive",
         "nowait": 1,
         "tag": "fqdn",
         "env": {

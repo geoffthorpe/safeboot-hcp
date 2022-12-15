@@ -1,6 +1,8 @@
 {
     "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
 
+    "id": "sherver",
+
     "services": [
         "fqdn_updater",
         "attester",
@@ -18,7 +20,7 @@
 
     "fqdn_updater": {
         "exec": "/hcp/common/fqdn_updater.py",
-        "until": "/etc/hcp-fqdn-alive",
+        "until": "/etc/hcp/sherver/touch-fqdn-alive",
         "nowait": 1,
         "tag": "fqdn",
         "env": {
@@ -34,24 +36,22 @@
 
     "attester": {
         "exec": "/hcp/common/attester.py",
-        "until": "/etc/hcp-attested",
+        "until": "/etc/hcp/sherver/touch-attested",
         "nowait": 1,
         "tag": "attester",
         "env": {
             "unset": {
                 "HCP_NOTRACEFILE": null
-            }
-        },
-        "period": 120,
-        "env": {
+            },
             "set": {
                 "HCP_ATTESTCLIENT_HOOK_KRB5KEY": "/hcp/sshsvc/hup_sshd.sh"
             }
-        }
+        },
+        "period": 120
     },
     "client": {
         "exec": "/hcp/tools/run_client.sh",
-        "touchfile": "/etc/hcp-attested",
+        "touchfile": "/etc/hcp/sherver/touch-attested",
         "env": {
             "unset": { "HCP_NOTRACEFILE": null }
         },
@@ -68,15 +68,22 @@
             }, {
                 "tag": "local",
                 "exec": "/hcp/sshsvc/setup_local.sh",
-                "touchfile": "/etc/hcp-sherver-local-setup"
+                "touchfile": "/etc/hcp/sherver/touch-sshsvc-local-setup"
             } ],
         "state": "/sherver"
     },
 
     "sshd": {
-        "setup": { "touchfile": "/etc/hcp-sherver-local-setup" },
-        "exec": "/usr/sbin/sshd",
-        "args": [ "-e", "-D" ],
-        "tag": "services"
+        "setup": { "touchfile": "/etc/hcp/sherver/touch-sshsvc-local-setup" },
+        "exec": [ "/hcp/sshsvc/run_sshd.py", "/usr/sbin/sshd" ],
+        "args": [ "-e", "-D", "-f", "/sherver/etc/config" ],
+        "tag": "services",
+        "env": {
+            "set": {
+                "KRB5_KTNAME": "/etc/hcp/sherver/krb5.keytab",
+                "KRB5_CONFIG": "/etc/hcp/sherver/krb5.conf",
+                "HCP_NOTRACEFILE": "1"
+            }
+        }
     }
 }

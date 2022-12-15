@@ -1,6 +1,8 @@
 {
     "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
 
+    "id": "workstation1",
+
     "services": [
         "fqdn_updater",
         "attester",
@@ -9,12 +11,13 @@
     "default_targets": [
         "start-fqdn",
         "start-attester",
+        "setup-local",
         "exec-webtop"
     ],
 
     "fqdn_updater": {
         "exec": "/hcp/common/fqdn_updater.py",
-        "until": "/etc/hcp-fqdn-alive",
+        "until": "/etc/hcp/workstation1/touch-fqdn-alive",
         "nowait": 1,
         "tag": "fqdn",
         "env": {
@@ -30,7 +33,7 @@
 
     "attester": {
         "exec": "/hcp/common/attester.py",
-        "until": "/etc/hcp-attested",
+        "until": "/etc/hcp/workstation1/touch-attested",
         "nowait": 1,
         "tag": "attester",
         "period": 120,
@@ -45,7 +48,7 @@
     },
     "client": {
         "exec": "/hcp/tools/run_client.sh",
-        "touchfile": "/etc/hcp-attested",
+        "touchfile": "/etc/hcp/workstation1/touch-attested",
         "env": {
             "unset": { "HCP_NOTRACEFILE": null }
         },
@@ -55,6 +58,20 @@
     },
 
     "webtop": {
-        "exec": "/init"
+        "_": [
+            "This service gets invoked by 'exec' rather than 'start', which",
+            "is why there's no 'tag' attribute. Unfortunately the s6-overlay",
+            "thing expects to be pid 1, so we lose launcher's process-control,",
+            "and we can't use another 'init' to handle signals properly either."
+        ],
+        "setup": [ {
+            "tag": "local",
+            "exec": "/hcp/caboodle/set-abc-env-file.sh",
+            "touchfile": "/config/hcp.env"
+        } ],
+        "exec": "/init",
+        "env": {
+            "set": { "KRB5_CONFIG": "/etc/hcp/workstation1/krb5.conf" }
+        }
     }
 }

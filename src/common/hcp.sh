@@ -366,7 +366,7 @@ function internal_role_account_uid_file {
 	# file gets sourced later as the new user, these will be what we
 	# restore from if we don't yet know what world/region we're in.
 	if [[ ! -f $homedir/hcp_config_file ]]; then
-		log "- setting $HOME/hcp_config_{file,scope} to $HCP_CONFIG_FILE,$HCP_CONFIG_SCOPE"
+		log "- $HOME/hcp_config_{file,scope} <- {$HCP_CONFIG_FILE,$HCP_CONFIG_SCOPE}"
 		cat $HCP_CONFIG_FILE > $homedir/hcp_config_file
 		echo "$HCP_CONFIG_SCOPE" > $homedir/hcp_config_scope
 		chown $1 $homedir/hcp_config_file

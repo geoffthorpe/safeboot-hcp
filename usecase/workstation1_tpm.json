@@ -1,18 +1,21 @@
 {
     "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
 
+    "id": "tpm.workstation1",
+
     "services": [
         "fqdn_updater",
         "swtpmsvc"
     ],
     "default_targets": [
         "start-fqdn",
+        "setup-global",
         "start-services"
     ],
 
     "fqdn_updater": {
         "exec": "/hcp/common/fqdn_updater.py",
-        "until": "/etc/hcp-fqdn-alive",
+        "until": "/etc/hcp/tpm.workstation1/touch-fqdn-alive",
         "nowait": 1,
         "tag": "fqdn",
         "env": {
@@ -26,7 +29,14 @@
     },
 
     "swtpmsvc": {
-        "setup": { "touchfile": "/tpm_workstation1/tpm/ek.pub" },
+        "setup": {
+            "tag": "global",
+            "exec": [
+                "/hcp/common/wait_touchfile.py",
+                "/tpm_workstation1/tpm/ek.pub"
+            ],
+            "touchfile": "/tpm_workstation1/tpm/ek.pub"
+        },
         "exec": "/hcp/swtpmsvc/run_swtpm.sh",
         "state": "/tpm_workstation1",
         "sockdir": "/tpm_socket_workstation1",

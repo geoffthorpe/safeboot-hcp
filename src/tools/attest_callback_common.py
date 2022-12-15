@@ -11,9 +11,7 @@ import json
 import pwd
 
 sys.path.insert(1, '/hcp/common')
-import hcp_common
-log = hcp_common.log
-bail = hcp_common.bail
+from hcp_common import log, bail, hcp_config_extract
 
 if 'VERBOSE' in os.environ:
 	def verbose(s):
@@ -36,6 +34,16 @@ else:
 
 log("Starting attest_callback_common")
 
+myid = hcp_config_extract('id', or_default = True, default = 'unknown_id')
+etc = f"/etc/hcp/{myid}"
+
+# This comes in handy
+def lazy_makedirs(d):
+	if not os.path.isdir(d):
+		log(f"lazy_makedirs() creating: {d}")
+		os.makedirs(d, mode = 0o755)
+	return d
+
 # Generic pre/post hook handling. If "{fname}_PRE" or "{fname}_POST"
 # are defined (in the environment), their values are interpreted as executable
 # paths that shoud be run if any of this asset's files have changed in the
@@ -45,8 +53,8 @@ log("Starting attest_callback_common")
 # occur, for example, when automatic reenrollment occurs, meaning that a new
 # certificate might be issued for the same/unchanging private key.)
 #    [
-#        ( "/etc/hcp/https-server/foo.hcphacking.xyz.pem", True),
-#        ( "/etc/hcp/https-server/foo.hcphacking.xyz-key.pem", False)
+#        ( "{etc}/https-server/foo.hcphacking.xyz.pem", True),
+#        ( "{etc}/https-server/foo.hcphacking.xyz-key.pem", False)
 #    ]
 def gen_preinstall(fname, assets):
 	if fname and f"{fname}_PRE" in os.environ:
@@ -59,7 +67,7 @@ def gen_postinstall(fname, assets):
 		subprocess.run([prog, fname], text = True,
 				input = json.dumps(assets))
 
-# Method for assets that need typical /etc/<foo> handling
+# Method for assets that need typical {etc}/<foo> handling
 def method_etc(filematch):
 	return {
 		# This method belongs to a 'class' that already has a glob
@@ -85,7 +93,7 @@ def method_etc(filematch):
 		#            dicts: (fname, dest_path, chmod_mode)
 		'fn': lambda fname, _class: [ {
 			'name': fname,
-			'dest': f"/etc/{fname}",
+			'dest': f"{etc}/{fname}",
 			'mode': 0o644 } ],
 		# (Optional) hook to run before installing. This runs once for
 		# each asset-bundle that 'fn' returns.
@@ -99,6 +107,14 @@ def method_etc(filematch):
 
 # Similar to method_etc(), but handles krb5.keytab updates via ktutil
 def method_keytab(filematch):
+	def fn(fname, _class):
+		log(f"keytabs::fn({fname}) starting")
+		d = lazy_makedirs(f"{etc}")
+		dest = f"{d}/{fname}.updated"
+		return [ {
+			'name': fname,
+			'dest': dest,
+			'mode': 0o644 } ]
 	def krb5update(assets):
 		if len(assets) != 1:
 			bail("method_keytab::fn expects single assets only")
@@ -122,10 +138,7 @@ def method_keytab(filematch):
 		# invoke any callbacks
 		gen_postinstall(filematch, assets)
 	return {
-		'fn': lambda fname, _class: [ {
-			'name': fname,
-			'dest': f"/etc/{fname}.updated",
-			'mode': 0o644 } ],
+		'fn': fn,
 		'preinstall': lambda assets: gen_preinstall(filematch, assets),
 		'postinstall': krb5update
 	}
@@ -142,13 +155,13 @@ def method_keytab(filematch):
 #
 # Root/host-scoped creds have a "default-" prefix that take the form;
 # "default-<cat>-<subcat>". As a general rule, they are mapped to an
-# the installation prefix; /etc/hcp/<cat>/<subcat>".
+# the installation prefix; {etc}/<cat>/<subcat>".
 
 # Exception: if the category is 'https' and the subcategory begins with
 # 'server' or 'hostclient', the dNSName field of the certificate is extracted
 # and used in the mapping;
-#     default-https-server*   -->  /etc/hcp/https-server/<dNSName>
-#   default-https-hostclient* -->  /etc/hcp/https-hostclient/<dNSName>
+#     default-https-server*   -->  {etc}/https-server/<dNSName>
+#   default-https-hostclient* -->  {etc}/https-hostclient/<dNSName>
 #
 # User-scoped creds take the form; "user-<cat>-<subcat>-<user>". The order may
 # seem strange, but this is because unix IDs can legally contain '-' characters
@@ -160,34 +173,29 @@ def method_keytab(filematch):
 # If <user> exists and has a $HOME directory;
 #     $HOME/.hcp/<cat>/<subcat>
 # If <user> exists and has no $HOME directory;
-#     /etc/hcp/creds/role/<user>/<cat>/<subcat>
+#     {etc}/creds/role/<user>/<cat>/<subcat>
 # If <user> doesn't exist;
-#     /etc/hcp/creds/unknown/<user>/<cat>/<subcat>
+#     {etc}/creds/unknown/<user>/<cat>/<subcat>
 #
 # Creds that don't match the above formats are ignored.
 #
 # Eg.
-#   default-pkinit-kdc.pem       ->   /etc/hcp/pkinit/kdc.pem
-#   default-pkinit-iprop.pem     ->   /etc/hcp/pkinit/iprop.pem
+#   default-pkinit-kdc.pem       ->   {etc}/pkinit/kdc.pem
+#   default-pkinit-iprop.pem     ->   {etc}/pkinit/iprop.pem
 # (and now skipping the '.pem' for brevity)
-#   default-https-server3        ->   /etc/hcp/https-server/<HOSTNAME>
-#   default-https-hostclient-bob ->   /etc/hcp/https-hostclient/<HOSTNAME>
-#   default-https-foo            ->   /etc/hcp/https/foo
+#   default-https-server3        ->   {etc}/https-server/<HOSTNAME>
+#   default-https-hostclient-bob ->   {etc}/https-hostclient/<HOSTNAME>
+#   default-https-foo            ->   {etc}/https/foo
 #   user-pkinit-id-bob           ->   ~bob/.hcp/pkinit/id
 #   user-pkinit-admin-bob        ->   ~bob/.hcp/pkinit/admin
 #   user-email-authn-bob         ->   ~bob/.hcp/email/auth
-#   user-pkinit-id-roleacct7     ->   /etc/hcp/creds/role/roleacct7/pkinit/id
-#   user-pkinit-authz-www-data   ->   /etc/hcp/creds/role/www-data/pkinit/authz
-#   user-email-authn-foo         ->   /etc/hcp/creds/unknown/foo/email/authn
+#   user-pkinit-id-roleacct7     ->   {etc}/creds/role/roleacct7/pkinit/id
+#   user-pkinit-authz-www-data   ->   {etc}/creds/role/www-data/pkinit/authz
+#   user-email-authn-foo         ->   {etc}/creds/unknown/foo/email/authn
 
 re_pem_prog = re.compile('\\.pem$')
 re_key_prog = re.compile('-key\\.pem$')
 
-def lazy_makedirs(d):
-	if not os.path.isdir(d):
-		log(f"lazy_makedirs() creating: {d}")
-		os.makedirs(d, mode = 0o755)
-	return d
 def map_hostcert(prefix):
 	log(f"map_hostcert({prefix})")
 	if not prefix.startswith('hostcert-'):
@@ -211,9 +219,9 @@ def map_hostcert(prefix):
 					subcat.startswith('hostclient')):
 			log(f"following 'https' handling")
 			if subcat.startswith('server'):
-				d = lazy_makedirs(f"/etc/hcp/https-server")
+				d = lazy_makedirs(f"{etc}/https-server")
 			else:
-				d = lazy_makedirs(f"/etc/hcp/https-hostclient")
+				d = lazy_makedirs(f"{etc}/https-hostclient")
 			args = [ 'hxtool', 'print', '--content',
 					f"{prefix}.pem" ]
 			log(f"running subprocess: {args}")
@@ -228,7 +236,7 @@ def map_hostcert(prefix):
 					resprefix = s.replace('dNSName: ', '')
 					break
 		else:
-			d = lazy_makedirs(f"/etc/hcp/{cat}")
+			d = lazy_makedirs(f"{etc}/{cat}")
 			resprefix = subcat
 	elif split4[0] == 'user':
 		if len(split4) != 4:
@@ -262,19 +270,19 @@ def map_hostcert(prefix):
 				d = f"{pwdinfo.pw_dir}/.hcp/{cat}"
 			else:
 				log(f"no home dir ({pwdir} doesn't exist)")
-				lazy_makedirs(f"/etc/hcp/creds/role")
-				if not os.path.isdir(f"/etc/hcp/creds/role/{uid}"):
-					os.mkdir(f"/etc/hcp/creds/role/{uid}")
-					os.chown(f"/etc/hcp/creds/role/{uid}",
+				lazy_makedirs(f"{etc}/creds/role")
+				if not os.path.isdir(f"{etc}/creds/role/{uid}"):
+					os.mkdir(f"{etc}/creds/role/{uid}")
+					os.chown(f"{etc}/creds/role/{uid}",
 						uid, -1)
-				if not os.path.isdir(f"/etc/hcp/creds/role/{uid}/{cat}"):
-					os.mkdir(f"/etc/hcp/creds/role/{uid}/{cat}")
-					os.chown(f"/etc/hcp/creds/role/{uid}/{cat}",
+				if not os.path.isdir(f"{etc}/creds/role/{uid}/{cat}"):
+					os.mkdir(f"{etc}/creds/role/{uid}/{cat}")
+					os.chown(f"{etc}/creds/role/{uid}/{cat}",
 						uid, -1)
-				d = f"/etc/hcp/creds/role/{uid}/{cat}"
+				d = f"{etc}/creds/role/{uid}/{cat}"
 		else:
 			log(f"user {username} doesn't exist")
-			d = lazy_makedirs(f"/etc/hcp/creds/unknown/{username}/{cat}")
+			d = lazy_makedirs(f"{etc}/creds/unknown/{username}/{cat}")
 	else:
 		log(f"map_hostcert({prefix}), unrecognized form")
 		return 0, None, None
@@ -329,7 +337,7 @@ def method_certissuer(filematch):
 	# This should only be called once, given that our glob is an exact-match.
 	def fn(fname, _class):
 		log(f"certissuer::fn({fname}) starting")
-		bdir = lazy_makedirs(f"/usr/share/ca-certificates/HCP")
+		bdir = lazy_makedirs(f"/usr/share/ca-certificates/{myid}")
 		# The asset record needs name/dest/mode. The top-level loop
 		# will supplement it with 'is_changed' before running
 		# preinstall and installing the files. Here, we also supplement
@@ -354,7 +362,7 @@ def method_certissuer(filematch):
 			if not x['already_existed']:
 				log(f"new CA {x}")
 				with open('/etc/ca-certificates.conf', 'a') as f:
-					f.write(f"HCP/{x['name']}\n")
+					f.write(f"{myid}/{x['name']}\n")
 			else:
 				log(f"updated CA {x}")
 		log("running 'update-ca-certificates'")

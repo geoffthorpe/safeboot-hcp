@@ -1,18 +1,21 @@
 {
     "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
 
+    "id": "tpm.primary.kdc",
+
     "services": [
         "fqdn_updater",
         "swtpmsvc"
     ],
     "default_targets": [
         "start-fqdn",
+        "setup-global",
         "start-services"
     ],
 
     "fqdn_updater": {
         "exec": "/hcp/common/fqdn_updater.py",
-        "until": "/etc/hcp-fqdn-alive",
+        "until": "/etc/hcp/tpm.primary.kdc/touch-fqdn-alive",
         "nowait": 1,
         "tag": "fqdn",
         "env": {
@@ -27,6 +30,7 @@
 
     "swtpmsvc": {
         "setup": {
+            "tag": "global",
             "exec": [
                 "/hcp/common/wait_touchfile.py",
                 "/tpm_kdc_primary/tpm/ek.pub"

@@ -129,7 +129,7 @@ def healthcheck():
 # This is the sudo preamble to pass to subprocess.run(), the actual operation
 # string ("add", "query", etc) and arguments follow this, and are appended by
 # each handler.
-sudoargs = [ 'sudo', '--', '/hcp/kdcsvc/do_kadmin.sh' ]
+sudoargs = [ 'sudo', '--', '/hcp/kdcsvc/do_kadmin.py' ]
 
 # The exit code from the sudo's process is expected to be the http status code,
 # rather than the more conventional unix approach where 0 is success and
