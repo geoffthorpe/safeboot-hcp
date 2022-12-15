@@ -5,7 +5,7 @@
         "fqdn_updater",
         "webapi"
     ],
-    "default": [
+    "default_targets": [
         "start-presetup",
         "start-postsetup"
     ],

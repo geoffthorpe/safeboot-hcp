@@ -20,13 +20,13 @@ services = hcp_config_extract('services', or_default = True, default = [])
 if not isinstance(services, list):
     bail(f"'services' field should be a list (not a {type(services)})")
 
-launch_default = hcp_config_extract('default', or_default = True,
+default_targets = hcp_config_extract('default_targets', or_default = True,
                     default = [ 'setup', 'start' ])
-if not isinstance(launch_default, list):
-    bail(f"'default' should be a list (not a {type(launch_default)})")
-for i in launch_default:
+if not isinstance(default_targets, list):
+    bail(f"'default_targets' should be a list (not a {type(default_targets)})")
+for i in default_targets:
     if not isinstance(i, str):
-        bail(f"'default' should contain only str entries (not {type(i)})")
+        bail(f"'default_targets' should contain only str entries (not {type(i)})")
 
 args_for = hcp_config_extract('args_for', or_default = True, default = '')
 if not isinstance(args_for, str):
@@ -381,7 +381,7 @@ def run_exec(name):
 # character), we behave as though the previous argument was 'custom'.
 
 if len(sys.argv) < 2:
-    actions = launch_default
+    actions = default_targets
 else:
     actions = sys.argv.copy()
     actions.pop(0)
@@ -416,14 +416,14 @@ while len(actions) > 0:
             actions.insert(0, action)
         # If there have been no start/setup/custom things before now, then
         # assume that what the user wants, rather than nothing at all, is the
-        # default. To do this, we have to prepend the entire 'launch_default'
+        # default. To do this, we have to prepend the entire 'default_targets'
         # array, and then we loop back to process it all.
         if len(tostart) == 0:
             # In this case, even the '--' needs to be inserted back in
             if action == '--':
                 actions.insert(0, action)
-            mylog(f"HCP launcher: inserting 'launch_default' args: {launch_default}")
-            actions = launch_default + actions
+            mylog(f"HCP launcher: inserting 'default_targets' args: {default_targets}")
+            actions = default_targets + actions
         else:
             args_transferred = False
             for c in children_all:

@@ -9,7 +9,7 @@
         "kdcsvc_TGS",
         "kdcsvc_iprop_secondary"
     ],
-    "default": [
+    "default_targets": [
         "start-presetup",
         "start-attester",
         "setup-global",

@@ -6,7 +6,7 @@
         "attestsvc",
         "webapi"
     ],
-    "default": [
+    "default_targets": [
         "start-presetup",
         "setup-local",
         "start-postsetup"

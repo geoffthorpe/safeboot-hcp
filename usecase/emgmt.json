@@ -33,7 +33,7 @@
         "reenroller",
         "purger"
     ],
-    "default": [
+    "default_targets": [
         "start-presetup",
         "setup-global",
         "setup-local",

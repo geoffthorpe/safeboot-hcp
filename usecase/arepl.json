@@ -6,7 +6,7 @@
         "attestsvc",
         "replication_client"
     ],
-    "default": [
+    "default_targets": [
         "start-presetup",
         "setup-global",
         "setup-local",
