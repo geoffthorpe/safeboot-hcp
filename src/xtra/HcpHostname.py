@@ -37,3 +37,22 @@ def dc_hostname(hostname):
 		else:
 			result = f"{result},DC={node}"
 	return result
+
+def pop_domain(hostname, domain):
+	pre = ""
+	post = hostname
+	while len(post) > 0 and post != domain:
+		_pre, post = pop_hostname(post)
+		if len(pre) > 0:
+			pre = f"{pre}.{_pre}"
+		else:
+			pre = _pre
+	if len(post) > 0:
+		# Sanity-check
+		if post != domain:
+			raise HcpHostnameError(f"pop_domain({hostname,domain})")
+		return pre, post
+	# Sanity-check
+	if pre != hostname:
+		raise HcpHostnameError(f"pop_domain({hostname,domain})")
+	return hostname, None
