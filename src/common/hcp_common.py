@@ -11,7 +11,11 @@ sys.path.insert(1, '/hcp/xtra')
 import HcpJsonPath
 
 # Equivalent for the 'touch' command
-def touch(p):
+def touch(p, *, makedirs = True):
+	if makedirs:
+		d = os.path.dirname(p)
+		if not os.path.isdir(d):
+			os.makedirs(d, mode = 0o755)
 	with open(p, 'a'):
 		os.utime(p, None)
 
