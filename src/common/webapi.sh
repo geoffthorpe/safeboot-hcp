@@ -29,7 +29,7 @@ if [[ $1 == "healthcheck" ]]; then
 	pause=1
 	VERBOSE=0
 	URL=$myservername:$myport/healthcheck
-	CURLARG="-f -g --connect-timeout 0.5"
+	CURLARG="-f -g --connect-timeout 2"
 	if [[ -n $myhttps ]]; then
 		URL=https://$URL
 		CURLARG="$CURLARG --cacert $myCA"
