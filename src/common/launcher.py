@@ -50,6 +50,11 @@ def childenv_init(child):
     global baseenv
     e = child['env']
     newenv = baseenv.copy()
+    if 'unset' in e:
+        es = e['unset']
+        for k in es:
+            if k in newenv:
+                newenv.pop(k)
     if 'set' in e:
         es = e['set']
         for k in es:
@@ -61,11 +66,6 @@ def childenv_init(child):
                 newenv[k] = f"{newenv[k]}:{ep[k]}"
             else:
                 newenv[k] = ep[k]
-    if 'unset' in e:
-        es = e['unset']
-        for k in es:
-            if k in newenv:
-                newenv.pop(k)
     child['newenv'] = newenv
 
 # Iterate through the 'services' array in the JSON, extracting and checking the
@@ -223,13 +223,14 @@ def mybail(s):
 # So we have to save and set individual key-value pairs, which on the contrary
 # causes the actual environment to be updated in real-time.
 def setenviron(e):
+    # Unset what should disappear
+    for k in os.environ:
+        if k not in e:
+            os.environ.pop(k)
     # Set what needs to be set
     for k in e:
-        os.environ[k] = e[k]
-    # Unset what should disappear
-    x = [ k for k in os.environ if k not in e ]
-    for k in x:
-        os.environ.pop(k)
+        if k not in os.environ or os.environ[k] != e[k]:
+            os.environ[k] = e[k]
 
 def pre_subprocess(child):
     if 'newenv' in child:
