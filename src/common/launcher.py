@@ -8,13 +8,11 @@ import subprocess
 import time
 
 sys.path.insert(1, '/hcp/common')
-from hcp_common import bail, log, \
+from hcp_common import bail, log, hlog, \
     hcp_config_extract, hcp_config_scope_get, hcp_config_scope_set, \
     hcp_config_scope_shrink
 
-def mylog(s):
-    if 'VERBOSE' in os.environ:
-        log(s)
+
 
 services = hcp_config_extract('services', or_default = True, default = [])
 if not isinstance(services, list):
@@ -80,7 +78,7 @@ children_start = []
 children_all = []
 for i in services:
     child = { 'name': i }
-    mylog(f"HCP launcher: processing service {i}")
+    log(f"HCP launcher: processing service {i}")
     # Switch our config scope into the child item so that we pull out the
     # attributes without having to meddle with paths - we switch back at the
     # end.
@@ -249,9 +247,9 @@ def post_subprocess(child):
 started = []
 
 def run_custom(actions):
-    log(f"HCP launcher: running {actions}")
+    hlog(2, f"HCP launcher: running {actions}")
     p = subprocess.run(actions)
-    log(f"HCP launcher: exit code {p.returncode}")
+    hlog(2, f"HCP launcher: exit code {p.returncode}")
     sys.exit(p.returncode)
 
 def run_setup(tag = None):
@@ -264,11 +262,11 @@ def run_setup(tag = None):
                 continue
             touchfile = s['touchfile']
             if os.path.isfile(touchfile):
-                log(f"HCP launcher: '{n}:{touchfile}' already setup")
+                hlog(2, f"HCP launcher: '{n}:{touchfile}' already setup")
             else:
                 if not s['exec']:
                     mybail(f"HCP launcher: '{n}:{touchfile}' has no setup function")
-                log(f"HCP launcher: '{n}:{touchfile}' running setup: {s['exec']}")
+                hlog(2, f"HCP launcher: '{n}:{touchfile}' running setup: {s['exec']}")
                 # Run the setup routine
                 pre_subprocess(i)
                 p = subprocess.run(s['exec'])
@@ -294,7 +292,7 @@ def run_start(tag = None):
         cmdargs = i['exec']
         if i['args']:
             cmdargs += i['args']
-        log(f"HCP launcher: '{n}' starting: {cmdargs}")
+        hlog(2, f"HCP launcher: '{n}' starting: {cmdargs}")
         # Check any setup requirements
         setup = i['setup']
         if setup:
@@ -326,7 +324,7 @@ def run_start(tag = None):
             if result and result != 0:
                 mybail(f"HCP launcher: '{n}' failed")
             if os.path.isfile(touchfile):
-                log(f"HCP launcher: '{n}:{touchfile}' complete")
+                hlog(2, f"HCP launcher: '{n}:{touchfile}' complete")
                 if not result:
                     started += [ i ]
                 break
@@ -344,7 +342,7 @@ def run_exec(name):
         if i['name'] != name:
             continue
         cmdargs = i['exec']
-        log(f"HCP launcher: execv to '{name}' (PID:{os.getpid()})")
+        hlog(2, f"HCP launcher: execv to '{name}' (PID:{os.getpid()})")
         pre_subprocess(i)
         os.execv(cmdargs[0], cmdargs)
         mybail(f"HCP launcher: '{name}' isn't supposed to return")
@@ -389,11 +387,11 @@ else:
     actions = sys.argv.copy()
     actions.pop(0)
 
-log(f"HCP launcher: processing options: {actions}")
+hlog(2, f"HCP launcher: processing options: {actions}")
 tostart = []
 while len(actions) > 0:
     action = actions.pop(0)
-    log(f"HCP launcher: option: {action}")
+    hlog(2, f"HCP launcher: option: {action}")
     new_tostart = None
     if action == 'setup' or action.startswith('setup-'):
         if action.startswith('setup-'):
@@ -425,13 +423,13 @@ while len(actions) > 0:
             # In this case, even the '--' needs to be inserted back in
             if action == '--':
                 actions.insert(0, action)
-            mylog(f"HCP launcher: inserting 'default_targets' args: {default_targets}")
+            log(f"HCP launcher: inserting 'default_targets' args: {default_targets}")
             actions = default_targets + actions
         else:
             args_transferred = False
             for c in children_all:
                 if c['name'] == args_for:
-                    mylog(f"HCP launcher: '{args_for}' service gets args: {actions}")
+                    log(f"HCP launcher: '{args_for}' service gets args: {actions}")
                     c['args'] = actions
                     actions = []
                     args_transferred = True
@@ -441,11 +439,11 @@ while len(actions) > 0:
     else:
         # Treat the current action and all remaining as a 'custom'.
         actions.insert(0, action)
-        mylog(f"HCP launcher: custom gets args: {actions}")
+        log(f"HCP launcher: custom gets args: {actions}")
         new_tostart = ( 'custom', actions )
         actions = []
     if new_tostart:
-        mylog(f"HCP launcher: tostart += {new_tostart}")
+        log(f"HCP launcher: tostart += {new_tostart}")
         tostart += [ new_tostart ]
 
 # From this point on, functions below us may call mybail() to throw an
@@ -482,7 +480,7 @@ try:
     # so if things like 'fqdn_updater' get started, we'll mark them 'nowait' so
     # that we don't pause indefinitely waiting for it to exit once the thing we
     # _were_ waiting on has already done so.
-    mylog("HCP launcher: waiting for children to exit")
+    log("HCP launcher: waiting for children to exit")
     while True:
         x = []
         num_waiting = 0
@@ -504,7 +502,7 @@ try:
 
 except LauncherLocalException as e:
 
-    log(f"Caught exception: {mybailtext}")
+    hlog(2, f"Caught exception: {mybailtext}")
     ex = e
 
 mybailready = False
@@ -528,11 +526,11 @@ if ex:
 # If one of the services exited with error, bail() for that too
 if res:
     if res == 0:
-        log(f"HCP launcher: child {n} exited without error")
+        hlog(2, f"HCP launcher: child {n} exited without error")
     else:
         bail(f"HCP launcher: child {n} failed: {res}")
 
-mylog("HCP launcher: done")
+log("HCP launcher: done")
 
 if lights_out:
     p = lights_out[0]
