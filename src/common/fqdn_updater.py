@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 ##  vim: set expandtab shiftwidth=4 softtabstop=4:  ##
 
-# This task runs backgrounded in each container and implements a "dynamic DNS"
+# This task runs backgrounded for each workload and implements a "dynamic DNS"
 # solution of grotesque and yet practical proportions.
 #
 # Two goals;
@@ -130,6 +130,20 @@
 #      try to find one that is in one of our own networks, and we create map
 #      that container's FQDNs to that IP address. (Other containers may map
 #      that container's FQDNs to a different choice of IP address, of course.)
+#
+# Because each copy of this fqdn_updater.sh will act as though it owns
+# /etc/hosts and can rewrite it at will, you might be wondering how we handle
+# co-tenant workloads ... indeed!
+#
+# The trick is that all but one of the workloads should have the
+# ".fqdn_updater.publish_only" attribute set in their JSON config. (It doesn't
+# matter what the value is, only that the attribute be there - feel free to set
+# it to null.) In the 'monolith' case, the container itself (which runs
+# launcher.py as the entrypoint) is started up with an instance of fqdn_updater
+# that owns and will continue to own /etc/hosts - in other words, it's the only
+# one that will run the recolt() function. All subsequent workloads started in
+# the container will dynamically insert that "publish_only" attribute, meaning
+# they bypass recolt() and only do the publish() step.
 
 import os
 import sys
@@ -143,14 +157,20 @@ import shutil
 import netifaces as net
 import ipaddress as ip
 
-print("Running FQDN publishing and discovery mechanism")
-
 sys.path.insert(1, '/hcp/common')
 from hcp_common import touch, log, bail, hcp_config_extract
+
+log("Running FQDN publishing and discovery mechanism")
 
 myid = hcp_config_extract('id', or_default = True, default = 'unknown_id')
 etc = f"/etc/hcp/{myid}"
 myuntil = f"{etc}/touch-fqdn-alive"
+
+mydomain = hcp_config_extract('.default_domain', must_exist = True)
+_myhostname = hcp_config_extract('.id', must_exist = True)
+myhostname = f"{_myhostname}.{mydomain}"
+myhostnames = hcp_config_extract('.hostnames', or_default = True, default = [])
+#myhostnames = [ f"{h}.{mydomain}" for h in _myhostnames ]
 
 # We pull our config structure as a whole, once, then dig into it locally. I.e.
 # we don't pull each attribute via hcp_config_extract()
@@ -167,16 +187,15 @@ myretry = myrefresh
 if 'retry' in myconfig:
     myretry = myconfig['retry']
 myexpiry = myconfig['expiry']
-myhostnames = myconfig['hostnames']
-mydomain = myconfig['default_domain']
 myextra = None
 if 'extra_fqdns' in myconfig:
     myextra = myconfig['extra_fqdns']
 mybad = '100.100.100.100'
 if 'bad_address' in myconfig:
     mybad = myconfig['bad_address']
-
-myhostname = socket.getfqdn()
+mypublishonly = False
+if 'publish_only' in myconfig:
+    mypublishonly = True
 
 summary = '''
     until={_until}
@@ -329,7 +348,8 @@ def loop():
                 log(f"Warning, fqdn_updater path doesn't exist: {mydir}")
                 raise Exception()
             publish()
-            recolt()
+            if not mypublishonly:
+                recolt()
             if myuntil:
                 touch (myuntil)
             log(f"Updated, sleeping for {myrefresh} seconds")

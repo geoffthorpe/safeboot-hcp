@@ -2,7 +2,7 @@
 
 source /hcp/common/hcp.sh
 
-# This healthcheck relies on attestation to provide the 'abc' pkinit-client
+# This healthcheck relies on attestation to provide the 'luser' pkinit-client
 # certificate, as well as availability of the (secondary) KDC. (Because kinit
 # uses the former to get a TGT from the latter.)
 
@@ -73,12 +73,13 @@ Starting $PROG:
 EOF
 fi
 
+homedir=$(cd ~luser && pwd)
+THECMD="kinit -C FILE:$homedir/.hcp/pkinit/user-luser-key.pem luser klist"
+
 while :; do
-	((VERBOSE > 0)) && echo >&2 "Running: kinit -C ... abc klist"
+	((VERBOSE > 0)) && echo >&2 "Running: $THECMD"
 	res=0
-	homedir=$(cd ~abc && pwd)
-	kinit -C FILE:/$homedir/.hcp/pkinit/user-key.pem abc \
-		klist > $tout 2> $terr || res=$?
+	$THECMD > $tout 2> $terr || res=$?
 
 	if [[ $res == 0 ]]; then
 		((VERBOSE > 0)) && echo >&2 "Success"

@@ -28,6 +28,8 @@
     ],
 
     "id": "emgmt",
+    "hostnames": [ "emgmt" ],
+    "default_domain": "hcphacking.xyz",
 
     "services": [
         "fqdn_updater",
@@ -54,8 +56,6 @@
         "path": "/fqdn-bus",
         "refresh": 5,
         "expiry": 20,
-        "hostnames": [ "emgmt" ],
-        "default_domain": "hcphacking.xyz",
         "extra_fqdns": [ "useless.alias.forfun.zyx", "why.not.this.wuntu.huh" ],
         "bad_address": "100.100.100.100"
     },

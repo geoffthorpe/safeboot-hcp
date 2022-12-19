@@ -37,6 +37,50 @@ log("Starting attest_callback_common")
 myid = hcp_config_extract('id', or_default = True, default = 'unknown_id')
 etc = f"/etc/hcp/{myid}"
 
+# IMPORTANT NOTE ABOUT USERS: one goal of this way of working is to demonstrate
+# an SSO solution among a network of "hosts". Ie. HCP can provide TPM-protected
+# creds to a host (via attestation) that allow some "user" (an identity,
+# typically 1:1 with the Kerberos concept of a principal) to access other
+# hosts. That identity might have separate accounts on the different hosts, and
+# they may have different usernames too. (In the "monolith" case, these "hosts"
+# are actually just co-tenant workloads in a single container, so we actually
+# _have_ to use differently named accounts in order to maintain the illusion of
+# multiple hosts.)
+#
+# In this callback, we're interested in where to put incoming user credentials,
+# given that they are for an "identity" that won't necessarily be a literal
+# match for the local account/username corresponding to that identity.
+#
+# So ... the "client" section of the JSON config can optionally define a
+# "usermap" sub-section, that can convert the usernames of incoming creds to
+# local account names, if they differ. Eg.
+#    { "foo": "joe467", "bar": "whatever" }
+# This maps two identities coming from HCP (per the enrollment, file-naming of
+# assets, etc) to different user IDs on the local host. Only identities
+# mentioned in that map file get translated, so any identity other than "foo"
+# or "bar" will be used (without transformation) as local usernames,
+# successfully or otherwise. In this example, if and when HCP provides us with
+# a user-scoped cred for the user 'foo', this attestation callback will
+# immediately map that to the user 'joe467' and forget about 'foo'. So the
+# rules about ownership of the cred and where (or if) it gets installed will be
+# entirely based on 'joe467' in that case.
+_usermap = hcp_config_extract("client.usermap", or_default = True, default = {})
+if not isinstance(_usermap, dict):
+	bail(f"{path_usermap} is not of type 'dict'")
+for k in _usermap:
+	v = _usermap[k]
+	# TODO: perhaps k and v should undergo more stringent checks,
+	# ie. that they look like user IDs, not just that they're
+	# strings.
+	if not isinstance(k, str) or not isinstance(v, str):
+		bail(f"{path_usermap} must only container string mappings")
+def usermap(name):
+	if name in _usermap:
+		log(f"usermap: '{name}' -> '{_usermap[name]}'")
+		return _usermap[name]
+	log(f"usermap: '{name}' unmodified")
+	return name
+
 # This comes in handy
 def lazy_makedirs(d):
 	if not os.path.isdir(d):
@@ -166,16 +210,19 @@ def method_keytab(filematch):
 # User-scoped creds take the form; "user-<cat>-<subcat>-<user>". The order may
 # seem strange, but this is because unix IDs can legally contain '-' characters
 # so we want it to be the last component in the split(). This means <cat> and
-# <subcat> can't use '-' characters, so underscores are a good alternative. If
-# the corresponding user ID exists on the system, the installed creds will be
-# owned by that user. The installation mapping depends on that (whether the
-# user exists) _as well as whether the user has a home directory_.
-# If <user> exists and has a $HOME directory;
-#     $HOME/.hcp/<cat>/<subcat>
-# If <user> exists and has no $HOME directory;
-#     {etc}/creds/role/<user>/<cat>/<subcat>
-# If <user> doesn't exist;
-#     {etc}/creds/unknown/<user>/<cat>/<subcat>
+# <subcat> can't use '-' characters, so underscores are a good alternative.
+# The <user> value will pass through the usermap() function, which may modify
+# it. The result is <localuser> in the following discussion, and we replace
+# <user> with <origuser> for clarity.
+# If <localuser> exists on the system, the installed creds will be owned by
+# that user. The installation mapping also depends on whether <localuser> has a
+# home directory;
+# If <localuser> exists and has a $HOME directory;
+#     $HOME/.hcp/<cat>/<subcat>-<origuser>
+# If <localuser> exists and has no $HOME directory;
+#     {etc}/creds/role/<localuser>/<cat>/<subcat>-<origuser>
+# If <localuser> doesn't exist;
+#     {etc}/creds/unknown/<localuser>/<cat>/<subcat>-<origuser>
 #
 # Creds that don't match the above formats are ignored.
 #
@@ -186,12 +233,15 @@ def method_keytab(filematch):
 #   default-https-server3        ->   {etc}/https-server/<HOSTNAME>
 #   default-https-hostclient-bob ->   {etc}/https-hostclient/<HOSTNAME>
 #   default-https-foo            ->   {etc}/https/foo
-#   user-pkinit-id-bob           ->   ~bob/.hcp/pkinit/id
-#   user-pkinit-admin-bob        ->   ~bob/.hcp/pkinit/admin
-#   user-email-authn-bob         ->   ~bob/.hcp/email/auth
-#   user-pkinit-id-roleacct7     ->   {etc}/creds/role/roleacct7/pkinit/id
-#   user-pkinit-authz-www-data   ->   {etc}/creds/role/www-data/pkinit/authz
-#   user-email-authn-foo         ->   {etc}/creds/unknown/foo/email/authn
+#   user-pkinit-id-bob           ->   ~bob/.hcp/pkinit/id-bob
+#   user-pkinit-admin-bob        ->   ~bob/.hcp/pkinit/admin-bob
+#   user-email-authn-bob         ->   ~bob/.hcp/email/auth-bob
+#   user-pkinit-id-role7         ->   {etc}/creds/role/role7/pkinit/id-role7
+#   user-pkinit-authz-www-data   ->   {etc}/creds/role/www-data/pkinit/authz-www-data
+#   user-email-authn-foo         ->   {etc}/creds/unknown/foo/email/authn-foo
+#
+# IMPORTANT NOTE ABOUT USERS: see the earlier note about HCP_USERMAP, that
+# applies here.
 
 re_pem_prog = re.compile('\\.pem$')
 re_key_prog = re.compile('-key\\.pem$')
@@ -245,15 +295,16 @@ def map_hostcert(prefix):
 		log(f"following 'user' handling")
 		cat = split4[1]
 		subcat = split4[2]
-		username = split4[3]
-		resprefix = subcat
+		origuser = split4[3]
+		localuser = usermap(origuser)
+		resprefix = f"{subcat}-{localuser}"
 		userexists = True
 		try:
-			pwdinfo = pwd.getpwnam(username)
+			pwdinfo = pwd.getpwnam(localuser)
 		except KeyError:
 			userexists = False
 		if userexists:
-			log(f"user {username} exists")
+			log(f"user {localuser} exists")
 			pwdirexists = False
 			if pwdinfo:
 				pwdir = pwdinfo.pw_dir
@@ -271,18 +322,18 @@ def map_hostcert(prefix):
 			else:
 				log(f"no home dir ({pwdir} doesn't exist)")
 				lazy_makedirs(f"{etc}/creds/role")
-				if not os.path.isdir(f"{etc}/creds/role/{uid}"):
-					os.mkdir(f"{etc}/creds/role/{uid}")
-					os.chown(f"{etc}/creds/role/{uid}",
+				if not os.path.isdir(f"{etc}/creds/role/{localuser}"):
+					os.mkdir(f"{etc}/creds/role/{localuser}")
+					os.chown(f"{etc}/creds/role/{localuser}",
 						uid, -1)
-				if not os.path.isdir(f"{etc}/creds/role/{uid}/{cat}"):
-					os.mkdir(f"{etc}/creds/role/{uid}/{cat}")
-					os.chown(f"{etc}/creds/role/{uid}/{cat}",
+				if not os.path.isdir(f"{etc}/creds/role/{localuser}/{cat}"):
+					os.mkdir(f"{etc}/creds/role/{localuser}/{cat}")
+					os.chown(f"{etc}/creds/role/{localuser}/{cat}",
 						uid, -1)
-				d = f"{etc}/creds/role/{uid}/{cat}"
+				d = f"{etc}/creds/role/{localuser}/{cat}"
 		else:
-			log(f"user {username} doesn't exist")
-			d = lazy_makedirs(f"{etc}/creds/unknown/{username}/{cat}")
+			log(f"user {localuser} doesn't exist")
+			d = lazy_makedirs(f"{etc}/creds/unknown/{localuser}/{cat}")
 	else:
 		log(f"map_hostcert({prefix}), unrecognized form")
 		return 0, None, None

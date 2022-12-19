@@ -2,17 +2,22 @@
     "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
 
     "id": "workstation1",
+    "hostnames": [ "workstation1" ],
+    "default_domain": "hcphacking.xyz",
+    "users": [ "luser" ],
 
     "services": [
         "fqdn_updater",
         "attester",
-        "webtop"
+        "config",
+        "webtop",
+        "do_nothing"
     ],
     "default_targets": [
         "start-fqdn",
         "start-attester",
         "setup-local",
-        "exec-webtop"
+        "start-do_nothing"
     ],
 
     "fqdn_updater": {
@@ -26,8 +31,6 @@
         "path": "/fqdn-bus",
         "refresh": 5,
         "expiry": 20,
-        "hostnames": [ "workstation1" ],
-        "default_domain": "hcphacking.xyz",
         "bad_address": "100.100.100.100"
     },
 
@@ -37,6 +40,7 @@
         "nowait": 1,
         "tag": "attester",
         "period": 120,
+        "retry": 5,
         "env": {
             "set": {
                 "HCP_ATTESTCLIENT_HOOK_KRB5KEY": "/hcp/sshsvc/hup_sshd.sh"
@@ -57,6 +61,14 @@
         "callbacks": [ "/hcp/tools/attest_callback_common.py" ]
     },
 
+    "config": {
+        "setup": [ {
+            "tag": "local",
+            "exec": "/hcp/caboodle/set-container-env.sh",
+            "touchfile": "/etc/hcp-caboodle-container.env"
+        } ]
+    },
+
     "webtop": {
         "_": [
             "This service gets invoked by 'exec' rather than 'start', which",
@@ -64,14 +76,14 @@
             "thing expects to be pid 1, so we lose launcher's process-control,",
             "and we can't use another 'init' to handle signals properly either."
         ],
-        "setup": [ {
-            "tag": "local",
-            "exec": "/hcp/caboodle/set-abc-env-file.sh",
-            "touchfile": "/config/hcp.env"
-        } ],
         "exec": "/init",
         "env": {
             "set": { "KRB5_CONFIG": "/etc/hcp/workstation1/krb5.conf" }
         }
+    },
+
+    "do_nothing": {
+        "exec": "/hcp/common/do_nothing.sh",
+        "tag": "do_nothing"
     }
 }

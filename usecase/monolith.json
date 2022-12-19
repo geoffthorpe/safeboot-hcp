@@ -1,0 +1,78 @@
+{
+    "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
+
+    "id": "monolith",
+    "hostnames": [ "monolith" ],
+    "default_domain": "hcphacking.xyz",
+
+    "services": [
+        "fqdn_updater",
+        "monolith",
+        "webtop",
+        "do_nothing"
+    ],
+    "default_targets": [
+        "start-fqdn",
+        "setup-local",
+        "start-do_nothing"
+    ],
+
+    "fqdn_updater": {
+        "exec": "/hcp/common/fqdn_updater.py",
+        "until": "/etc/hcp/monolith/touch-fqdn-alive",
+        "nowait": 1,
+        "tag": "fqdn",
+        "env": {
+            "unset": {
+                "HCP_IN_MONOLITH": null
+            },
+            "set": { "VERBOSE": "0" }
+        },
+        "path": "/fqdn-bus",
+        "refresh": 5,
+        "expiry": 20,
+        "bad_address": "100.100.100.100"
+    },
+
+    "monolith": {
+        "_": [
+            "Once the monolith container is running, it can locally launch the",
+            "services and tools that normally run in their own containers."
+        ],
+        "setup": [ {
+            "tag": "local",
+            "exec": [ "/hcp/caboodle/set-container-env.sh" ],
+            "touchfile": "/etc/hcp-caboodle-container.env"
+        }, {
+            "tag": "local",
+            "exec": [ "/hcp/caboodle/monolith.py", "bootstrap" ],
+            "touchfile": "/etc/hcp/monolith/touch-local-setup"
+        } ],
+        "fakemounts": [
+            "/enrolldb",
+            "/attestdb",
+            "/kdc_primary",
+            "/kdc_secondary",
+            "/sherver",
+            "/tpm_aclient",
+            "/tpm_kdc_primary",
+            "/tpm_kdc_secondary",
+            "/tpm_sherver",
+            "/tpm_workstation1",
+            "/tpm_socket_aclient",
+            "/tpm_socket_kdc_primary",
+            "/tpm_socket_kdc_secondary",
+            "/tpm_socket_sherver",
+            "/tpm_socket_workstation1"
+        ]
+    },
+
+    "webtop": {
+        "exec": "/init"
+    },
+
+    "do_nothing": {
+        "exec": "/hcp/common/do_nothing.sh",
+        "tag": "do_nothing"
+    }
+}

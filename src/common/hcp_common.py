@@ -4,6 +4,7 @@ import json
 import psutil
 import pwd
 import glob
+import subprocess
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
@@ -117,23 +118,35 @@ def hcp_config_scope_get():
 		# OTOH, if HCP_CONFIG_FILE isn't set _either_, the only legit
 		# explanation is that privileges have been dropped or switched
 		# and we're coming up as a regular user and need to find
-		# context. In this case, we assume we have a home-dir and our
-		# context is in it.
+		# context. In this case, we try;
+		# - $HOME/hcp_config_file, see internal_role_account_uid_file().
+		# - /etc/hcp-caboodle-container.env, see
+		#   src/caboodle/set_container_env.sh.
 		if 'HCP_CONFIG_FILE' not in os.environ:
-			log("- no HCP_CONFIG_FILE")
-			uid = os.geteuid()
-			whoami = pwd.getpwuid(uid).pw_name
-			if whoami == 'root':
+			home = ''
+			_global = "/etc/hcp-caboodle-container.env"
+			if 'HOME' in os.environ:
+				home = os.environ['HOME']
+			worldfile = f"{home}/hcp_config_file"
+			pathfile = f"{home}/hcp_config_scope"
+			if os.path.isfile(worldfile):
+				log(f"- setting HCP_CONFIG_FILE to {worldfile}")
+				os.environ['HCP_CONFIG_FILE'] = worldfile
+				if os.path.isfile(pathfile):
+					log(f"- setting HCP_CONFIG_SCOPE to {pathfile}")
+					hcp_config_scope_set(open(pathfile,
+							'r').read().strip())
+			elif os.path.isfile(_global):
+				log(f"- loading {_global}")
+				lines = open(_global, 'r').readlines()
+				for l in lines:
+					if not l.startswith('export HCP_'):
+						continue
+					kv = l.replace('export ', '').split('=', 1)
+					log(f"  - setting {kv[0]}={kv[1]}")
+					os.environ[kv[0]] = kv[1]
+			else:
 				bail("Error, no HCP_CONFIG_FILE set")
-			worldfile = f"/home/{whoami}/hcp_config_file"
-			pathfile = f"/home/{whoami}/hcp_config_scope"
-			if not os.path.isfile(worldfile):
-				bail(f"Error, no HCP_CONFIG_FILE in ~{whoami}")
-			log(f"- setting HCP_CONFIG_FILE to {worldfile}")
-			os.environ['HCP_CONFIG_FILE'] = worldfile
-			if os.path.isfile(pathfile):
-				log(f"- setting HCP_CONFIG_SCOPE to {pathfile}")
-				hcp_config_scope_set(open(pathfile, 'r').read().strip())
 		# If the path still isn't set, default to '.'
 		if 'HCP_CONFIG_SCOPE' not in os.environ:
 			log("- defaulting HCP_CONFIG_SCOPE to '.'")
@@ -287,6 +300,50 @@ def http2exit(x):
 	return alookup(ahttp2exit, x, 49)
 def exit2http(x):
 	return alookup(aexit2http, x, 500)
+
+# Python version of the bash function of the same name
+def role_account_uid_file(name, uidfile, gecos, maxretries = 5):
+	count = maxretries
+	while True:
+		res = True
+		try:
+			os.mkdir('/var/lock/hcp_uid_creation')
+		except:
+			res = False
+		if res:
+			break
+		count = count - 1
+		if count == 0:
+			raise Exception("Failed to get hcp_uid_creation lock")
+	st = None
+	if os.path.isfile(uidfile):
+		st = os.stat(uidfile)
+	try:
+		pwdentry = pwd.getpwnam(name)
+	except KeyError:
+		# The account doesn't exist. If the uidfile exists, that's the UID
+		# we want the new account to have, otherwise we create the user
+		# and accept the UID we're given.
+		cmd = [ 'adduser',
+			'--disabled-password',
+			'--quiet',
+			'--home', f"/home/{name}",
+			'--gecos', gecos ]
+		if st:
+			cmd += [ '--uid', st.st_uid, name ]
+		else:
+			cmd += [ name ]
+		c = subprocess.run(cmd)
+		if c.returncode != 0:
+			bail(f"'adduser' command (for '{name}') failed")
+		pwdentry = pwd.getpwnam(name)
+	if st:
+		if st.st_uid != pwdentry.pw_uid:
+			bail(f"'{name}' doesn't own '{uidfile}'")
+	else:
+		touch(uidfile)
+		os.chown(uidfile, pwdentry.pw_uid, pwdentry.pw_gid)
+	os.rmdir('/var/lock/hcp_uid_creation')
 
 def add_install_path(d):
 	def _add_path(n, vs):

@@ -95,7 +95,7 @@
 			"enroll_hostname": "workstation1.hcphacking.xyz",
 			"enroll_profile": {
 				"__env": {
-					"ENROLL_PKINIT_USER_PRINC": "abc"
+					"ENROLL_PKINIT_USER_PRINC": "luser"
 				},
 				"gencert-hxtool": {
 					"list": [

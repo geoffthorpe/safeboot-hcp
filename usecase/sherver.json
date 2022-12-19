@@ -2,6 +2,8 @@
     "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
 
     "id": "sherver",
+    "hostnames": [ "sherver" ],
+    "default_domain": "hcphacking.xyz",
 
     "services": [
         "fqdn_updater",
@@ -29,8 +31,6 @@
         "path": "/fqdn-bus",
         "refresh": 5,
         "expiry": 20,
-        "hostnames": [ "sherver" ],
-        "default_domain": "hcphacking.xyz",
         "bad_address": "100.100.100.100"
     },
 
@@ -47,7 +47,8 @@
                 "HCP_ATTESTCLIENT_HOOK_KRB5KEY": "/hcp/sshsvc/hup_sshd.sh"
             }
         },
-        "period": 120
+        "period": 120,
+        "retry": 5
     },
     "client": {
         "exec": "/hcp/tools/run_client.sh",

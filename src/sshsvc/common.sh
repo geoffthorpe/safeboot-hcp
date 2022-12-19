@@ -16,5 +16,5 @@ function ensure_user_accounts {
 	role_account_uid_file user2 $HCP_SSHSVC_STATE/uid-user2 "Test User 2,,,,"
 	role_account_uid_file user3 $HCP_SSHSVC_STATE/uid-user3 "Test User 3,,,,"
 	role_account_uid_file alicia $HCP_SSHSVC_STATE/uid-alicia "Alicia Not-Alice,,,,"
-	role_account_uid_file abc $HCP_SSHSVC_STATE/abc "ABC User,,,,"
+	role_account_uid_file luser $HCP_SSHSVC_STATE/luser "For remote logins,,,,"
 }

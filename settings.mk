@@ -117,7 +117,7 @@ HCP_APPS_GRANULAR := 1
 # service FQDNs, trust-roots, [etc] all "just work", rather than requiring
 # efforts to convince host-side tools (eg browsers) to interact with the
 # use-case.
-HCP_USE_WEBTOP := 1
+#HCP_USE_WEBTOP := 1
 
 # If USE_WEBTOP is defined, what desktop/window-manager to install and run? The
 # following seem to work well;

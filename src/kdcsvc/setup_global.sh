@@ -47,14 +47,19 @@ export HCP_CONFIG_FILE=$HCP_CONFIG_FILE
 export HCP_CONFIG_SCOPE=$HCP_CONFIG_SCOPE
 export KRB5_CONFIG=$KRB5_CONFIG
 EOF
+# Note, we need instance-specific content because our sudoers file gets linked
+# into /etc/sudoers.d/ like any/all other cotenant services that use sudo. We
+# take $HCP_ID and convert any "." chars to underscores to ensure we don't
+# produce anything too exotic for sudo.
+export HCP_NICEID=$(echo "$HCP_ID" | sed -e "s/\./_/g")
 echo "Creating $HCP_KDCSVC_STATE/etc/sudoers"
 cat > $HCP_KDCSVC_STATE/etc/sudoers << EOF
-# sudo rules for kdcsvc-mgmt > /etc/sudoers.d/hcp
-Cmnd_Alias HCP = /hcp/kdcsvc/do_kadmin.py
-Defaults !lecture
-Defaults !authenticate
-Defaults env_file=$HCP_KDCSVC_STATE/etc/sudoers.env
-www-data ALL = (root) HCP
+# sudo rules for kdcsvc-mgmt > /etc/sudoers.d/
+Cmnd_Alias HCP_$(HCP_NICEID) = /hcp/kdcsvc/do_kadmin.py
+Defaults!HCP_$(HCP_NICEID) !lecture
+Defaults!HCP_$(HCP_NICEID) !authenticate
+Defaults!HCP_$(HCP_NICEID) env_file=$HCP_KDCSVC_STATE/etc/sudoers.env
+www-data ALL = (root) HCP_$(HCP_NICEID)
 EOF
 
 if [[ $HCP_KDCSVC_MODE == "primary" ]]; then

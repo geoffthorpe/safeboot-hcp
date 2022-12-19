@@ -40,8 +40,8 @@ services:
           - fqdn:/fqdn-bus:rw
           - ${HCP_TOP}/usecase:/usecase:ro
         environment:
-          - VERBOSE=2
           - HCP_NOTRACEFILE=1
+#          - VERBOSE=2
 
 # Enrollment svc, mgmt interface
     emgmt:
@@ -91,7 +91,6 @@ services:
           - enrolldb:/enrolldb:ro
         environment:
           - HCP_CONFIG_FILE=/usecase/erepl.json
-#          - VERBOSE=2
 #        ports:
 #          - "9418:9418"
         healthcheck:
@@ -305,21 +304,20 @@ services:
             timeout: 3s
             interval: 10s
 
-# 'workstation1' has a linux desktop (http://localhost:3000) for the 'abc'
-# user, which runs under kinit via a "user-pkinit-user-abc" certificate that
-# comes from enrollment of the TPM (and is obtained via attestation). This
-# container is also used (non-interactively) by the 'services_basic' test case.
+# 'workstation1' represents an architypal machine that is bootstrapped by the
+# HCP infrastructure. It gets provisioned with host and user credentials, and
+# can be used to interact with Kerberos and SSH services on the network in a
+# SSO manner. It is used (non-interactively) for this purpose by the
+# 'services_basic' test case.
     workstation1:
         extends: common
         image: ${HCP_IMAGE_caboodle}
         hostname: workstation1
-        # TODO: we don't want to do this, but the linuxserver.io:webtop startup (upon
-        # which we are usually based), which is 's6-overlay'-based, insists on
-        # being PID 1. We exec to it from our own launcher, but that's not PID 1 if we
-        # use docker's 'init'.
-        init: false
         # TODO: remove the KRB5_CONFIG setting. It's only there to support the
-        # healthcheck, until I find a way to represent/handle that.
+        # healthcheck, until I find a way to represent/handle that. And yuck,
+        # it means that the monolith version of the usecase has to set this
+        # differently (because, duh, you don't use docker-compose _inside_
+        # that container).
         environment:
           - HCP_CONFIG_FILE=/usecase/workstation1.json
           - HCP_NOTRACEFILE=1
@@ -350,19 +348,54 @@ services:
             test: /hcp/swtpmsvc/healthcheck.sh
             timeout: 3s
             interval: 10s
+# Start this variant (instead of 'workstation1') to obtain a linux desktop
+# (http://localhost:3000) for the 'abc' user.
+    workstation1_webtop:
+        extends: common
+        # TODO: we don't want to do this, but the linuxserver.io:webtop startup
+        # (upon which we are usually based), which is 's6-overlay'-based,
+        # insists on being PID 1. We exec to it from our own launcher, but
+        # that's not PID 1 if we use docker's 'init'.
+        init: false
+        # The difference between workstation1 and workstation1_webtop, the
+        # latter overrides the command-line (which is passed to our entrypoint,
+        # 'launcher.py') to spin up the webtop, rather than 'do_nothing'.
+        command: [ "start-fqdn", "start-attester", "setup-local", "exec-webtop" ]
 
-# Caboodle instance
-    caboodle_alone:
+# 'monolith' exists to run all of the instances above, but co-tenant within the
+# same container rather than broken out. (Caboodle implements a
+# "docker-compose" replacement that can be hooked into test scripts, that
+# causes it to invoke launcher.py directly rather than doing so via
+# docker-compose commands into separate containers.)
+    monolith:
         extends: common
         image: ${HCP_IMAGE_caboodle}
-        hostname: caboodle_solo
-        networks:
-          - hcpnetwork
+        hostname: monolith
         environment:
-          - HCP_CONFIG_FILE=/usecase/caboodle_alone.env
+          - HCP_IN_MONOLITH=1
+          - HCP_CONFIG_FILE=/usecase/monolith.json
+          - HCP_NOTRACEFILE=1
         volumes:
           - ${HCP_TOP}/vendors:/vendors:ro
+          - ${HCP_TESTCREDS_ENROLLSIGNER}:/enrollsigner:ro
+          - ${HCP_TESTCREDS_ENROLLCERTISSUER}:/enrollcertissuer:ro
+          - ${HCP_TESTCREDS_ENROLLCERTCHECKER}:/enrollcertchecker:ro
+          - ${HCP_TESTCREDS_ENROLLCLIENT}:/enrollclient:ro
+          - ${HCP_TESTCREDS_ENROLLSERVER}:/enrollserver:ro
+          - ${HCP_TESTCREDS_ENROLLVERIFIER}:/enrollverifier:ro
+          - ${HCP_TOP}/tests:/tests:ro
+        networks:
+          - hcpnetwork
+        ports:
+          - "3001:3000"
         healthcheck:
             test: /bin/true
             timeout: 3s
             interval: 10s
+    monolith_webtop:
+        extends: monolith
+        # TODO: same comment as for 'workstation1'
+        init: false
+        # The difference between monolith and monolith_webtop is the same as the difference
+        # between workstation1 and workstation1_webtop.
+        command: [ "start-fqdn", "setup-local", "exec-webtop" ]

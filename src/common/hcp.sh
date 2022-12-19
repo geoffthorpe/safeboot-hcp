@@ -146,26 +146,28 @@ function hcp_config_scope_get {
 		# OTOH, if HCP_CONFIG_FILE isn't set _either_, the only legit
 		# explanation is that privileges have been dropped or switched
 		# and we're coming up as a regular user and need to find
-		# context. In this case, we assume we have a home-dir and our
-		# context is in it. (See internal_role_account_uid_file.)
+		# context. In this case, we try;
+		# - $HOME/hcp_config_file, see internal_role_account_uid_file().
+		# - /etc/hcp-caboodle-container.env, see
+		#   src/caboodle/set_container_env.sh.
+		newscope='.'
 		if [[ ! -n $HCP_CONFIG_FILE ]]; then
-			if [[ $WHOAMI == root ]]; then
+			if [[ -n $HOME && -d $HOME && -f "$HOME/hcp_config_file" ]]; then
+				export HCP_CONFIG_FILE=$HOME/hcp_config_file
+				newscope=$(cat $HOME/hcp_config_scope)
+				log "hcp_config_scope_get: loading from $HOME"
+			elif [[ -f /etc/hcp-caboodle-container.env ]]; then
+				source /etc/hcp-caboodle-container.env
+				log "hcp_config_scope_get: loading from /etc/hcp-caboodle-container.env"
+				newscope=$HCP_CONFIG_SCOPE
+			else
 				echo "Error, no HCP_CONFIG_FILE set" >&2
 				exit 1
 			fi
-			if [[ ! -d "/home/$WHOAMI" ]]; then
-				echo "Error, HCP_CONFIG_FILE from /home/$WHOAMI not possible" >&2
-				exit 1
-			fi
-			export HCP_CONFIG_FILE=/home/$WHOAMI/hcp_config_file
-			export HCP_CONFIG_SCOPE=$(cat /home/$WHOAMI/hcp_config_scope)
-			log "hcp_config_scope_get: loading from $HOME;"
-			log "- HCP_CONFIG_FILE=$HCP_CONFIG_FILE"
-			log "- HCP_CONFIG_SCOPE=$HCP_CONFIG_SCOPE"
 		else
 			log "hcp_config_scope_get: setting default scope '.'"
-			hcp_config_scope_set "."
 		fi
+		hcp_config_scope_set "$newscope"
 	fi
 	log "hcp_config_scope_get: returning $HCP_CONFIG_SCOPE"
 	echo $HCP_CONFIG_SCOPE
@@ -174,7 +176,7 @@ function hcp_config_scope_get {
 # use of the API, but not before (we don't want to do it at all in those cases
 # where the API is unused). If the first API call is hcp_config_scope_get()
 # itself, problem self-solved, otherwise we just call it quietly at the start
-# of APIs to get the desired behavior.
+# of other APIs to get the desired behavior.
 function hcp_config_scope_shrink {
 	hcp_config_scope_get > /dev/null
 	mypath=$(normalize_path "$1")

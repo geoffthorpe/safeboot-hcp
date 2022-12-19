@@ -2,6 +2,8 @@
     "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
 
     "id": "policy.primary.kdc",
+    "hostnames": [ "policy.primary.kdc" ],
+    "default_domain": "hcphacking.xyz",
 
     "services": [
         "fqdn_updater",
@@ -22,9 +24,7 @@
         },
         "path": "/fqdn-bus",
         "refresh": 5,
-        "expiry": 20,
-        "hostnames": [ "policy.primary.kdc" ],
-        "default_domain": "hcphacking.xyz"
+        "expiry": 20
     },
 
     "webapi": {

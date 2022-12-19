@@ -7,12 +7,40 @@ import json
 import subprocess
 import time
 
+# We set the current working directory to "/" for a couple of reasons;
+# - We want/expect things to work independent of the current directory, so
+#   setting it in this way neutralizes the effect of where the caller was when
+#   they launched us.
+# - When a subprocess drops privileges, the current working directory might be
+#   one to which they have no access. E.g. if the shell command 'find' is then
+#   executed, it would change working directory as part of its operation and
+#   then try to change back - resulting in an error if the original working
+#   directory was itself inaccessible.
+os.chdir('/')
+os.environ['PYTHONUNBUFFERED']='yes'
+
 sys.path.insert(1, '/hcp/common')
 from hcp_common import bail, log, hlog, \
     hcp_config_extract, hcp_config_scope_get, hcp_config_scope_set, \
-    hcp_config_scope_shrink
+    hcp_config_scope_shrink, role_account_uid_file
 
+_id = hcp_config_extract('id', or_default = True, default = 'unknown_id')
+etcpath = f"/etc/hcp/{_id}"
+if not os.path.isdir(etcpath):
+    os.makedirs(etcpath, mode = 0o755)
 
+users = hcp_config_extract('users', or_default = True, default = [])
+if not isinstance(users, list):
+    bail(f"'users' field should be a list (not a {type(users)})")
+for i in users:
+    uidfile = f"{etcpath}/uid_{i}"
+    gecos = f"HCP {i},,,,"
+    if not isinstance(i, str):
+        bail(f"'users' should contain only str entries (not {type(i)})")
+    try:
+        role_account_uid_file(i, uidfile, gecos)
+    except:
+        bail(f"creation of '{i}' failed")
 
 services = hcp_config_extract('services', or_default = True, default = [])
 if not isinstance(services, list):
@@ -266,6 +294,9 @@ def run_setup(tag = None):
             else:
                 if not s['exec']:
                     mybail(f"HCP launcher: '{n}:{touchfile}' has no setup function")
+                ## Lazy-initialize the directory path if necessary
+                #if not os.path.isdir(os.path.dirname(touchfile)):
+                #    os.makedirs(os.path.dirname(touchfile), mode = 0o755)
                 hlog(2, f"HCP launcher: '{n}:{touchfile}' running setup: {s['exec']}")
                 # Run the setup routine
                 pre_subprocess(i)
