@@ -2,18 +2,26 @@
 import json
 import HcpJsonPath
 
-default_varskey = '__subst'
-default_fileskey = '__subst_files'
+default_varskey = 'vars'
+default_fileskey = 'files'
+default_retainkeys = True
 
 class HcpJsonExpanderError(Exception):
     pass
 
+# vars_merge_vars() and vars_merge_files() need to return a new context, so
+# that the input is unaffected. This is what will allow recursion to "work",
+# ie. we get environment specialization as we descend an objection hierarchy,
+# but we drop those specializations as we come back up the hierarchy and go
+# down other branches.
 def vars_merge_vars(ctxvars1, ctxvars2):
+    newctx = ctxvars1.copy()
     for k in ctxvars2:
-        ctxvars1[k] = ctxvars2[k]
-    return ctxvars1
+        newctx[k] = ctxvars2[k]
+    return newctx
 
 def vars_merge_files(ctxvars, ctxfiles, currentpath):
+    newctx = ctxvars.copy()
     for k in ctxfiles:
         v = ctxfiles[k]
         if isinstance(v, str):
@@ -31,11 +39,11 @@ def vars_merge_files(ctxvars, ctxfiles, currentpath):
             raise HcpJsonExpanderError(es)
         # This can fail if k conflicts with an existing key.
         try:
-            ctxvars[k] = newv
+            newctx[k] = newv
         except Exception as e:
             es = f"failed substitution, path={currentpath}, key={k}: {e}"
             raise HcpJsonExpanderError(es)
-    return ctxvars
+    return newctx
 
 # This uses a vars struct to transform a single string and return the result.
 # The curious thing here is that we handle string-valued vars differently from
@@ -61,6 +69,8 @@ def vars_expand(ctxvars, obj, currentpath):
     if isinstance(obj, int):
         return obj
     if isinstance(obj, dict):
+        # The expansion should not modify and return 'obj', rather it should
+        # modify a copy and return that.
         newobj = {}
         for k in obj:
             v = obj[k]
@@ -110,34 +120,38 @@ def vars_selfexpand(ctxvars, currentpath):
 # expansion through an object, but in out case we're accumulating vars/files
 # sections as we descend into the structure, whereas vars_expand() doesn't.
 def process_obj(ctxvars, obj, currentpath = '.',
-            varskey = default_varskey, fileskey = default_fileskey):
+            varskey = default_varskey, fileskey = default_fileskey,
+            retainkeys = default_retainkeys):
     if isinstance(obj, dict):
+        obj = obj.copy()
         # First, if we have a vars section, extract it, merge it with the vars
         # we already had, and self-expand to completion. Actually, the
         # self-expansion is done unconditionally, just in case we were passed
         # in a 'ctxvars' that hadn't yet been self-expanded (in which case, we
         # want it self-expanded whether or not we have local vars to add to the
         # mix).
+        origvars = None
         if varskey in obj:
-            myvars = obj.pop(varskey)
-            if not isinstance(myvars, dict):
+            origvars = obj.pop(varskey)
+            if not isinstance(origvars, dict):
                 es = f"vars structure ('{varskey}') not a dict: {currentpath}"
                 raise HcpJsonExpanderError(es)
-            ctxvars = vars_merge_vars(ctxvars, myvars)
+            ctxvars = vars_merge_vars(ctxvars, origvars)
         ctxvars = vars_selfexpand(ctxvars, currentpath)
         # Next, if we have a files section, extract it, expand it using our
         # vars, then load the specified files into vars, then self-expand vars
         # to completion (again).
+        origfiles = None
         if fileskey in obj:
-            myfiles = obj.pop(fileskey)
-            if not isinstance(myfiles, dict):
+            origfiles = obj.pop(fileskey)
+            if not isinstance(origfiles, dict):
                 es = f"files structure ('{fileskey}') not a dict: {currentpath}"
                 raise HcpJsonExpanderError(es)
             if currentpath == '.':
                 newpath = f".{fileskey}"
             else:
                 newpath = f"{currentpath}.{fileskey}"
-            myfiles = vars_fullexpand(ctxvars, myfiles, newpath)
+            myfiles = vars_fullexpand(ctxvars, origfiles, newpath)
             ctxvars = vars_merge_files(ctxvars, myfiles, newpath)
             ctxvars = vars_selfexpand(ctxvars, currentpath)
         # Now do the recursion dance for the 'dict' case.
@@ -150,7 +164,7 @@ def process_obj(ctxvars, obj, currentpath = '.',
             else:
                 newpath = f"{currentpath}.{newk}"
             newv = process_obj(ctxvars, v, newpath,
-		    varskey = varskey, fileskey = fileskey)
+                        varskey = varskey, fileskey = fileskey)
             # This can fail if newk somehow ended up not being a string or if
             # it now conflicts with an existing key (eg. if expansion caused
             # different keys to become the same).
@@ -159,13 +173,18 @@ def process_obj(ctxvars, obj, currentpath = '.',
             except Exception as e:
                 es = f"failed substitution, path={newpath}, key={newk}: {e}"
                 raise HcpJsonExpanderError(es)
+        if retainkeys:
+            if origvars:
+                newobj[varskey] = origvars
+            if origfiles:
+                newobj[fileskey] = origfiles
         return newobj
     if isinstance(obj, list):
         newobj = []
         for v in obj:
             newpath = f"{currentpath}[]"
             newv = process_obj(ctxvars, v, newpath,
-		    varskey = varskey, fileskey = fileskey)
+                        varskey = varskey, fileskey = fileskey)
             newobj.append(newv)
         return newobj
     # 'obj' is a primitive type (no recursion), vars_expand() will handle that.
@@ -188,16 +207,29 @@ def process_obj(ctxvars, obj, currentpath = '.',
     if isinstance(obj, str) and type(newobj) != str:
             # Recurse to re-process with the substituted value
             newobj = process_obj(ctxvars, newobj, currentpath,
-		    varskey = varskey, fileskey = fileskey)
+                        varskey = varskey, fileskey = fileskey)
     return newobj
 
-def load(fp, varskey = default_varskey, fileskey = default_fileskey):
-	obj = json.load(fp)
-	ctxvars = {}
-	ctxfiles = {}
-	currentpath = '.'
-	return process_obj(ctxvars, obj, currentpath = currentpath,
-		varskey = varskey, fileskey = fileskey)
+def _load(obj, varskey = default_varskey, fileskey = default_fileskey,
+            retainkeys = default_retainkeys):
+    ctxvars = {}
+    ctxfiles = {}
+    currentpath = '.'
+    return process_obj(ctxvars, obj, currentpath = currentpath,
+                varskey = varskey, fileskey = fileskey,
+                retainkeys = retainkeys)
+
+def loads(s, varskey = default_varskey, fileskey = default_fileskey,
+            retainkeys = default_retainkeys):
+    obj = json.loads(s)
+    return _load(obj, varskey = varskey, fileskey = fileskey,
+                retainkeys = retainkeys)
+
+def load(fp, varskey = default_varskey, fileskey = default_fileskey,
+            retainkeys = default_retainkeys):
+    obj = json.load(fp)
+    return _load(obj, varskey = varskey, fileskey = fileskey,
+                retainkeys = retainkeys)
 
 def test():
     with open('input.json', 'r') as fp:
