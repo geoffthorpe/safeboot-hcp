@@ -154,14 +154,14 @@ echo "uniqueNum=$uniqueNum" > $out1
 raw_tpm_exists()
 {
 	echo "raw_tpm_exists: starting" > $out2
-	if [[ -d "$tpm_path/tpm" ]]; then
-		if [[ ! -f "$tpm_path/tpm/ek.pub" ]]; then
-			echo "Error, TPM '$name' is missing 'ek.pub'" >&2
-			return 1
-		fi
+	if [[ -f "$tpm_path/tpm/ek.pub" ]]; then
 		echo "raw_tpm_exists: returning true" > $out2
 		echo true
 	else
+		if [[ -d "$tpm_path/tpm" ]]; then
+			echo "raw_tpm_exists: WARNING: removing stale directory" >&2
+			rm -rf "$tpm_path/tpm"
+		fi
 		echo "raw_tpm_exists: returning false" > $out2
 		echo false
 	fi
