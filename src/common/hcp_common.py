@@ -35,9 +35,12 @@ def touch(p, *, makedirs = True):
 #   be (None, unless cfg_trace is set) and compare it with current_log_path -
 #   if they're different, a new tracefile needs to be opened and assigned.
 def_loglevel = 1
-current_loglevel = 1
+current_loglevel = 0
 current_log_path = None
 current_tracefile = None
+
+if 'VERBOSE' in os.environ:
+    current_loglevel = int(os.environ['VERBOSE'])
 
 def logrotate():
 	global current_log_path
@@ -63,7 +66,8 @@ def logrotate():
 		except FileExistsError:
 			pass
 		tracefile = open(f"{fname}", 'a')
-		print(f"[tracefile forking to {fname}]", file = sys.stderr)
+		if current_log_path or current_loglevel > 1:
+			print(f"[tracefile forking to {fname}]", file = sys.stderr)
 		sys.stderr.flush()
 		sys.stderr = tracefile
 		print(f"[tracefile forked from {current_log_path}]",
