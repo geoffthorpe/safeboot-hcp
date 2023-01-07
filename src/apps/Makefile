@@ -19,7 +19,7 @@ $(eval $(call app_image,common,precommon,,[\"/hcp/common/launcher.py\"],))
 # all of it. If USE_GUITOP is defined, we will also derive caboodle from the
 # 'webtop' image.
 ifdef HCP_USE_WEBTOP
-$(eval $(call app_image,caboodle,SYM:GUIWEBTOP,\
+$(eval $(call app_image,caboodle,SYM:WEBTOPWEBTOP,\
 	safeboot tpmware heimdal xtra common \
 	caboodle enrollsvc attestsvc policysvc swtpmsvc kdcsvc sshsvc tools,\
 	[\"/hcp/common/launcher.py\"],))
@@ -70,7 +70,11 @@ $(eval $(call app_alias,sshsvc,caboodle))
 endif
 
 # Post-process now that all apps are registered
-$(eval $(call app_image_post,precommon))
+APP_IMAGE_POST_BOTTOMTURTLE := precommon
+ifdef HCP_USE_WEBTOP
+APP_IMAGE_POST_BOTTOMTURTLE += WEBTOPWEBTOP
+endif
+$(eval $(call app_image_post,$(APP_IMAGE_POST_BOTTOMTURTLE)))
 $(eval APPS_NAMES := $(strip $(APPS_NAMES)))
 APPS := $(foreach i,$(APPS_NAMES),$(HCP_$i_TFILE))
 ALL += $(APPS)

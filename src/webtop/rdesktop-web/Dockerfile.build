@@ -1,6 +1,7 @@
 ARG GUACD_VERSION=1.1.0
 
-COPY /buildroot /
+COPY buildroot.tar.gz /
+RUN cd / && tar zxf buildroot.tar.gz && rm buildroot.tar.gz
 
 RUN \
   echo "**** install build deps ****" && \

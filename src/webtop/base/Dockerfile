@@ -62,5 +62,5 @@ RUN chmod 755 /deb_contrib_nonfree_ify.sh && \
 	/deb_contrib_nonfree_ify.sh && \
 	rm -f /deb_contrib_nonfree_ify.sh && \
 	apt-get update
-
-COPY root/ /
+COPY files.tar.gz /
+RUN cd / && tar zxf files.tar.gz && rm files.tar.gz

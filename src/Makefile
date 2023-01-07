@@ -30,7 +30,7 @@ include $(HCP_SRC)/policysvc/Makefile
 include $(HCP_SRC)/kdcsvc/Makefile
 include $(HCP_SRC)/sshsvc/Makefile
 ifdef HCP_USE_WEBTOP
-include $(HCP_SRC)/gui/Makefile
+include $(HCP_SRC)/webtop/Makefile
 endif
 include $(HCP_SRC)/caboodle/Makefile
 
