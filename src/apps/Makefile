@@ -16,17 +16,9 @@ $(eval $(call app_image,common,precommon,,[\"/hcp/common/launcher.py\"],))
 
 # hcp_caboodle: at the other extreme, this contains everything. It's an image
 # that can run any of the HCP apps/purposes, because it contains the code for
-# all of it. If USE_GUITOP is defined, we will also derive caboodle from the
-# 'webtop' image.
-ifdef HCP_USE_WEBTOP
-$(eval $(call app_image,caboodle,SYM:GUIWEBTOP,\
-	safeboot tpmware heimdal xtra common \
-	caboodle enrollsvc attestsvc policysvc swtpmsvc kdcsvc sshsvc tools,\
-	[\"/hcp/common/launcher.py\"],))
-else
+# all of it.
 $(eval $(call app_image,caboodle,common,\
 	caboodle enrollsvc attestsvc policysvc swtpmsvc kdcsvc sshsvc tools,,))
-endif
 
 ifdef HCP_APPS_GRANULAR
 # Only build service/tools-specific images if requested. This is mostly a way

@@ -348,19 +348,6 @@ services:
             test: /hcp/swtpmsvc/healthcheck.sh
             timeout: 3s
             interval: 10s
-# Start this variant (instead of 'workstation1') to obtain a linux desktop
-# (http://localhost:3000) for the 'abc' user.
-    workstation1_webtop:
-        extends: common
-        # TODO: we don't want to do this, but the linuxserver.io:webtop startup
-        # (upon which we are usually based), which is 's6-overlay'-based,
-        # insists on being PID 1. We exec to it from our own launcher, but
-        # that's not PID 1 if we use docker's 'init'.
-        init: false
-        # The difference between workstation1 and workstation1_webtop, the
-        # latter overrides the command-line (which is passed to our entrypoint,
-        # 'launcher.py') to spin up the webtop, rather than 'do_nothing'.
-        command: [ "start-fqdn", "start-attester", "setup-local", "exec-webtop" ]
 
 # 'monolith' exists to run all of the instances above, but co-tenant within the
 # same container rather than broken out. (Caboodle implements a
@@ -392,10 +379,3 @@ services:
             test: /bin/true
             timeout: 3s
             interval: 10s
-    monolith_webtop:
-        extends: monolith
-        # TODO: same comment as for 'workstation1'
-        init: false
-        # The difference between monolith and monolith_webtop is the same as
-        # the difference between workstation1 and workstation1_webtop.
-        command: [ "start-fqdn", "setup-local", "exec-webtop" ]

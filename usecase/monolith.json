@@ -8,7 +8,6 @@
     "services": [
         "fqdn_updater",
         "monolith",
-        "webtop",
         "do_nothing"
     ],
     "default_targets": [
@@ -65,10 +64,6 @@
             "/tpm_socket_sherver",
             "/tpm_socket_workstation1"
         ]
-    },
-
-    "webtop": {
-        "exec": "/init"
     },
 
     "do_nothing": {

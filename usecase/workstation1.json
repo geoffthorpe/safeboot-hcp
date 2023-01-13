@@ -10,7 +10,6 @@
         "fqdn_updater",
         "attester",
         "config",
-        "webtop",
         "do_nothing"
     ],
     "default_targets": [
@@ -67,19 +66,6 @@
             "exec": "/hcp/caboodle/set-container-env.sh",
             "touchfile": "/etc/hcp-caboodle-container.env"
         } ]
-    },
-
-    "webtop": {
-        "_": [
-            "This service gets invoked by 'exec' rather than 'start', which",
-            "is why there's no 'tag' attribute. Unfortunately the s6-overlay",
-            "thing expects to be pid 1, so we lose launcher's process-control,",
-            "and we can't use another 'init' to handle signals properly either."
-        ],
-        "exec": "/init",
-        "env": {
-            "set": { "KRB5_CONFIG": "/etc/hcp/workstation1/krb5.conf" }
-        }
     },
 
     "do_nothing": {
