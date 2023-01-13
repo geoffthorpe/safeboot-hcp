@@ -396,6 +396,6 @@ services:
         extends: monolith
         # TODO: same comment as for 'workstation1'
         init: false
-        # The difference between monolith and monolith_webtop is the same as the difference
-        # between workstation1 and workstation1_webtop.
+        # The difference between monolith and monolith_webtop is the same as
+        # the difference between workstation1 and workstation1_webtop.
         command: [ "start-fqdn", "setup-local", "exec-webtop" ]
