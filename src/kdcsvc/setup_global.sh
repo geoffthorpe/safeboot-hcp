@@ -49,17 +49,17 @@ export KRB5_CONFIG=$KRB5_CONFIG
 EOF
 # Note, we need instance-specific content because our sudoers file gets linked
 # into /etc/sudoers.d/ like any/all other cotenant services that use sudo. We
-# take $HCP_ID and convert any "." chars to underscores to ensure we don't
-# produce anything too exotic for sudo.
-export HCP_NICEID=$(echo "$HCP_ID" | sed -e "s/\./_/g")
+# take $HCP_ID as a unique identifier but sanitize it for use by replacing any
+# non-alpha characters and converting to capital letters.
+export HCP_NICEID=$(echo "$HCP_ID" | sed -e "s/[\._-]/x/g" | sed -e "s/[a-z]/\U&/g")
 echo "Creating $HCP_KDCSVC_STATE/etc/sudoers"
 cat > $HCP_KDCSVC_STATE/etc/sudoers << EOF
 # sudo rules for kdcsvc-mgmt > /etc/sudoers.d/
-Cmnd_Alias HCP_$(HCP_NICEID) = /hcp/kdcsvc/do_kadmin.py
-Defaults!HCP_$(HCP_NICEID) !lecture
-Defaults!HCP_$(HCP_NICEID) !authenticate
-Defaults!HCP_$(HCP_NICEID) env_file=$HCP_KDCSVC_STATE/etc/sudoers.env
-www-data ALL = (root) HCP_$(HCP_NICEID)
+Cmnd_Alias $HCP_NICEID = /hcp/kdcsvc/do_kadmin.py
+Defaults!$HCP_NICEID !lecture
+Defaults!$HCP_NICEID !authenticate
+Defaults!$HCP_NICEID env_file=$HCP_KDCSVC_STATE/etc/sudoers.env
+www-data ALL = (root) $HCP_NICEID
 EOF
 
 if [[ $HCP_KDCSVC_MODE == "primary" ]]; then
