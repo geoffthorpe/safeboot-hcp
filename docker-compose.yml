@@ -40,6 +40,7 @@ services:
           - fqdn:/fqdn-bus:rw
           - ${HCP_TOP}/usecase:/usecase:ro
         environment:
+          - HCP_LAUNCHER_TGTS=${HCP_LAUNCHER_TGTS:-}
           - HCP_NOTRACEFILE=1
 #          - VERBOSE=2
 
@@ -313,15 +314,12 @@ services:
         extends: common
         image: ${HCP_IMAGE_caboodle}
         hostname: workstation1
-        # TODO: remove the KRB5_CONFIG setting. It's only there to support the
-        # healthcheck, until I find a way to represent/handle that. And yuck,
-        # it means that the monolith version of the usecase has to set this
-        # differently (because, duh, you don't use docker-compose _inside_
-        # that container).
+        # TODO: remove the KRB5_CONFIG setting. It should probably get set by
+        # the launcher from the JSON config, ultimately.
         environment:
           - HCP_CONFIG_FILE=/usecase/workstation1.json
           - HCP_NOTRACEFILE=1
-          - KRB5_CONFIG=/etc/hcp/workstation1/krb5.conf
+          - KRB5_CONFIG=${KRB5_CONFIG:-/deliberately/invalid/path}
         volumes:
           - ${HCP_TOP}/vendors:/vendors:ro
           - tpmsocket_workstation1:/tpm_socket_workstation1

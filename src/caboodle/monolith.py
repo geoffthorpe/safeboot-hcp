@@ -107,18 +107,17 @@ def do_foreground(cname, args, *, as_exec = False, **kwargs):
         bail(f"'cname' ({cname}) must be a 'str'")
     if not isinstance(args, list):
         bail(f"'args' ({args}) must be a 'list'")
-    log("Foregrounding '{cname}'")
+    log(f"Foregrounding '{cname}'")
     mdir = f"{monolith_dir}/{cname}"
     hlog(2, f"Locking with mkdir({mdir})")
+    # 'run_fg' must only proceed if "the container" doesn't exist yet, and must
+    # block another instance from starting until the first one is done.
+    # 'exec' can only work _while_ an instance is running.
+    #
+    # So we use mkdir/rmdir for mutual-exclusion on the former, and then we
+    # create and delete an ephemeral touchfile inside that directory for
+    # the latter.
     if as_exec:
-        # 'run' must only proceed if "the container" doesn't exist yet, and
-        # must block another 'run' from happening until the first one is done.
-        # 'exec' can only work _while_ a 'run' (or 'start', for backgrounded
-        # services) has that "container" in existence.
-        #
-        # So we use mkdir/rmdir for mutual-exclusion on the former, and then we
-        # create and delete an ephemeral touchfile inside that directory for
-        # the latter.
         touchfile = f"{mdir}/exec.{os.getpid()}"
         with open(touchfile, 'w') as fp:
             fp.write("# never mind")
@@ -136,16 +135,16 @@ def do_foreground(cname, args, *, as_exec = False, **kwargs):
             os.rmdir(mdir)
     return ret
 
-def do_background(cname, **kwargs):
+def do_background(cname, args, **kwargs):
     if not isinstance(cname, str):
         bail(f"'cname' ({cname}) must be a 'str'")
-    log("Backgrounding '{cname}'")
+    log(f"Backgrounding '{cname}'")
     mdir = f"{monolith_dir}/{cname}"
     hlog(2, f"Locking with mkdir({mdir})")
     os.mkdir(mdir)
     try:
         newenv = pre_monolith(cname)
-        ret = do_subprocess(cname, [ "/hcp/common/launcher.py" ],
+        ret = do_subprocess(cname, [ "/hcp/common/launcher.py" ] + args,
                         isBackground = True, env = newenv, **kwargs)
     except e:
         hlog(2, f"Error, unlocking with rmtree({mdir})")
@@ -277,22 +276,41 @@ if __name__ == '__main__':
         # That's the completion of bootstrapping
         touch(touchfile)
 
-    elif cmd == 'run':
+    elif cmd == 'run_fg':
 
         args, logout, logerr, logj = logargs(sys.argv)
 
         if len(args) == 0:
-            bail("'monolith.py run' requires at least one more argument")
+            bail("'monolith.py run_fg' requires at least one more argument")
         cname = args[0]
         args = args[1:]
 
-        hlog(1, "Monolith 'run': {cname}")
+        hlog(1, f"Monolith 'run_fg': {cname}")
         hlog(2, f"- args: {args}")
 
         if is_created(cname):
             bail(f"'{cname}' is already running")
 
         c = do_foreground(cname, args, logout = logout, logerr = logerr,
+                            logjoined = logj)
+        sys.exit(c.returncode)
+
+    elif cmd == 'run_bg':
+
+        args, logout, logerr, logj = logargs(sys.argv)
+
+        if len(args) == 0:
+            bail("'monolith.py run_bg' requires at least one more argument")
+        cname = args[0]
+        args = args[1:]
+
+        hlog(1, f"Monolith 'run_bg': {cname}")
+        hlog(2, f"- args: {args}")
+
+        if is_created(cname):
+            bail(f"'{cname}' is already running")
+
+        c = do_background(cname, args, logout = logout, logerr = logerr,
                             logjoined = logj)
         sys.exit(c.returncode)
 
@@ -303,13 +321,13 @@ if __name__ == '__main__':
         if len(args) == 0:
             bail("'monolith.py start' requires at least one more argument")
 
-        hlog(1, "Monolith 'start': {args}")
+        hlog(1, f"Monolith 'start': {args}")
 
         for cname in args:
             if is_created(cname):
                 print(f"'{cname}' is already created, skipping")
                 continue
-            c = do_background(cname, logout = logout, logerr = logerr,
+            c = do_background(cname, [], logout = logout, logerr = logerr,
                                 logjoined = logj)
             print(f"'{cname}' is started")
 
@@ -318,11 +336,11 @@ if __name__ == '__main__':
         args = sys.argv
 
         if len(args) == 0:
-            bail("'monolith.py run' requires at least one more argument")
+            bail("'monolith.py exec' requires at least one more argument")
         cname = args[0]
         args = args[1:]
 
-        hlog(1, "Monolith 'run': {cname}")
+        hlog(1, f"Monolith 'exec': {cname}")
         hlog(2, f"- args: {args}")
 
         if not is_created(cname):
@@ -359,7 +377,7 @@ if __name__ == '__main__':
         if len(args) == 0:
             bail("'monolith.py stop' requires at least one more argument")
     
-        hlog(1, "Monolith 'stop': {args}")
+        hlog(1, f"Monolith 'stop': {args}")
     
         for cname in args:
             if not is_created(cname):
@@ -383,7 +401,7 @@ if __name__ == '__main__':
         if len(args) == 0:
             bail("'monolith.py stop' requires at least one more argument")
     
-        hlog(1, "Monolith 'rm': {args}")
+        hlog(1, f"Monolith 'rm': {args}")
     
         for cname in args:
             if not is_created(cname):

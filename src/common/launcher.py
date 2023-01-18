@@ -413,7 +413,11 @@ def run_exec(name):
 # character), we behave as though the previous argument was 'custom'.
 
 if len(sys.argv) < 2:
-    actions = default_targets
+    if 'HCP_LAUNCHER_TGTS' in os.environ and \
+            len(os.environ['HCP_LAUNCHER_TGTS']) > 0:
+        actions = os.environ['HCP_LAUNCHER_TGTS'].split()
+    else:
+        actions = default_targets
 else:
     actions = sys.argv.copy()
     actions.pop(0)

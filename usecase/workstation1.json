@@ -16,7 +16,7 @@
         "start-fqdn",
         "start-attester",
         "setup-local",
-        "start-do_nothing"
+        "start-services"
     ],
 
     "fqdn_updater": {
@@ -70,6 +70,6 @@
 
     "do_nothing": {
         "exec": "/hcp/common/do_nothing.sh",
-        "tag": "do_nothing"
+        "tag": "services"
     }
 }
