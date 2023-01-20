@@ -10,6 +10,7 @@ MDIRS += $(HCP_TESTCREDS_OUT)
 HCP_TESTCREDS_DOCKER_RUN := \
 	docker run -i --rm --init --label $(HCP_IMAGE_PREFIX)all=1 \
 	--mount type=bind,source=$(HCP_TESTCREDS_OUT),destination=/testcreds \
+	--env HCP_NO_CONFIG=1 \
 	$(call HCP_IMAGE,precommon) \
 	bash -c
 
