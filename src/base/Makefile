@@ -63,11 +63,14 @@ HCP_BASE_DEPS_COMMON := $(HCP_DEPS_COMMON) $(HCP_BASE_SRC)/Makefile
 # LAYER: 0import
 #      - inherit the debian image we're based on (per hcp/settings.mk)
 
+# NB: a bug in some docker versions causes it to fail because the FROM/LABEL
+# commands make the image build "too empty". The 'echo nop' step avoids this.
 $(HCP_BASE_OUT)/0import.Dockerfile: | $(HCP_BASE_OUT)
 $(HCP_BASE_OUT)/0import.Dockerfile: $(HCP_BASE_DEPS_COMMON)
 $(HCP_BASE_OUT)/0import.Dockerfile:
 	$Qecho "FROM $(HCP_BASE)" > $@
 	$Qecho "LABEL $(HCP_IMAGE_PREFIX)all=1" >> $@
+	$Qecho "RUN echo nop" >> $@
 
 $(HCP_BASE_OUT)/0import.built: $(HCP_BASE_OUT)/0import.Dockerfile
 $(HCP_BASE_OUT)/0import.built:
