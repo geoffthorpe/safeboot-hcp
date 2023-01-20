@@ -130,46 +130,52 @@ function normalize_path {
 	fi
 	echo "$mypath"
 }
+workloadpath=/tmp/workloads
+if [[ ! -n $HCP_CONFIG_FILE ]]; then
+	if [[ -n $HOME && -d $HOME && -f "$HOME/hcp_config" ]]; then
+		source "$HOME/hcp_config"
+		hlog 2 "hcp_config: loaded from $HOME/hcp_config"
+	elif [[ -f /etc/hcp-caboodle-container.env ]]; then
+		source /etc/hcp-caboodle-container.env
+		hlog 2 "hcp_config: loaded from /etc/hcp-caboodle-container.env"
+	else
+		echo "Error, no HCP_CONFIG_FILE set" >&2
+		exit 1
+	fi
+elif [[ $HCP_CONFIG_FILE == ${workloadpath}/* ]]; then
+	hlog 2 "hcp_config: already relocated ($curpath)"
+else
+	if [[ $WHOAMI != root ]]; then
+		echo "Warning, HCP_CONFIG_FILE ($HCP_CONFIG_FILE) not relocated" >&2
+	else
+		fname=$(basename "$HCP_CONFIG_FILE")
+		newpath="$workloadpath/$fname"
+		hlog 2 "hcp_config: relocating"
+		hlog 2 "- from: $HCP_CONFIG_FILE"
+		hlog 2 "-   to: $newpath"
+		mkdir -p -m 755 workloadpath
+		cat "$HCP_CONFIG_FILE" | jq > "$newpath.tmp"
+		chmod 444 "$newpath.tmp"
+		mv "$newpath.tmp" "$newpath"
+		export HCP_CONFIG_FILE=$newpath
+	fi
+fi
 function hcp_config_scope_set {
 	mypath=$(normalize_path "$1")
-	log "hcp_config_scope_set: $mypath"
+	hlog 2 "hcp_config_scope_set: $mypath"
 	# Deliberately fail (ie. don't proceed) if mypath doesn't exist.
 	cat "$HCP_CONFIG_FILE" | jq -r "$mypath" > /dev/null 2>&1
 	export HCP_CONFIG_SCOPE=$mypath
 }
 function hcp_config_scope_get {
-	log "hcp_config_scope_get: $HCP_CONFIG_SCOPE"
 	# If HCP_CONFIG_SCOPE isn't set, it's possible we're the first context
 	# started. In which case the world we're given is supposed to be our
 	# starting context, in which case our initial region is ".".
 	if [[ ! -n $HCP_CONFIG_SCOPE ]]; then
-		# OTOH, if HCP_CONFIG_FILE isn't set _either_, the only legit
-		# explanation is that privileges have been dropped or switched
-		# and we're coming up as a regular user and need to find
-		# context. In this case, we try;
-		# - $HOME/hcp_config_file, see internal_role_account_uid_file().
-		# - /etc/hcp-caboodle-container.env, see
-		#   src/caboodle/set_container_env.sh.
-		newscope='.'
-		if [[ ! -n $HCP_CONFIG_FILE ]]; then
-			if [[ -n $HOME && -d $HOME && -f "$HOME/hcp_config_file" ]]; then
-				export HCP_CONFIG_FILE=$HOME/hcp_config_file
-				newscope=$(cat $HOME/hcp_config_scope)
-				log "hcp_config_scope_get: loading from $HOME"
-			elif [[ -f /etc/hcp-caboodle-container.env ]]; then
-				source /etc/hcp-caboodle-container.env
-				log "hcp_config_scope_get: loading from /etc/hcp-caboodle-container.env"
-				newscope=$HCP_CONFIG_SCOPE
-			else
-				echo "Error, no HCP_CONFIG_FILE set" >&2
-				exit 1
-			fi
-		else
-			log "hcp_config_scope_get: setting default scope '.'"
-		fi
-		hcp_config_scope_set "$newscope"
+		hlog 2 "hcp_config_scope_get: default HCP_CONFIG_SCOPE='.'"
+		hcp_config_scope_set "."
 	fi
-	log "hcp_config_scope_get: returning $HCP_CONFIG_SCOPE"
+	hlog 2 "hcp_config_scope_get: returning $HCP_CONFIG_SCOPE"
 	echo $HCP_CONFIG_SCOPE
 }
 # We want to trigger the lazy-initialization of hcp_config_scope_get() on first
@@ -180,6 +186,7 @@ function hcp_config_scope_get {
 function hcp_config_scope_shrink {
 	hcp_config_scope_get > /dev/null
 	mypath=$(normalize_path "$1")
+	hlog 2  "hcp_config_scope_shrink: $mypath"
 	if [[ $HCP_CONFIG_SCOPE != "." ]]; then
 		mypath="$HCP_CONFIG_SCOPE$mypath"
 	fi
@@ -189,7 +196,7 @@ function hcp_config_extract {
 	hcp_config_scope_get > /dev/null
 	mypath=$(normalize_path "$1")
 	result=$(cat "$HCP_CONFIG_FILE" | jq -r "$HCP_CONFIG_SCOPE" | jq -r "$mypath")
-	log "hcp_config_extract: $HCP_CONFIG_FILE,$HCP_CONFIG_SCOPE,$mypath"
+	hlog 3 "hcp_config_extract: $HCP_CONFIG_FILE,$HCP_CONFIG_SCOPE,$mypath"
 	echo "$result"
 }
 function hcp_config_extract_or {
@@ -300,14 +307,13 @@ function export_hcp_env {
 #   tells us where our configuration data is found. (This gives us our current
 #   "region" within the "world".)
 # Whenever this function creates a user account, it writes the current
-# HCP_CONFIG_FILE/HCP_CONFIG_SCOPE to 'hcp_config_file' and 'hcp_config_scope'
-# files (respectively) in the new home directory. Later, if this file is
-# sourced by a process that's running as that user, and if the HCP_CONFIG_FILE
-# and HCP_CONFIG_SCOPE variables haven't already been provided, then it will
-# detect and load those hcp_config_{file,scope} files to restore both
-# variables. As such, processes started as this user will, by default, have
-# their world (and region) be the same as they were the moment their home
-# account was created.
+# HCP_CONFIG_FILE/HCP_CONFIG_SCOPE values to a bash-sourcible file 'hcp_config'
+# in the new home directory. Later, if a process running as that user sources
+# this file, and if the HCP_CONFIG_FILE and HCP_CONFIG_SCOPE variables haven't
+# already been provided, then it will detect and load the hcp_config file to
+# restore both variables. As such, processes started as this user will, by
+# default, have their world (and region) be the same as they were the moment
+# their home account was created.
 #
 # NB: because of adduser's semantics, this function doesn't like to race
 # against multiple calls of itself. (Collisions and conflicts on creation of
@@ -374,12 +380,13 @@ function internal_role_account_uid_file {
 	# Bake the current world/region into the new home directory, when this
 	# file gets sourced later as the new user, these will be what we
 	# restore from if we don't yet know what world/region we're in.
-	if [[ ! -f $homedir/hcp_config_file ]]; then
-		log "- $HOME/hcp_config_{file,scope} <- {$HCP_CONFIG_FILE,$HCP_CONFIG_SCOPE}"
-		cat $HCP_CONFIG_FILE > $homedir/hcp_config_file
-		echo "$HCP_CONFIG_SCOPE" > $homedir/hcp_config_scope
-		chown $1 $homedir/hcp_config_file
-		chown $1 $homedir/hcp_config_scope
+	if [[ ! -f $homedir/hcp_config ]]; then
+		log "- $HOME/hcp_config <- {$HCP_CONFIG_FILE,$HCP_CONFIG_SCOPE}"
+		cat > $homedir/hcp_config <<EOF
+export HCP_CONFIG_FILE="$HCP_CONFIG_FILE"
+export HCP_CONFIG_SCOPE="$HCP_CONFIG_SCOPE"
+EOF
+		chown $1 $homedir/hcp_config
 	fi
 }
 

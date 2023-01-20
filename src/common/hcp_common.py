@@ -5,6 +5,7 @@ import psutil
 import pwd
 import glob
 import subprocess
+import getpass
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
@@ -93,28 +94,52 @@ def bail(s, exitcode = 1):
 	hlog(0, f"FAIL: {s}")
 	sys.exit(exitcode)
 
-# HCP_CONFIG_FILE is the originating JSON file
-# HCP_CONFIG_SCOPE is where we are currently 'nested' within that.
-# hcp_config_extract() actually pulls fields relative to HCP_CONFIG_SCOPE _within_
-# HCP_CONFIG_FILE, so you can't see outside HCP_CONFIG_SCOPE's scope.
-# hcp_config_scope_shrink() pushes a new sub-path, and updates HCP_CONFIG_SCOPE
-# accordingly.
+# - HCP_CONFIG_FILE is the path to the JSON config file.
+# - HCP_CONFIG_SCOPE is where we are currently 'nested' within that JSON.
+# - hcp_config_extract() pulls fields from the JSON, at the given path, and
+#   relative to HCP_CONFIG_SCOPE.
+# - hcp_config_scope_shrink() pushes a new sub-path, and updates
+#   HCP_CONFIG_SCOPE accordingly.
 # Note that hcp_config_*() functions will handle a path that has no leading '.'
-# - because it is always needed they will be automatically prefixed if missing.
+workloadpath = '/tmp/workloads'
+if 'HCP_CONFIG_FILE' not in os.environ:
+	# TODO: hcp.sh handles cases we don't - probably want to change its use
+	# of a bash-sourcible file to something python can consume too. Eg. it
+	# could write env-vars to a JSON file, which both bash(+jq) and python
+	# could handle.
+	bail(f"no HCP_CONFIG_FILE")
+else:
+	curpath = os.environ['HCP_CONFIG_FILE']
+	if curpath.startswith(workloadpath):
+		hlog(2, f"hcp_config: already relocated ({curpath})")
+	else:
+		username = getpass.getuser()
+		if username != 'root':
+			hlog(0, f"Warning, HCP_CONFIG_FILE ({curpath}) not relocated")
+		else:
+			filename = os.path.basename(curpath)
+			newpath = f"{workloadpath}/{filename}"
+			hlog(2, "hcp_config: relocating")
+			hlog(2, f"- from: {curpath}")
+			hlog(2, f"-   to: {newpath}")
+			os.makedirs(workloadpath, exist_ok = True, mode = 0o755)
+			world = json.load(open(curpath, 'r'))
+			with open(newpath, 'w') as f:
+				json.dump(world, f)
+			os.environ['HCP_CONFIG_FILE'] = newpath
 def hcp_config_scope_set(path):
 	world = json.load(open(os.environ['HCP_CONFIG_FILE'], 'r'))
 	if not path.startswith('.'):
 		path = f".{path}"
-	log(f"hcp_config_scope_set: {path}")
+	hlog(2, f"hcp_config_scope_set: {path}")
 	_ = HcpJsonPath.extract_path(world, path, must_exist = True)
 	os.environ['HCP_CONFIG_SCOPE'] = path
 def hcp_config_scope_get():
-	log("hcp_config_scope_get:")
 	# If HCP_CONFIG_SCOPE isn't set, it's possible we're the first context
 	# started. In which case the world we're given is supposed to be our
 	# starting context, in which case our initial region is ".".
 	if 'HCP_CONFIG_SCOPE' not in os.environ:
-		log("- no HCP_CONFIG_SCOPE")
+		hlog(2, "hcp_config_scope_get: no HCP_CONFIG_SCOPE")
 		# OTOH, if HCP_CONFIG_FILE isn't set _either_, the only legit
 		# explanation is that privileges have been dropped or switched
 		# and we're coming up as a regular user and need to find
@@ -130,34 +155,34 @@ def hcp_config_scope_get():
 			worldfile = f"{home}/hcp_config_file"
 			pathfile = f"{home}/hcp_config_scope"
 			if os.path.isfile(worldfile):
-				log(f"- setting HCP_CONFIG_FILE to {worldfile}")
+				hlog(2, f"- setting HCP_CONFIG_FILE to {worldfile}")
 				os.environ['HCP_CONFIG_FILE'] = worldfile
 				if os.path.isfile(pathfile):
-					log(f"- setting HCP_CONFIG_SCOPE to {pathfile}")
+					hlog(2, f"- setting HCP_CONFIG_SCOPE to {pathfile}")
 					hcp_config_scope_set(open(pathfile,
 							'r').read().strip())
 			elif os.path.isfile(_global):
-				log(f"- loading {_global}")
+				hlog(2, f"- loading {_global}")
 				lines = open(_global, 'r').readlines()
 				for l in lines:
 					if not l.startswith('export HCP_'):
 						continue
 					kv = l.replace('export ', '').split('=', 1)
-					log(f"  - setting {kv[0]}={kv[1]}")
+					hlog(2, f"  - setting {kv[0]}={kv[1]}")
 					os.environ[kv[0]] = kv[1]
 			else:
 				bail("Error, no HCP_CONFIG_FILE set")
 		# If the path still isn't set, default to '.'
 		if 'HCP_CONFIG_SCOPE' not in os.environ:
-			log("- defaulting HCP_CONFIG_SCOPE to '.'")
+			hlog(2, "- defaulting HCP_CONFIG_SCOPE to '.'")
 			hcp_config_scope_set('.')
 	result = os.environ['HCP_CONFIG_SCOPE']
-	log(f"- returning {result}")
+	hlog(2, f"hcp_config_scope_get: returning {result}")
 	return result
 def hcp_config_scope_shrink(path):
 	if not path.startswith('.'):
 		path = f".{path}"
-	log(f"hcp_config_scope_shrink: {path}")
+	hlog(2, f"hcp_config_scope_shrink: {path}")
 	hcp_config_scope_get()
 	full_path = os.environ['HCP_CONFIG_SCOPE']
 	if full_path == '.':
@@ -176,7 +201,7 @@ def hcp_config_scope_shrink(path):
 def hcp_config_extract(path, **kwargs):
 	if not path.startswith('.'):
 		path = f".{path}"
-	log(f"hcp_config_extract: {path}")
+	hlog(3, f"hcp_config_extract: {path}")
 	hcp_config_scope_get()
 	full_path = os.environ['HCP_CONFIG_SCOPE']
 	if full_path == '.':
