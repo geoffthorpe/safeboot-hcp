@@ -381,7 +381,7 @@ def run_exec(name):
 
 # What to do depends on the arguments we get. This script is often the
 # 'entrypoint' of a container image, though it can be invoked directly (and is,
-# in the 'caboodle' use-case). If we get cmd-line arguments, they could be for
+# in the 'monolith' use-case). If we get cmd-line arguments, they could be for
 # this script or for passing along to one of the services we start.
 #
 # We proceed as follows. We consume arguments for this script until we
@@ -398,7 +398,7 @@ def run_exec(name):
 # assume that the current argument (and all that follow it) are intended for
 # one of the services. The ".args_for' property identifies which service that
 # is. Each service (that isn't setup-only) has an 'exec' property and
-# optionally an 'args' property.  By default, the two are concatenated into the
+# optionally an 'args' property. By default, the two are concatenated into the
 # command-line that gets executed. However if arguments are passed along to
 # that service from our caller, they are used _instead_ of the 'args' property.
 # This means the dividing line between the 'exec' and 'args' depends on what
