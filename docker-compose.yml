@@ -48,7 +48,7 @@ services:
     emgmt:
         extends: common
         image: ${HCP_IMAGE_enrollsvc}
-        hostname: emgmt
+        hostname: emgmt.hcphacking.xyz
         networks:
           - hcpnetwork
           - emgmt_private
@@ -71,7 +71,7 @@ services:
     emgmt_pol:
         extends: common
         image: ${HCP_IMAGE_policysvc}
-        hostname: emgmt_pol
+        hostname: emgmt_pol.hcphacking.xyz
         networks:
           - emgmt_private
         environment:
@@ -85,7 +85,7 @@ services:
     erepl:
         extends: common
         image: ${HCP_IMAGE_enrollsvc}
-        hostname: erepl
+        hostname: erepl.hcphacking.xyz
         networks:
           - hcpnetwork
         volumes: # TODO: mount this at /enrolldb-ro? (For monolith...)
@@ -103,7 +103,7 @@ services:
     arepl:
         extends: common
         image: ${HCP_IMAGE_attestsvc}
-        hostname: arepl
+        hostname: arepl.hcphacking.xyz
         networks:
           - hcpnetwork
         volumes:
@@ -119,7 +119,7 @@ services:
     ahcp:
         extends: common
         image: ${HCP_IMAGE_attestsvc}
-        hostname: ahcp
+        hostname: ahcp.hcphacking.xyz
         networks:
           - hcpnetwork
         volumes:
@@ -136,7 +136,7 @@ services:
     orchestrator:
         extends: common
         image: ${HCP_IMAGE_tools}
-        hostname: orchestrator
+        hostname: orchestrator.hcphacking.xyz
         networks:
           - hcpnetwork
         volumes:
@@ -154,7 +154,7 @@ services:
     aclient:
         extends: common
         image: ${HCP_IMAGE_tools}
-        hostname: aclient
+        hostname: aclient.hcphacking.xyz
         networks:
           - hcpnetwork
         volumes:
@@ -165,7 +165,7 @@ services:
     aclient_tpm:
         extends: common
         image: ${HCP_IMAGE_swtpmsvc}
-        hostname: aclient_tpm
+        hostname: aclient_tpm.hcphacking.xyz
         network_mode: "none"
         volumes:
           - tpm_aclient:/tpm_aclient
@@ -181,7 +181,7 @@ services:
     kdc_primary:
         extends: common
         image: ${HCP_IMAGE_kdcsvc}
-        hostname: kdc_primary
+        hostname: kdc_primary.hcphacking.xyz
         volumes:
           - kdc_primary:/kdc_primary
           - tpmsocket_kdc_primary:/tpm_socket_kdc_primary
@@ -202,7 +202,7 @@ services:
     kdc_primary_tpm:
         extends: common
         image: ${HCP_IMAGE_swtpmsvc}
-        hostname: kdc_primary_tpm
+        hostname: kdc_primary_tpm.hcphacking.xyz
         network_mode: "none"
         volumes:
           - tpm_kdc_primary:/tpm_kdc_primary
@@ -216,7 +216,7 @@ services:
     kdc_primary_pol:
         extends: common
         image: ${HCP_IMAGE_policysvc}
-        hostname: kdc_primary_pol
+        hostname: kdc_primary_pol.hcphacking.xyz
         networks:
           - kdc_primary_private
         environment:
@@ -230,7 +230,7 @@ services:
     kdc_secondary:
         extends: common
         image: ${HCP_IMAGE_kdcsvc}
-        hostname: kdc_secondary
+        hostname: kdc_secondary.hcphacking.xyz
         volumes:
           - kdc_secondary:/kdc_secondary
           - tpmsocket_kdc_secondary:/tpm_socket_kdc_secondary
@@ -249,7 +249,7 @@ services:
     kdc_secondary_tpm:
         extends: common
         image: ${HCP_IMAGE_swtpmsvc}
-        hostname: kdc_secondary_tpm
+        hostname: kdc_secondary_tpm.hcphacking.xyz
         network_mode: "none"
         volumes:
           - tpm_kdc_secondary:/tpm_kdc_secondary
@@ -263,7 +263,7 @@ services:
     kdc_secondary_pol:
         extends: common
         image: ${HCP_IMAGE_policysvc}
-        hostname: kdc_secondary_pol
+        hostname: kdc_secondary_pol.hcphacking.xyz
         networks:
           - kdc_secondary_private
         environment:
@@ -277,7 +277,7 @@ services:
     sherver:
         extends: common
         image: ${HCP_IMAGE_sshsvc}
-        hostname: sherver
+        hostname: sherver.hcphacking.xyz
         volumes:
           - sherver:/sherver:rw
           - tpmsocket_sherver:/tpm_socket_sherver
@@ -293,7 +293,7 @@ services:
     sherver_tpm:
         extends: common
         image: ${HCP_IMAGE_swtpmsvc}
-        hostname: sherver_tpm
+        hostname: sherver_tpm.hcphacking.xyz
         network_mode: "none"
         volumes:
           - tpm_sherver:/tpm_sherver
@@ -313,7 +313,7 @@ services:
     workstation1:
         extends: common
         image: ${HCP_IMAGE_caboodle}
-        hostname: workstation1
+        hostname: workstation1.hcphacking.xyz
         # TODO: remove the KRB5_CONFIG setting. It should probably get set by
         # the launcher from the JSON config, ultimately.
         environment:
@@ -335,7 +335,7 @@ services:
     workstation1_tpm:
         extends: common
         image: ${HCP_IMAGE_swtpmsvc}
-        hostname: workstation1_tpm
+        hostname: workstation1_tpm.hcphacking.xyz
         network_mode: "none"
         volumes:
           - tpm_workstation1:/tpm_workstation1
@@ -355,7 +355,7 @@ services:
     monolith:
         extends: common
         image: ${HCP_IMAGE_caboodle}
-        hostname: monolith
+        hostname: monolith.hcphacking.xyz
         environment:
           - HCP_IN_MONOLITH=1
           - HCP_CONFIG_FILE=/usecase/monolith.json
