@@ -26,11 +26,18 @@ fi
 #   /var/log/nginx respectively, with all files in the former filtered to
 #   replace any mention of /etc/nginx or /var/log/nginx to their new locations.
 # - etcuwsgi is a 'uwsgi.ini' file, fully generated from this script.
+# - etcjson is a directory created to store modified copies of the workload
+#   (container) configuration and the policy configuration. Exotic docker
+#   configurations can result in these input files being inaccessible to
+#   non-root users. The policy config is copied to ensure it is readable when
+#   privs are dropped, and the workload configuration is copied in order to
+#   modify the env-settings that get consumed when producing the uwsgi.ini file.
 # - myuwsgisock is a path in /tmp to use for the unix domain socket between
 #   nginx and uwsgi.
 myetc="/etc/hcp/$myinstance"
 etcnginx="$myetc/nginx"
 etcuwsgi="$myetc/uwsgi.ini"
+etcjson="$myetc/json"
 myvarlog="/var/log/$myinstance"
 lognginx="$myvarlog/nginx"
 myuwsgisock="/tmp/$myinstance.uwsgi.sock"
@@ -200,6 +207,46 @@ EOF
 	fi
 	echo " - starting nginx" >&2
 	nginx -c "$etcnginx/nginx.conf"
+fi
+
+# Handle JSON configs. We produce a modified version of the original
+# HCP_CONFIG_FILE, put it in $etcjson, and repoint HCP_CONFIG_FILE to it. At
+# that time, we also copy the policy config to the same directory.
+if [[ $HCP_CONFIG_FILE == $etcjson/* ]]; then
+	hlog 2 "webapi: config already inside '$etcjson'"
+else
+	mkdir -p -m 755 $etcjson
+	hcpconfig="$etcjson/hcp_config_file"
+	appconfig=$(cat "$HCP_CONFIG_FILE" | jq -r ".webapi.config // empty")
+	if [[ -n $appconfig ]]; then
+		newappconfig="$etcjson/appconfig.json"
+		cat "$appconfig" | jq --indent 4 > "$newappconfig.tmp"
+		chmod 444 "$newappconfig.tmp"
+		if [[ ! -f "$newappconfig" ]] || ! cmp -s "$newappconfig" \
+						"$newappconfig.tmp"; then
+			mv -f "$newappconfig.tmp" "$newappconfig"
+		else
+			rm -f "$newappconfig.tmp"
+		fi
+		# copy the global config file and modify the field
+		# with the appconfig path to use our copy
+		cat "$HCP_CONFIG_FILE" | jq --indent 4 \
+				--arg newappconfig "$newappconfig" \
+				'. * {"webapi":{"config":$newappconfig}}' \
+			> "$hcpconfig.tmp"
+	else
+		# copy the global config file, unchanged
+		cat "$HCP_CONFIG_FILE" | jq --indent 4 \
+			> "$hcpconfig.tmp"
+	fi
+	chmod 444 "$hcpconfig.tmp"
+	if [[ ! -f "$hcpconfig.tmp" ]] || ! cmp -s "$hcpconfig" \
+					"$hcpconfig.tmp"; then
+		mv -f "$hcpconfig.tmp" "$hcpconfig"
+	else
+		rm -f "$hcpconfig.tmp"
+	fi
+	export HCP_CONFIG_FILE=$hcpconfig
 fi
 
 # Produce the uwsgi config. This varies slightly depending on whether we have

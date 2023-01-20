@@ -113,7 +113,7 @@ elif 'HCP_CONFIG_FILE' not in os.environ:
 	bail(f"no HCP_CONFIG_FILE")
 else:
 	curpath = os.environ['HCP_CONFIG_FILE']
-	if curpath.startswith(workloadpath):
+	if curpath.startswith(workloadpath) or curpath.startswith('/etc'):
 		hlog(2, f"hcp_config: already relocated ({curpath})")
 	else:
 		username = getpass.getuser()
