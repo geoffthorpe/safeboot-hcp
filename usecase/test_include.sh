@@ -55,27 +55,32 @@ wrapper()
 			cmdline="docker-compose up -d"
 		fi
 	elif [[ $cmd == exec ]]; then
+		wload=$1
+		shift
 		if [[ -n $HCP_IN_MONOLITH ]]; then
 			cmdline="/hcp/caboodle/monolith.py exec"
 		else
 			cmdline="docker-compose exec"
 		fi
+		cmdline="$cmdline $wload /hcp/common/launcher.py none custom"
 	elif [[ $cmd == exec_t ]]; then
+		wload=$1
+		shift
 		if [[ -n $HCP_IN_MONOLITH ]]; then
 			cmdline="/hcp/caboodle/monolith.py exec"
 		else
 			cmdline="docker-compose exec -T"
 		fi
+		cmdline="$cmdline $wload /hcp/common/launcher.py none custom"
 	elif [[ $cmd == shell ]]; then
-		# The first parameter should be the workload to execute the shell in,
-		# and anything else is weird (if we pass them as args to bash, you won't
-		# get a shell...). So force the arguments that get passed.
-		set -- $1 bash
+		wload=$1
+		shift
 		if [[ -n $HCP_IN_MONOLITH ]]; then
 			cmdline="/hcp/caboodle/monolith.py exec"
 		else
 			cmdline="docker-compose exec"
 		fi
+		cmdline="$cmdline $wload /hcp/common/launcher.py none custom bash"
 	else
 		echo "Error, unrecognized command: $cmd" >&2
 		exit 1
@@ -86,11 +91,12 @@ wrapper()
 		echo "- HCP_LAUNCHER_TGTS='$targets'" >&2
 	fi
 	if [[ $cmd == shell ]]; then
-		echo "Starting '$1' shell" >&2
+		echo "Starting '$wload' shell" >&2
 	fi
-	HCP_LAUNCHER_TGTS="$targets" $cmdline "$@"
+	export HCP_LAUNCHER_TGTS="$targets"
+	$cmdline "$@"
 	if [[ $cmd == shell ]]; then
-		echo "Exited '$1' shell" >&2
+		echo "Exited '$wload' shell" >&2
 	fi
 }
 
@@ -197,16 +203,16 @@ do_normal_fg()
 # case, this will add the "-T" flag).
 do_exec()
 {
-	wrapper exec -- "$@"
+	wrapper exec none -- "$@"
 }
 do_exec_t()
 {
-	wrapper exec_t -- "$@"
+	wrapper exec_t none -- "$@"
 }
 
 #
 # 'do_shell' is core/normal-agnostic, like do_exec.
 do_shell()
 {
-	wrapper shell -- "$@"
+	wrapper shell none -- "$@"
 }
