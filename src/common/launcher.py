@@ -68,31 +68,65 @@ elif isinstance(lights_out, list):
 elif lights_out != None:
     bail(f"'lights_out' should be a str or list (not a {type(lights_out)})")
 
-# Each child entry can optionally have an 'env' section to cause it to be
-# launched with modified environment. 'env' can have 3 optional sections;
-# 'pathadd', 'set', and 'unset'.
-baseenv = os.environ.copy()
-def childenv_init(child):
-    global baseenv
-    e = child['env']
+# Process an 'env' section (the object, once parsed from JSON), and derive a
+# new environment object from an existing one by applying to it the 'pathadd',
+# 'set', 'unset' subjections of the 'env'.
+def derive_env(envobj, pathstr, baseenv):
+    if not isinstance(envobj, dict):
+        bail(f"'{pathstr}' must be a dict (not a {type(envobj)}")
+    for s in envobj:
+        if s not in [ 'pathadd', 'set', 'unset' ]:
+            bail(f"'{pathstr}' supports pathadd/set/unset (not '{s}')")
+        v = envobj[s]
+        if not isinstance(v, dict):
+            bail(f"'{pathstr}:{s}' must be a dict (not a {type(v)})")
+        for e in v:
+            if not isinstance(e, str):
+                bail(f"'{pathstr}:{s}', '{e}' must be a str (not a {type(e)})")
+            ev = v[e]
+            if s == 'unset':
+                if ev != None:
+                    bail(f"'{pathstr}:{s}:{e}' must be None (not {type(ev)})")
+            else:
+                if not isinstance(ev, str):
+                    bail(f"'{pathstr}:{s}:{e}' must be a str (not a {type(ev)})")
     newenv = baseenv.copy()
-    if 'unset' in e:
-        es = e['unset']
+    if 'unset' in envobj:
+        es = envobj['unset']
         for k in es:
             if k in newenv:
                 newenv.pop(k)
-    if 'set' in e:
-        es = e['set']
+    if 'set' in envobj:
+        es = envobj['set']
         for k in es:
             newenv[k] = es[k]
-    if 'pathadd' in e:
-        ep = e['pathadd']
+    if 'pathadd' in envobj:
+        ep = envobj['pathadd']
         for k in ep:
             if k in newenv and len(newenv[k]) > 0:
                 newenv[k] = f"{newenv[k]}:{ep[k]}"
             else:
                 newenv[k] = ep[k]
-    child['newenv'] = newenv
+    return newenv
+
+# Given an environment object, set the environment accordingly
+def setenviron(e):
+    # Unset what should disappear
+    for k in os.environ:
+        if k not in e:
+            os.environ.pop(k)
+    # Set what needs to be set
+    for k in e:
+        if k not in os.environ or os.environ[k] != e[k]:
+            os.environ[k] = e[k]
+
+# Take the current environment, and if there is a global-scope 'env' section,
+# apply that to it.
+baseenv = os.environ.copy()
+_env = hcp_config_extract('env', or_default = True)
+if _env:
+    baseenv = derive_env(_env, "env", baseenv)
+    setenviron(baseenv)
 
 # Iterate through the 'services' array in the JSON, extracting and checking the
 # corresponding fields and details. We build up two 'children_*' arrays
@@ -200,25 +234,7 @@ for i in services:
     # If we have 'env', it matters for both setup and/or exec
     child['env'] = hcp_config_extract('env', or_default = True)
     if child['env']:
-        if not isinstance(child['env'], dict):
-            bail(f"'{i}:env' must be a dict (not a {type(child['env'])}")
-        for s in child['env']:
-            if s not in [ 'pathadd', 'set', 'unset' ]:
-                bail(f"'{i}:env' supports pathadd/set/unset (not '{s}')")
-            v = child['env'][s]
-            if not isinstance(v, dict):
-                bail(f"'{i}:env:{s}' must be a dict (not a {type(v)})")
-            for e in v:
-                if not isinstance(e, str):
-                    bail(f"'{i}:env:{s}', '{e}' must be a str (not a {type(e)})")
-                ev = v[e]
-                if s == 'unset':
-                    if ev != None:
-                        bail(f"'{i}:env:{s}:{e}' must be None (not {type(ev)})")
-                else:
-                    if not isinstance(ev, str):
-                        bail(f"'{i}:env:{s}:{e}' must be a str (not a {type(ev)})")
-        childenv_init(child)
+        child['newenv'] = derive_env(child['env'], f"{i}:env", baseenv)
     # Child curated, now where does it go, and does it fit there?
     if child['setup']:
         children_setup += [ child ]
@@ -244,21 +260,6 @@ def mybail(s):
         bail(s)
     mybailtext = s
     raise LauncherLocalException()
-
-# We need to be save/restore child-specific environment settings, before and
-# after calling subprocess.{run,Popen}(). Note, we can't simply copy os.environ
-# and set it later - that will divorce os.environ from the actual environment.
-# So we have to save and set individual key-value pairs, which on the contrary
-# causes the actual environment to be updated in real-time.
-def setenviron(e):
-    # Unset what should disappear
-    for k in os.environ:
-        if k not in e:
-            os.environ.pop(k)
-    # Set what needs to be set
-    for k in e:
-        if k not in os.environ or os.environ[k] != e[k]:
-            os.environ[k] = e[k]
 
 def pre_subprocess(child):
     if 'newenv' in child:
@@ -422,13 +423,17 @@ else:
     actions = sys.argv.copy()
     actions.pop(0)
 
+os.environ['HCP_LAUNCHER_TGTS'] = ' '.join(actions)
+
 hlog(2, f"HCP launcher: processing options: {actions}")
 tostart = []
 while len(actions) > 0:
     action = actions.pop(0)
     hlog(2, f"HCP launcher: option: {action}")
     new_tostart = None
-    if action == 'setup' or action.startswith('setup-'):
+    if action == 'none':
+        continue
+    elif action == 'setup' or action.startswith('setup-'):
         if action.startswith('setup-'):
             new_tostart = ( 'setup-', action.replace('setup-', '') )
         else:
