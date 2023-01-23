@@ -42,7 +42,7 @@ current_log_path = None
 current_tracefile = None
 
 if 'VERBOSE' in os.environ:
-    current_loglevel = int(os.environ['VERBOSE'])
+	current_loglevel = int(os.environ['VERBOSE'])
 
 def logrotate():
 	global current_log_path
