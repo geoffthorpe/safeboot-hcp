@@ -23,10 +23,6 @@ fi
 tmpfile=$(mktemp)
 trap 'rm -f $tmpfile' EXIT
 
-# Wrapper for 'workstation1' calls that need KRB5_CONFIG set. TODO, this
-# should eventually disappear.
-w1() { KRB5_CONFIG=/etc/hcp/workstation1/krb5.conf "$@"; }
-
 title "Starting services"
 do_core_start_lazy \
 	emgmt_pol emgmt erepl arepl ahcp aclient_tpm \
@@ -34,8 +30,7 @@ do_core_start_lazy \
 	kdc_primary_pol kdc_secondary_pol \
 	kdc_primary kdc_secondary \
 	sherver sherver_tpm \
-	workstation1_tpm
-w1 do_core_start_lazy workstation1
+	workstation1 workstation1_tpm
 
 title "Waiting for emgmt to be alive"
 do_exec emgmt /hcp/common/webapi.sh healthcheck $RARGS
@@ -55,7 +50,7 @@ do_core_fg orchestrator -c -e
 
 title "Waiting for 'sherver' and 'workstation1' to be alive"
 do_exec sherver /hcp/sshsvc/healthcheck.sh $RARGS
-w1 do_exec workstation1 /hcp/caboodle/networked_healthcheck.sh $RARGS
+do_exec workstation1 /hcp/caboodle/networked_healthcheck.sh $RARGS
 
 title "Extracting sherver's ssh hostkey"
 do_exec sherver bash -c "ssh-keyscan sherver.hcphacking.xyz" > $tmpfile
@@ -63,13 +58,16 @@ do_exec sherver bash -c "ssh-keyscan sherver.hcphacking.xyz" > $tmpfile
 title "Getting workstation1 to pre-trust sherver's ssh hostkey"
 cmdstr="mkdir -p /root/.ssh && chmod 600 /root/.ssh"
 cmdstr="$cmdstr && cat - > /root/.ssh/known_hosts"
-cat $tmpfile | w1 do_exec_t workstation1 bash -c "$cmdstr"
+cat $tmpfile | do_exec_t workstation1 bash -c "$cmdstr"
 
 title "Running 'echo hello' over 'ssh' over 'pkinit'"
 cmdstr="kinit -C FILE:/home/luser/.hcp/pkinit/user-luser-key.pem luser"
 cmdstr="$cmdstr ssh -l luser sherver.hcphacking.xyz"
 cmdstr="$cmdstr echo hello"
-w1 do_exec_t workstation1 bash -c -l "$cmdstr" > $tmpfile
+# The same comments apply as found in test_sequential.sh
+export VERBOSE=0
+do_exec_t workstation1 bash -c -l "$cmdstr" > $tmpfile
+do_exec_t workstation1 bash -c -l "$cmdstr" > $tmpfile
 hopinghello=$(cat $tmpfile | sed 's/\r$//')
 if [[ $hopinghello == hello ]]; then
 	echo "Success"

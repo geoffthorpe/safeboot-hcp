@@ -5,6 +5,13 @@
     "hostnames": [ "sherver" ],
     "default_domain": "hcphacking.xyz",
 
+    "env": {
+        "set": {
+            "KRB5_KTNAME": "/etc/hcp/sherver/krb5.keytab",
+            "KRB5_CONFIG": "/etc/hcp/sherver/krb5.conf"
+        }
+    },
+
     "services": [
         "fqdn_updater",
         "attester",
@@ -79,12 +86,6 @@
         "exec": [ "/hcp/sshsvc/run_sshd.py", "/usr/sbin/sshd" ],
         "args": [ "-e", "-D", "-f", "/sherver/etc/config" ],
         "tag": "services",
-        "env": {
-            "set": {
-                "KRB5_KTNAME": "/etc/hcp/sherver/krb5.keytab",
-                "KRB5_CONFIG": "/etc/hcp/sherver/krb5.conf",
-                "HCP_NOTRACEFILE": "1"
-            }
-        }
+        "env": { "set": { "HCP_NOTRACEFILE": "1" } }
     }
 }

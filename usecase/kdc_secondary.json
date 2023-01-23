@@ -5,6 +5,14 @@
     "hostnames": [ "secondary.kdc" ],
     "default_domain": "hcphacking.xyz",
 
+    "env": {
+        "pathadd": {
+            "PATH": "/install-heimdal/libexec:/install-heimdal/bin",
+            "LD_LIBRARY_PATH": "/install-heimdal/lib"
+        },
+        "set": { "KRB5_CONFIG": "/etc/hcp/secondary.kdc/krb5.conf" }
+    },
+
     "services": [
         "fqdn_updater",
         "attester",
@@ -126,13 +134,6 @@
         "setup": {
             "touchfile": "/etc/hcp/secondary.kdc/touch-kdcsvc-local-setup"
         },
-        "env": {
-            "pathadd": {
-                "PATH": "/install-heimdal/libexec:/install-heimdal/bin",
-                "LD_LIBRARY_PATH": "/install-heimdal/lib"
-            },
-            "set": { "KRB5_CONFIG": "/etc/hcp/secondary.kdc/krb5.conf" }
-        },
         "exec": "kdc",
         "args": [ "--config-file=/kdc_secondary/etc/kdc.conf" ],
         "tag": "services"
@@ -141,13 +142,6 @@
     "kdcsvc_iprop_secondary": {
         "setup": {
             "touchfile": "/etc/hcp/secondary.kdc/touch-kdcsvc-local-setup"
-        },
-        "env": {
-            "pathadd": {
-                "PATH": "/install-heimdal/libexec:/install-heimdal/bin",
-                "LD_LIBRARY_PATH": "/install-heimdal/lib"
-            },
-            "set": { "KRB5_CONFIG": "/etc/hcp/secondary.kdc/krb5.conf" }
         },
         "exec": [
             "/hcp/common/restarter.py", "-t", "5",

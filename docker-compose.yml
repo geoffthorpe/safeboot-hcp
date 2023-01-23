@@ -42,7 +42,7 @@ services:
         environment:
           - HCP_LAUNCHER_TGTS=${HCP_LAUNCHER_TGTS:-}
           - HCP_NOTRACEFILE=1
-#          - VERBOSE=2
+          - VERBOSE=${VERBOSE:-0}
 
 # Enrollment svc, mgmt interface
     emgmt:
@@ -314,12 +314,9 @@ services:
         extends: common
         image: ${HCP_IMAGE_caboodle}
         hostname: workstation1.hcphacking.xyz
-        # TODO: remove the KRB5_CONFIG setting. It should probably get set by
-        # the launcher from the JSON config, ultimately.
         environment:
           - HCP_CONFIG_FILE=/usecase/workstation1.json
           - HCP_NOTRACEFILE=1
-          - KRB5_CONFIG=${KRB5_CONFIG:-/deliberately/invalid/path}
         volumes:
           - ${HCP_TOP}/vendors:/vendors:ro
           - tpmsocket_workstation1:/tpm_socket_workstation1

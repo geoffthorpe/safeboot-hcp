@@ -149,15 +149,11 @@ do_exec workstation1_tpm /hcp/swtpmsvc/healthcheck.sh $RARGS
 title "initializing client machine (workstation1)"
 do_normal_setup workstation1
 
-# Wrapper for 'workstation1' calls that need KRB5_CONFIG set. TODO, this
-# should eventually disappear.
-w1() { KRB5_CONFIG=/etc/hcp/workstation1/krb5.conf "$@"; }
-
 title "start client machine (workstation1)"
-w1 do_normal_start workstation1
+do_normal_start workstation1
 
 title "waiting for the client machine to be up"
-w1 do_exec workstation1 /hcp/caboodle/networked_healthcheck.sh $RARGS
+do_exec workstation1 /hcp/caboodle/networked_healthcheck.sh $RARGS
 
 title "obtaining the sshd server's randomly-generated public key"
 do_exec sherver bash -c "ssh-keyscan sherver.hcphacking.xyz" > $tmpfile
@@ -165,16 +161,19 @@ do_exec sherver bash -c "ssh-keyscan sherver.hcphacking.xyz" > $tmpfile
 title "inject sshd pubkey into client's 'known_hosts'"
 cmdstr="mkdir -p /root/.ssh && chmod 600 /root/.ssh"
 cmdstr="$cmdstr && cat - > /root/.ssh/known_hosts"
-cat $tmpfile | w1 do_exec_t workstation1 bash -c "$cmdstr"
+cat $tmpfile | do_exec_t workstation1 bash -c "$cmdstr"
 
 title "Use HCP cred to get TGT, then GSSAPI to ssh from client to sherver"
 cmdstr="kinit -C FILE:/home/luser/.hcp/pkinit/user-luser-key.pem luser"
 cmdstr="$cmdstr ssh -l luser sherver.hcphacking.xyz echo -n hello"
 # NB: we intentionally do it twice, in case the first time comes with a
 # "Warning: Permanently added the [...] for IP address [...] to the list of
-# known hosts" message.
-w1 do_exec workstation1 bash -c -l "$cmdstr" > $tmpfile
-w1 do_exec workstation1 bash -c -l "$cmdstr" > $tmpfile
+# known hosts" message. Also, VERBOSE causes stuff to leak into the output,
+# which is difficult to balance against the need for "-l" (without which ssh
+# auth fails - TODO to figure that out).
+export VERBOSE=0
+do_exec workstation1 bash -c -l "$cmdstr" > $tmpfile
+do_exec workstation1 bash -c -l "$cmdstr" > $tmpfile
 
 if [[ $(cat $tmpfile) != 'hello' ]]; then
     echo "FAILURE: output not 'hello': x${x}x" >&2
