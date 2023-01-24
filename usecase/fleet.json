@@ -59,7 +59,7 @@
 			"enroll_profile": {
 				"__env": {
 					"ENROLL_KDC": "primary.kdc",
-					"ENROLL_KDC_PORT": "89",
+					"ENROLL_KDC_PORT": "3089",
 					"ENROLL_PKINIT_USER_PRINC": "foo"
 				},
 				"gencert-hxtool": {
@@ -78,7 +78,7 @@
 			"enroll_profile": {
 				"__env": {
 					"ENROLL_KDC": "primary.kdc",
-					"ENROLL_KDC_PORT": "89"
+					"ENROLL_KDC_PORT": "3089"
 				},
 				"gencert-hxtool": {
 					"list": [
@@ -118,6 +118,12 @@
 					"list": [
 						"default-https-server",
 						"user-pkinit-user"
+					]
+				},
+				"genkrb5keytab": {
+					"principals": [
+						"host/{ENROLL_HOSTNAME}",
+						"host/monolith.hcphacking.xyz"
 					]
 				}
 			}

@@ -72,9 +72,9 @@ EOF
 fi
 
 while :; do
-	((VERBOSE > 0)) && echo >&2 "Running: ssh-keyscan localhost > $myknownhosts"
+	((VERBOSE > 0)) && echo >&2 "Running: ssh-keyscan -p 2222 localhost > $myknownhosts"
 	res=0
-	ssh-keyscan localhost > $tout 2> $terr || res=$?
+	ssh-keyscan -p 2222 localhost > $tout 2> $terr || res=$?
 	if [[ $res == 0 ]]; then
 		((VERBOSE > 0)) && echo >&2 "Success"
 		exit 0

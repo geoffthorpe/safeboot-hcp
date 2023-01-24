@@ -109,7 +109,7 @@
                     "ENROLL_ISSUERCERT": "/usr/share/ca-certificates/{ENROLL_ID}/certissuer.pem",
                     "ENROLL_CERTPREFIX": "hostcert-",
                     "ENROLL_KDC": "secondary.kdc",
-                    "ENROLL_KDC_PORT": "88"
+                    "ENROLL_KDC_PORT": "3088"
                 },
                 "genprogs": "gencert-hxtool",
                 "gencert-hxtool": {
@@ -137,6 +137,10 @@
                         "subject": "UID=host,{ENROLL_HOSTNAME2DC}",
                         "hostname": "{ENROLL_HOSTNAME}"
                     }
+                },
+                "genkrb5keytab": {
+                    "kdcsvc": "http://primary.kdc.hcphacking.xyz:9090",
+                    "principals": [ "host/{ENROLL_HOSTNAME}" ]
                 }
             },
             "postclient": {
@@ -190,10 +194,6 @@
                             "pkinit_win2k_require_binding": "yes"
                         }
                     }
-                },
-                "genkrb5keytab": {
-                    "kdcsvc": "http://primary.kdc.hcphacking.xyz:9090",
-                    "principals": [ "host/{ENROLL_HOSTNAME}" ]
                 }
             }
         }

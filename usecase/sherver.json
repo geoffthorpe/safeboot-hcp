@@ -84,7 +84,7 @@
     "sshd": {
         "setup": { "touchfile": "/etc/hcp/sherver/touch-sshsvc-local-setup" },
         "exec": [ "/hcp/sshsvc/run_sshd.py", "/usr/sbin/sshd" ],
-        "args": [ "-e", "-D", "-f", "/sherver/etc/config" ],
+        "args": [ "-e", "-D", "-f", "/sherver/etc/config", "-p", "2222" ],
         "tag": "services",
         "env": { "set": { "HCP_NOTRACEFILE": "1" } }
     }

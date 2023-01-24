@@ -135,7 +135,7 @@
             "touchfile": "/etc/hcp/secondary.kdc/touch-kdcsvc-local-setup"
         },
         "exec": "kdc",
-        "args": [ "--config-file=/kdc_secondary/etc/kdc.conf" ],
+        "args": [ "--config-file=/kdc_secondary/etc/kdc.conf", "--ports=3088" ],
         "tag": "services"
     },
 

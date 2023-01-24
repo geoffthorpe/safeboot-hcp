@@ -147,7 +147,7 @@
             "this non-standard port." ],
         "setup": { "touchfile": "/etc/hcp/primary.kdc/touch-kdcsvc-local-setup" },
         "exec": "kdc",
-        "args": [ "--config-file=/kdc_primary/etc/kdc.conf", "--ports=89" ],
+        "args": [ "--config-file=/kdc_primary/etc/kdc.conf", "--ports=3089" ],
         "tag": "services"
     },
 
