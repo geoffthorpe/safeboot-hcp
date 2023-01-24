@@ -53,7 +53,7 @@ do_exec sherver /hcp/sshsvc/healthcheck.sh $RARGS
 do_exec workstation1 /hcp/caboodle/networked_healthcheck.sh $RARGS
 
 title "Extracting sherver's ssh hostkey"
-do_exec sherver bash -c "ssh-keyscan -p 2222 sherver.hcphacking.xyz" > $tmpfile
+do_exec sherver bash -c "ssh-keyscan -p 2222 $SHERVER_FQDN" > $tmpfile
 
 title "Getting workstation1 to pre-trust sherver's ssh hostkey"
 cmdstr="mkdir -p /root/.ssh && chmod 600 /root/.ssh"
@@ -62,7 +62,7 @@ cat $tmpfile | do_exec_t workstation1 bash -c "$cmdstr"
 
 title "Running 'echo hello' over 'ssh' over 'pkinit'"
 cmdstr="kinit -C FILE:/home/luser/.hcp/pkinit/user-luser-key.pem luser"
-cmdstr="$cmdstr ssh -l luser -p 2222 sherver.hcphacking.xyz"
+cmdstr="$cmdstr ssh -l luser -p 2222 $SHERVER_FQDN"
 cmdstr="$cmdstr echo hello"
 # The same comments apply as found in test_sequential.sh
 export VERBOSE=0

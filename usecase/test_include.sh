@@ -216,3 +216,17 @@ do_shell()
 {
 	wrapper shell none -- "$@"
 }
+
+# Sadly, sshd is very obnoxious about hostnames, canonicalization, and so forth.
+# If it is running in the 'sherver' container, everything is fine. But if that
+# workload is running in the 'monolith' container, it insists on using the
+# 'host/monolith.hcphacking.xyz' principle, rather than
+# 'host/sherver.hcphacking.xyz'. For that reason, the ssh client must also
+# attempt to address the server in the way it is expecting to be addressed,
+# otherwise GSSAPI will grab a session ticket for the wrong principle and the
+# result is an obscure "fail to decrypt" error in sshd.
+if [[ -n $HCP_IN_MONOLITH ]]; then
+	SHERVER_FQDN=monolith.hcphacking.xyz
+else
+	SHERVER_FQDN=sherver.hcphacking.xyz
+fi
