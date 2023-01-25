@@ -70,6 +70,17 @@ for asset in certlist:
 	cmd += [ f'--certificate={assetname_key}' ]
 	cmd += [ f'--type={conf_asset.pop("type")}' ]
 	issuer_cert = conf_asset['ca-certificate']
+	# 'issuer_cert' points to a 'CA.pem' file containing the cert+key, and
+	# we expect there to be a corresponding 'CA.cert' file containing only
+	# the cert (no private key);
+	issuer_cert_no_key = "{base}{ext}".format(
+		base = os.path.splitext(issuer_cert)[0],
+		ext = ".cert")
+	if not os.path.exists(issuer_cert_no_key):
+		bail(f"Required file '{issuer_cert_no_key}' does not exist. " +
+			"It must exist and contain only the issuer " +
+			"certificates (without the private key).")
+
 	args = dict_pop_or(conf_asset, 'args', [])
 	for prop in conf_asset:
 		propval = conf_asset[prop]
@@ -116,25 +127,16 @@ for asset in certlist:
 	if result.returncode != 0:
 		bail(f"openssl command for cert {result.returncode}: {cmd}")
 
-	# Run an "openssl x509" command on the issuer cert (which includes the key)
-	# to extract just the cert, that we might append it to the generated asset
-	# so it can be chain-verified. NB, the cert goes to stdout, not a file.
-	cmd = [ 'openssl', 'x509', '-inform', 'PEM', '-outform', 'PEM',
-		'-in', issuer_cert ]
-	log(f" - running {cmd};")
-	result = subprocess.run(cmd, cwd = output_dir, text = True,
-				stdout = subprocess.PIPE,
-				stderr = current_tracefile)
-	if result.returncode != 0:
-		bail(f"openssl command for issuer failed {result.returncode}: {cmd}")
+	# Retrieve the contents of the issuer_cert_no_key
+	issuer_certs_content = open(issuer_cert_no_key, 'r').read()
 
 	# Append the issuer cert to both files for the generated asset
 	log(" - appending issuer to key")
 	with open(f"{output_dir}/{assetname_key}", "a") as f:
-		f.write(result.stdout)
+		f.write(issuer_certs_content)
 	log(" - appending issuer to cert")
 	with open(f"{output_dir}/{assetname_cert}", "a") as f:
-		f.write(result.stdout)
+		f.write(issuer_certs_content)
 
 	# Declare the generated asset files
 	output_assets_sensitive += [ assetname_key ]
