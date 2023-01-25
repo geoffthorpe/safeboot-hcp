@@ -161,7 +161,7 @@ do_exec sherver bash -c "ssh-keyscan -p 2222 $SHERVER_FQDN" > $tmpfile
 title "inject sshd pubkey into client's 'known_hosts'"
 cmdstr="mkdir -p /root/.ssh && chmod 600 /root/.ssh"
 cmdstr="$cmdstr && cat - > /root/.ssh/known_hosts"
-cat $tmpfile | do_exec_t workstation1 bash -c "$cmdstr"
+cat $tmpfile | do_exec workstation1 bash -c "$cmdstr"
 
 title "Use HCP cred to get TGT, then GSSAPI to ssh from client to sherver"
 cmdstr="kinit -C FILE:/home/luser/.hcp/pkinit/user-luser-key.pem luser"

@@ -58,7 +58,7 @@ do_exec sherver bash -c "ssh-keyscan -p 2222 $SHERVER_FQDN" > $tmpfile
 title "Getting workstation1 to pre-trust sherver's ssh hostkey"
 cmdstr="mkdir -p /root/.ssh && chmod 600 /root/.ssh"
 cmdstr="$cmdstr && cat - > /root/.ssh/known_hosts"
-cat $tmpfile | do_exec_t workstation1 bash -c "$cmdstr"
+cat $tmpfile | do_exec workstation1 bash -c "$cmdstr"
 
 title "Running 'echo hello' over 'ssh' over 'pkinit'"
 cmdstr="kinit -C FILE:/home/luser/.hcp/pkinit/user-luser-key.pem luser"
@@ -66,8 +66,8 @@ cmdstr="$cmdstr ssh -l luser -p 2222 $SHERVER_FQDN"
 cmdstr="$cmdstr echo hello"
 # The same comments apply as found in test_sequential.sh
 export VERBOSE=0
-do_exec_t workstation1 bash -c -l "$cmdstr" > $tmpfile
-do_exec_t workstation1 bash -c -l "$cmdstr" > $tmpfile
+do_exec workstation1 bash -c -l "$cmdstr" > $tmpfile
+do_exec workstation1 bash -c -l "$cmdstr" > $tmpfile
 hopinghello=$(cat $tmpfile | sed 's/\r$//')
 if [[ $hopinghello == hello ]]; then
 	echo "Success"

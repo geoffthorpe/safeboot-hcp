@@ -60,15 +60,6 @@ wrapper()
 		if [[ -n $HCP_IN_MONOLITH ]]; then
 			cmdline="/hcp/caboodle/monolith.py exec"
 		else
-			cmdline="docker-compose exec"
-		fi
-		cmdline="$cmdline $wload /hcp/common/launcher.py none custom"
-	elif [[ $cmd == exec_t ]]; then
-		wload=$1
-		shift
-		if [[ -n $HCP_IN_MONOLITH ]]; then
-			cmdline="/hcp/caboodle/monolith.py exec"
-		else
 			cmdline="docker-compose exec -T"
 		fi
 		cmdline="$cmdline $wload /hcp/common/launcher.py none custom"
@@ -198,16 +189,10 @@ do_normal_fg()
 }
 
 #
-# 'do_exec' and 'do_exec_t' work the same way with core and normal containers.
-# The latter ensures that no TTY is allocated (in the "docker-compose exec"
-# case, this will add the "-T" flag).
+# 'do_exec' works the same way with core and normal containers.
 do_exec()
 {
 	wrapper exec none -- "$@"
-}
-do_exec_t()
-{
-	wrapper exec_t none -- "$@"
 }
 
 #
