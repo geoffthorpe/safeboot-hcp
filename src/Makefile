@@ -9,9 +9,16 @@ include $(HCP_SRC)/preproc.Makefile
 #   and utilities that constitue HCP.
 include $(HCP_SRC)/base/Makefile
 
+# A "debbuilder" docker image specifically for building debian packages from
+# source.
+include $(HCP_SRC)/debbuilder/Makefile
+ifdef HCP_LOCAL_SWTPM
+include $(HCP_SRC)/debbuilder/libtpms/Makefile
+include $(HCP_SRC)/debbuilder/swtpm/Makefile
+endif
+
 # A "builder" docker image is created that can host building of submodule code
-# (rather than building directly in the host environment, which can be
-# undesirable, unreliable, or impossible for many reasons).
+# and installing to a tarball image.
 include $(HCP_SRC)/builder/Makefile
 
 # External code-bases with their own build systems, etc.

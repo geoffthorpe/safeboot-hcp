@@ -2,7 +2,7 @@ HCP_HEIMDAL_SRC := $(TOP)/ext-heimdal
 HCP_HEIMDAL_INSTALL_DEST := /install-heimdal
 
 # Only compile-in heimdal if we're not using upstream packages
-ifdef HCP_HEIMDAL_SOURCE
+ifdef HCP_LOCAL_HEIMDAL
 
 # We steal the TPMWARE settings as to whether or not enable the
 # SUBMODULE_{RESET,TARGETS} options
@@ -31,4 +31,4 @@ $(eval $(call builder_codebase_simpledep,\
 # Closing arguments for the package
 $(eval $(call builder_finalize,heimdal))
 
-endif # HCP_HEIMDAL_SOURCE
+endif # HCP_LOCAL_HEIMDAL

@@ -12,7 +12,7 @@ $(eval $(call builder_initialize,\
 	$(HCP_TPMWARE_SUBMODULE_TARGETS)))
 
 # Only compile-in tpm2-tss and tpm2-tools if we're not using upstream packages
-ifdef HCP_TPM2_SOURCE
+ifdef HCP_LOCAL_TPM2
 
 ############
 # tpm2-tss #
@@ -58,46 +58,7 @@ $(eval $(call builder_codebase_simpledep,\
 	tpmware,\
 	tpm2-tools))
 
-endif # HCP_TPM2_SOURCE
-
-###########
-# libtpms #
-###########
-
-$(eval $(call builder_add_codebase,\
-	tpmware,\
-	libtpms,\
-	,\
-	libtpms,\
-	autogen.sh,\
-	NOCONFIGURE=1 ./autogen.sh,\
-	./configure --with-openssl --with-tpm2 --prefix=$(HCP_TPMWARE_INSTALL_DEST),\
-	make $(HCP_TPMWARE_MAKE_PARALLEL),\
-	make $(HCP_TPMWARE_MAKE_PARALLEL) install))
-$(eval $(call builder_codebase_simpledep,\
-	tpmware,\
-	libtpms))
-
-#########
-# swtpm #
-#########
-
-$(eval $(call builder_add_codebase,\
-	tpmware,\
-	swtpm,\
-	libtpms,\
-	swtpm,\
-	autogen.sh,\
-	NOCONFIGURE=1 ./autogen.sh,\
-	LIBTPMS_LIBS='-L$(HCP_TPMWARE_INSTALL_DEST)/lib -ltpms' \
-		LIBTPMS_CFLAGS='-I$(HCP_TPMWARE_INSTALL_DEST)/include' \
-		./configure --with-openssl --with-tpm2 \
-			--prefix=$(HCP_TPMWARE_INSTALL_DEST),\
-	make $(HCP_TPMWARE_MAKE_PARALLEL),\
-	make $(HCP_TPMWARE_MAKE_PARALLEL) install))
-$(eval $(call builder_codebase_simpledep,\
-	tpmware,\
-	swtpm))
+endif # HCP_LOCAL_TPM2
 
 # Thus concludes the "tpmware" package
 $(eval $(call builder_finalize,tpmware))

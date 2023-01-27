@@ -168,20 +168,14 @@ $(eval $(call pp_rule_docker_image_rm,\
 
 # LAYER: 3platform
 
-ifdef HCP_TPM2_SOURCE
-HCP_BASE_3PLATFORM_TPM2_TOOLS :=
-else
+ifndef HCP_LOCAL_TPM2
 HCP_BASE_3PLATFORM_TPM2_TOOLS := RUN apt-get install -y tpm2-tools
 endif
-ifdef HCP_HEIMDAL_SOURCE
-HCP_BASE_3PLATFORM_HEIMDAL :=
-else
+ifndef HCP_LOCAL_HEIMDAL
 HCP_BASE_3PLATFORM_HEIMDAL := RUN apt-get install -y heimdal-kdc
 endif
 ifdef HCP_3PLATFORM_XTRA
 HCP_BASE_3PLATFORM_XTRA := RUN apt-get install -y $(HCP_3PLATFORM_XTRA)
-else
-HCP_BASE_3PLATFORM_XTRA :=
 endif
 $(HCP_BASE_OUT)/3platform.Dockerfile: | $(HCP_BASE_OUT)
 $(HCP_BASE_OUT)/3platform.Dockerfile: $(HCP_BASE_DEPS_COMMON)

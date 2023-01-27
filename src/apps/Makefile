@@ -4,6 +4,9 @@ HCP_APPS_SRC := $(HCP_SRC)/apps
 $(HCP_APPS_OUT): | $(HCP_OUT)
 MDIRS += $(HCP_APPS_OUT)
 
+# Prepare the HCP_APPBASE_DNAME, to include locally-(debbuilder)-built packages.
+include $(HCP_APPS_SRC)/base/Makefile
+
 # Include the app_image() subroutine
 include $(HCP_APPS_SRC)/Makefile.sub
 
@@ -11,7 +14,7 @@ include $(HCP_APPS_SRC)/Makefile.sub
 # fqdn-updater, purger, etc).
 # hcp_common: this is hcp_precommon plus the baking-in of the launcher as the
 # ENTRYPOINT. Think of this as the base class for all HCP apps.
-$(eval $(call app_image,precommon,,safeboot tpmware heimdal xtra common,,))
+$(eval $(call app_image,precommon,SYM:APPS_BASE,safeboot tpmware heimdal xtra common,,))
 $(eval $(call app_image,common,precommon,,[\"/hcp/common/launcher.py\"],))
 
 # hcp_caboodle: at the other extreme, this contains everything. It's an image

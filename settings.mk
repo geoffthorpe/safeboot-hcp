@@ -41,13 +41,14 @@ HCP_RELAX := 1
 # containers.
 HCP_3PLATFORM_XTRA ?= vim net-tools
 
-# If defined, the "3platform" layer in hcp/base will not install "tpm2-tools"
-# from Debian package sources, instead the tpm2-tss and tpm2-tools submodules
-# will be configured, compiled, and installed by the ext-tpmware submodules.
-HCP_TPM2_SOURCE := 1
-
-# Same comments, though for "heimdal" rather than "tpm2-tools"
-HCP_HEIMDAL_SOURCE := 1
+# The following settings indicate where certain dependencies come from. If the
+# setting is enabled/defined, the package is built locally and dependent
+# applications will install from the local build. Otherwise (when the setting
+# is disabled/undefined, the upstream distribution's package is installed in
+# the "hcp_base" layer.
+HCP_LOCAL_TPM2 := 1 # tpm2-tss and tpm2-tools
+HCP_LOCAL_SWTPM := 1 # libtpms and swtpm
+HCP_LOCAL_HEIMDAL := 1 # heimdal
 
 # If defined, the "2apt-usable" layer in hcp/base will tweak the apt
 # configuration to use the given URL as a (caching) proxy for downloading deb
