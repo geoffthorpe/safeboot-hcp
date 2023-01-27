@@ -1,6 +1,5 @@
 HCP_BUILDER_SRC := $(HCP_SRC)/builder
 HCP_BUILDER_OUT := $(HCP_OUT)/builder
-HCP_BUILDER_DNAME := $(call HCP_IMAGE,builder)
 
 $(HCP_BUILDER_OUT): | $(HCP_OUT)
 MDIRS += $(HCP_BUILDER_OUT)
@@ -8,6 +7,10 @@ MDIRS += $(HCP_BUILDER_OUT)
 # A wrapper target to build the "builder" image
 builder: $(HCP_BUILDER_OUT)/built
 ALL += $(HCP_BUILDER_OUT)/built
+
+HCP_BUILDER_DNAME := $(call HCP_IMAGE,builder)
+HCP_BUILDER_TFILE := $(HCP_BUILDER_OUT)/built
+HCP_BUILDER_DFILE := $(HCP_BUILDER_OUT)/Dockerfile
 
 # We could turn this into a settings.mk choice, but for now just locally
 # hard-code it. It determines whether everything has to get rebuilt if the
@@ -17,10 +20,10 @@ ALL += $(HCP_BUILDER_OUT)/built
 # updated? Probably not.
 LAZY := 1
 
-$(HCP_BUILDER_OUT)/Dockerfile: | $(HCP_BUILDER_OUT)
-$(HCP_BUILDER_OUT)/Dockerfile: $(HCP_BUILDER_SRC)/Makefile
-$(HCP_BUILDER_OUT)/Dockerfile: $(HCP_BUILDER_SRC)/Dockerfile
-$(HCP_BUILDER_OUT)/Dockerfile:
+$(HCP_BUILDER_DFILE): | $(HCP_BUILDER_OUT)
+$(HCP_BUILDER_DFILE): $(HCP_BUILDER_SRC)/Makefile
+$(HCP_BUILDER_DFILE): $(HCP_BUILDER_SRC)/Dockerfile
+$(HCP_BUILDER_DFILE):
 	$Qecho "FROM $(HCP_BASE_DNAME)" > $@
 	$Qcat $(HCP_BUILDER_SRC)/Dockerfile >> $@
 
@@ -29,17 +32,17 @@ $(HCP_BUILDER_OUT)/deb_src_ify.sh: $(HCP_BUILDER_SRC)/deb_src_ify.sh
 $(HCP_BUILDER_OUT)/deb_src_ify.sh:
 	$Qcp $< $@
 
-$(HCP_BUILDER_OUT)/built: $(HCP_BUILDER_OUT)/Dockerfile
-$(HCP_BUILDER_OUT)/built: $(HCP_BUILDER_OUT)/deb_src_ify.sh
-$(HCP_BUILDER_OUT)/built: $(HCP_BASE_TFILE)
-$(HCP_BUILDER_OUT)/built:
+$(HCP_BUILDER_TFILE): $(HCP_BUILDER_DFILE)
+$(HCP_BUILDER_TFILE): $(HCP_BUILDER_OUT)/deb_src_ify.sh
+$(HCP_BUILDER_TFILE): $(HCP_BASE_TFILE)
+$(HCP_BUILDER_TFILE):
 	$Qecho "Building container image $(HCP_BUILDER_DNAME)"
 	$Qdocker build -t $(HCP_BUILDER_DNAME) \
-	               -f $(HCP_BUILDER_OUT)/Dockerfile \
+	               -f $(HCP_BUILDER_DFILE) \
 	               $(HCP_BUILDER_OUT)
 	$Qtouch $@
 $(eval $(call pp_rule_docker_image_rm,\
-	$(HCP_BUILDER_OUT)/built,\
+	$(HCP_BUILDER_TFILE),\
 	$(HCP_BUILDER_DNAME),\
 	builder,\
 	clean_builder))
@@ -47,7 +50,7 @@ $(eval $(call pp_rule_docker_image_rm,\
 # Cleanup
 ifneq (,$(wildcard $(HCP_BUILDER_OUT)))
 clean_builder: | preclean
-	$Qrm -f $(HCP_BUILDER_OUT)/Dockerfile $(HCP_BUILDER_OUT)/deb_src_ify.sh
+	$Qrm -f $(HCP_BUILDER_DFILE) $(HCP_BUILDER_OUT)/deb_src_ify.sh
 	$Qrmdir $(HCP_BUILDER_OUT)
 clean_base: clean_builder
 endif
