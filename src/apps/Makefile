@@ -4,7 +4,7 @@ HCP_APPS_SRC := $(HCP_SRC)/apps
 $(HCP_APPS_OUT): | $(HCP_OUT)
 MDIRS += $(HCP_APPS_OUT)
 
-# Prepare the HCP_APPBASE_DNAME, to include locally-(debbuilder)-built packages.
+# Prepare the HCP_APPS_BASE_DNAME, to include locally-(debbuilder)-built packages.
 include $(HCP_APPS_SRC)/base/Makefile
 
 # Include the app_image() subroutine
