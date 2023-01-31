@@ -6,7 +6,7 @@ $(eval $(call pp_add_layer,\
 	DEBBUILDER,\
 	,\
 	,\
-	$(HCP_SRC)/debbuilder/libtpms/Makefile,\
+	$(HCP_DEBBUILDER_SRC)/Makefile.libtpms,\
 	$(LIBTPMS_PKG_SRC)))
 
 # The above is all about the container image for building+packaging libtpms.

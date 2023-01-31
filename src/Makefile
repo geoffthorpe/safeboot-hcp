@@ -12,10 +12,6 @@ include $(HCP_SRC)/base/Makefile
 # A "debbuilder" docker image specifically for building debian packages from
 # source.
 include $(HCP_SRC)/debbuilder/Makefile
-ifdef HCP_LOCAL_SWTPM
-include $(HCP_SRC)/debbuilder/libtpms/Makefile
-include $(HCP_SRC)/debbuilder/swtpm/Makefile
-endif
 
 # A "builder" docker image is created that can host building of submodule code
 # and installing to a tarball image.

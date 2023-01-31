@@ -6,7 +6,7 @@ $(eval $(call pp_add_layer,\
 	DEBBUILDER,\
 	,\
 	,\
-	$(HCP_SRC)/debbuilder/swtpm/Makefile,\
+	$(HCP_DEBBUILDER_SRC)/Makefile.swtpm,\
 	$(SWTPM_PKG_SRC)))
 
 # The above is all about the container image for building+packaging swtpm.

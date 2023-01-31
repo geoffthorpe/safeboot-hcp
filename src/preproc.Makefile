@@ -69,7 +69,9 @@ endef
 #      derived from.
 # $3 - the symbolic name (in upper case) of the layer whose output directory
 #      should be the parent of this layer's output directory. If empty, it will
-#      be made a top-level layer (underneath $(HCP_OUT), for example).
+#      be made a top-level layer (underneath $(HCP_OUT), for example). If $8 is
+#      given, then we also assume this layer's source directory is a child of
+#      the source directory for the same parent.
 # $4 - the packages to be installed in the new layer. For any packages foo that
 #      are built locally, foo_LOCAL_FILE should be the path to the resulting
 #      package file (and should be a valid makefile target). Locally-built
@@ -83,6 +85,8 @@ endef
 #      Dockerfile.
 # $7 - optional, path to a codebase whose package-building dependencies (per
 #      its debian/control file) should be added to $4.
+# $8 - an arbitrary number of files in the source directory that should be
+#      mirrored to the output directory (and that the build should depend on).
 #
 # Silly choice (please forgive): 'ancestor' represents the layer we are deriving
 # from, in docker terms. 'parent' represents the directory we are beneath, in
@@ -99,15 +103,19 @@ $(eval pkg_list := $(strip $4))
 $(eval dfile_xtra := $(strip $5))
 $(eval mfile_xtra := $(strip $6))
 $(eval codebase := $(strip $7))
+$(eval xtra := $(strip $8))
 
 $(eval parent_dir := $(if $(upper_parent),$(HCP_$(upper_parent)_OUT),$(HCP_OUT)))
 $(eval parent_clean := $(if $(upper_parent),clean_$(lower_parent),clean))
+$(eval parent_src := $(if $(upper_parent),$(HCP_$(upper_parent)_SRC),$(HCP_SRC)))
 $(eval out_dir := $(parent_dir)/$(lower_name))
 $(eval out_dname := $(call HCP_IMAGE,$(lower_name)))
 $(eval out_tfile := $(out_dir)/built)
 $(eval out_dfile := $(out_dir)/Dockerfile)
+$(eval my_src := $(parent_src)/$(lower_name))
 
 $(eval HCP_$(upper_name)_OUT := $(out_dir))
+$(eval HCP_$(upper_name)_SRC := $(my_src))
 
 $(out_dir): | $(parent_dir)
 $(eval MDIRS += $(out_dir))
@@ -146,7 +154,16 @@ $(out_dir)/$($i_LOCAL_FILE): | $(out_dir)
 $(out_dir)/$($i_LOCAL_FILE): $($i_TFILE)
 $(out_dir)/$($i_LOCAL_FILE):
 	$Qcp $($i_LOCAL_PATH) $(out_dir)/$($i_LOCAL_FILE)
-$(eval pkgs_local_copied += $(out_dir)/$($i_LOCAL_FILE)))
+$(eval files_copied += $(out_dir)/$($i_LOCAL_FILE)))
+
+# For each "xtra" file, add a dependency for it to be copied to the context
+# area too.
+$(foreach i,$(xtra),
+$(out_dir)/$i: | $(out_dir)
+$(out_dir)/$i: $(my_src)/$i
+$(out_dir)/$i:
+	$Qcp $(my_src)/$i $(out_dir)/$i
+$(eval files_copied += $(out_dir)/$i))
 
 # For local packages, do the shell-fu to prepare commands to the dockerfile;
 # - COPY and RUN commands for installing locally-built packages
@@ -187,7 +204,7 @@ $(out_dfile):
 # Rule to build the docker image
 $(out_tfile): $(out_dfile)
 $(out_tfile): $(HCP_$(upper_name)_ANCESTOR_TFILE)
-$(out_tfile): $(pkgs_local_copied)
+$(out_tfile): $(files_copied)
 	$Qecho "Building container image $(out_dname)"
 	$Qdocker build -t $(out_dname) \
 	               -f $(out_dfile) \
@@ -204,7 +221,7 @@ $(eval $(call pp_rule_docker_image_rm,\
 ifneq (,$(wildcard $(out_dir)))
 clean_$(lower_name): | preclean
 	$Qrm -f $(out_dfile) $(out_tfile) \
-		$(pkgs_local_copied)
+		$(files_copied)
 	$Qrmdir $(out_dir)
 clean_image_$(lower_ancestor): clean_$(lower_name)
 $(parent_clean): clean_$(lower_name)

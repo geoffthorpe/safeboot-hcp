@@ -6,5 +6,10 @@ $(eval $(call pp_add_layer,\
 	,\
 	build-essential devscripts dpkg-dev,\
 	,\
-	$(HCP_SRC)/debbuilder/libtpms/Makefile,\
+	$(HCP_DEBBUILDER_SRC)/Makefile,\
 	))
+
+ifdef HCP_LOCAL_SWTPM
+include $(HCP_DEBBUILDER_SRC)/Makefile.libtpms
+include $(HCP_DEBBUILDER_SRC)/Makefile.swtpm
+endif

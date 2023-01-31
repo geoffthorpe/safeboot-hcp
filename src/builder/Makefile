@@ -30,13 +30,8 @@ $(eval $(call pp_add_layer,\
 		libfile-slurp-perl libncurses5-dev comerr-dev libdb-dev,\
 	$(HCP_BUILDER_SRC)/Dockerfile,\
 	$(HCP_BUILDER_SRC)/Makefile,\
-	))
-
-# Hook an extra file into the context-area (our Dockerfile expects it)
-$(HCP_BUILDER_TFILE): $(HCP_BUILDER_OUT)/deb_src_ify.sh
-$(HCP_BUILDER_OUT)/deb_src_ify.sh: | $(HCP_BUILDER_OUT)
-$(HCP_BUILDER_OUT)/deb_src_ify.sh: $(HCP_BUILDER_SRC)/deb_src_ify.sh
-	$Qcp $< $@
+	,\
+	deb_src_ify.sh))
 
 # $1 = package name, used in naming dependency targets, docker volumes, etc.
 # $2 = tarball name, often $2==$1.
