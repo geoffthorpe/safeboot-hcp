@@ -113,6 +113,7 @@ $(eval out_dname := $(call HCP_IMAGE,$(lower_name)))
 $(eval out_tfile := $(out_dir)/built)
 $(eval out_dfile := $(out_dir)/Dockerfile)
 $(eval my_src := $(parent_src)/$(lower_name))
+$(eval files_copied :=)
 
 $(eval HCP_$(upper_name)_OUT := $(out_dir))
 $(eval HCP_$(upper_name)_SRC := $(my_src))
@@ -146,15 +147,6 @@ $(eval pkgs_nonlocal := $(foreach i,$(pkg_list),$(if $($i_LOCAL_FILE),,$i)))
 # follow any *_DEPENDS attributes to explicitly install locally-built packages
 # that are dependencies. That's the "expand_depends" stuff above.
 $(eval $(call expand_depends,pkgs_local))
-
-# For each local package, add a dependency for the package file to be copied to
-# the context area for our layer.
-$(foreach i,$(pkgs_local),
-$(out_dir)/$($i_LOCAL_FILE): | $(out_dir)
-$(out_dir)/$($i_LOCAL_FILE): $($i_TFILE)
-$(out_dir)/$($i_LOCAL_FILE):
-	$Qcp $($i_LOCAL_PATH) $(out_dir)/$($i_LOCAL_FILE)
-$(eval files_copied += $(out_dir)/$($i_LOCAL_FILE)))
 
 # For each "xtra" file, add a dependency for it to be copied to the context
 # area too.
@@ -202,13 +194,23 @@ $(out_dfile):
 	$Qcat $(new_dfile_xtra) >> $$@
 
 # Rule to build the docker image
+$(eval pkgs_local_src := $(foreach i,$(pkgs_local),$($i_LOCAL_PATH)))
 $(out_tfile): $(out_dfile)
 $(out_tfile): $(HCP_$(upper_name)_ANCESTOR_TFILE)
+$(out_tfile): $(pkgs_local_src)
 $(out_tfile): $(files_copied)
 	$Qecho "Building container image $(out_dname)"
+	$Qbash -c \
+		"if [[ -n \"$(pkgs_local_src)\" ]]; then \
+			ln -t $(out_dir) $(pkgs_local_src); \
+		fi"
 	$Qdocker build -t $(out_dname) \
 	               -f $(out_dfile) \
 	               $(out_dir)
+	$Qbash -c \
+		"if [[ -n \"$(pkgs_local_src)\" ]]; then \
+			(cd $(out_dir) && rm -f $(pkgs_local_file)) \
+		fi"
 	$Qtouch $$@
 
 # Cleanup
@@ -227,4 +229,126 @@ clean_image_$(lower_ancestor): clean_$(lower_name)
 $(parent_clean): clean_$(lower_name)
 endif
 
-endef
+endef # pp_add_layer()
+
+# The following wrapper adds rules to build debian packages;
+# $1 - name of the package set in upper case. This should be upper case as it
+#      will get converted to lower case internally where appropriate. The
+#      codebase that produces the packages is usually the lower case value. The
+#      inputs required by this function will be prefixed by this name (see
+#      below).
+# $2 - name of the layer used for building these packages (usually created by
+#      the pp_add_layer() API just above). The artifacts produced will be put
+#      in the 'artifacts' subdirectory of that layer's output directory.
+#
+# Makefile variables are used for the remainder of input to (and output from)
+# this function. Assuming $1==FOO, voici;
+# Inputs;
+#      - foo_PKGS: the short names of the packages produced by this package
+#        set. Eg; "libtpms0 libtpms0-dbgsym libtpms-dev"
+#      - foo_CANONICAL: if, later on, a 'builder'-based image says its needs
+#        'libtpms', what subset of foo_PKGS do they mean?
+#      - FOO_PKG_SRC: absolute path to the codebase for this package set.
+#      - FOO_PKG_REFFILE: path relative to FOO_PKG_SRC, points to an immutable
+#        file in the codebase, which is used as a reference when "chown"ing
+#        files in mounted directories.
+#      - FOO_PKG_CMD_BOOTSTRAP: the command to run to ensure that the codebase
+#        is ready to be built (like triggering autoconf/automake). Eg;
+#        "./autogen.sh"
+#      - FOO_PKG_CMD_PACKAGE: the command to build the debian packages. Eg;
+#        "dpkg-buildpackage -uc -us"
+#      For each <pkg> in foo_PKGS;
+#      - <pkg>_DEPENDS: if <pkg> depends on any other packages that might be
+#        locally-built, in this package set or another, this variable should
+#        list them. When locally-built packages get installed later on, this
+#        declaration helps ensure that locally-built dependencies also get
+#        installed rather than upstream versions. Eg;
+#          "libtpms-dev_DEPENDS := libtpms0"
+#      - <pkg>_LOCAL_FILE: the filename that the resulting debian package
+#        is expected to have. The build does not ensure this, the caller is
+#        expected to predict it. Eg;
+#          "libtpms0_LOCAL_FILE := libtpms0_0.10.0~dev1_amd64.deb"
+# Outputs;
+#      - HCP_DBB_LIST: foo_PKGS gets added to this accumulator.
+#      - HCP_FOO_PKG_BOOTSTRAPPED: absolute path to the touchfile that gets set
+#        when the package set is bootstrapped. Can be used as a dependency.
+#      - HCP_FOO_PKG_PACKAGED: absolute path to the touchfile that gets set
+#        when the package set is built. Can be used as a dependency.
+#      - deb_foo: symbolic make target for HCP_FOO_PKG_PACKAGES, ie. to build
+#        the package set.
+#      - clean_deb_foo: symbolic make target to remove output associated with
+#        this package set.
+#      For each <pkg> in foo_PKGS;
+#      - <pkg>_TFILE: set equal to HCP_FOO_PKG_PACKAGED, which is set when the
+#        package set is built. (This isn't package-specific, all the packages
+#        in the same set will have the same _TFILE attribute.)
+#      - <pkg>_LOCAL_PATH: absolute path to the debian package file (whose name
+#        is expected to be <pkg>_LOCAL_FILE).
+
+define pp_add_dpkg_build
+$(eval upper_name := $(strip $1))
+$(eval lower_name := $(shell echo "$(upper_name)" | tr '[:upper:]' '[:lower:]'))
+$(eval upper_layer := $(strip $2))
+$(eval lower_layer := $(shell echo "$(upper_layer)" | tr '[:upper:]' '[:lower:]'))
+
+# Calculate paths once
+$(eval parent_dir := $(HCP_$(upper_layer)_OUT))
+$(eval out_dir := $(parent_dir)/artifacts)
+$(eval mount_dir := $(out_dir)/$(lower_name))
+$(eval tfile_bootstrapped := $(out_dir)/_bootstrapped)
+$(eval tfile_packaged := $(out_dir)/_packaged)
+$(eval src_dir := $($(upper_name)_PKG_SRC))
+$(eval layer_dname := $(HCP_$(upper_layer)_DNAME))
+$(eval layer_tfile := $(HCP_$(upper_layer)_TFILE))
+$(eval reffile := $($(upper_name)_PKG_REFFILE))
+$(eval cmd_bootstrap := $($(upper_name)_PKG_CMD_BOOTSTRAP))
+$(eval cmd_package := $($(upper_name)_PKG_CMD_PACKAGE))
+
+# Auto-create output directories
+$(out_dir): | $(parent_dir)
+$(mount_dir): | $(out_dir)
+$(eval MDIRS += $(out_dir) $(mount_dir))
+
+# Expected outputs
+$(eval HCP_DBB_LIST += $($(lower_name)_PKGS))
+$(eval HCP_$(upper_name)_PKG_BOOTSTRAPPED := $(tfile_bootstrapped))
+$(eval HCP_$(upper_name)_PKG_PACKAGED := $(tfile_packaged))
+deb_$(lower_name): $(tfile_packaged)
+$(eval ALL += deb_$(lower_name))
+$(foreach p,$($(lower_name)_PKGS),
+	$(eval $p_TFILE := $(tfile_packaged))
+	$(eval $p_LOCAL_PATH := $(out_dir)/$($p_LOCAL_FILE)))
+
+# How to launch the image layer
+$(eval docker_run := docker run --rm -v $(out_dir):/empty \
+			-v $(src_dir):/empty/$(lower_name) \
+			$(layer_dname) \
+			bash -c)
+# and common preamble to what we run in the container
+$(eval docker_cmd := trap '/hcp/base/chowner.sh $(reffile) ..' EXIT ; \
+			cd /empty/$(lower_name))
+
+# Bootstrap target
+$(tfile_bootstrapped): $(layer_tfile)
+$(tfile_bootstrapped): | $(mount_dir)
+$(tfile_bootstrapped):
+	$Q$(docker_run) "$(docker_cmd) ; $(cmd_bootstrap)"
+	$Qtouch $$@
+
+# Package target. NB: we add a dependency on the most recent file in the
+# codebase, hence the complicated 'find' command.
+$(tfile_packaged): $(tfile_bootstrapped)
+$(tfile_packaged): $(shell find $(src_dir) -type f -printf '%T@ %p\n' | \
+			sort -n | tail -1 | cut -f2- -d" ")
+$(tfile_packaged):
+	$Q$(docker_run) "$(docker_cmd) ; $(cmd_package)"
+	$Qtouch $$@
+
+$(if $(wildcard $(out_dir)),
+clean_deb_$(lower_name):
+	$Qif test -d $(mount_dir); then rmdir $(mount_dir); fi
+	$Qrm -f $(out_dir)/*
+	$Qrmdir $(out_dir)
+clean_$(lower_layer): clean_deb_$(lower_name)
+)
+endef # pp_add_dpkg_build

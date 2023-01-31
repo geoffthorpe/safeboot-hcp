@@ -9,94 +9,36 @@ $(eval $(call pp_add_layer,\
 	$(HCP_DEBBUILDER_SRC)/Makefile.swtpm,\
 	$(SWTPM_PKG_SRC)))
 
-# The above is all about the container image for building+packaging swtpm.
-# The below is all about building and packaging swtpm.
+# Prep the inputs for pp_add_dpkg_build()
 
-HCP_DBB_SWTPM_PKG_OUT := $(HCP_DBB_SWTPM_OUT)/artifacts
-HCP_DBB_SWTPM_PKG_MOUNT := $(HCP_DBB_SWTPM_PKG_OUT)/swtpm
-$(HCP_DBB_SWTPM_PKG_OUT): | $(HCP_DBB_SWTPM_OUT)
-$(HCP_DBB_SWTPM_PKG_MOUNT): | $(HCP_DBB_SWTPM_PKG_OUT)
-MDIRS += $(HCP_DBB_SWTPM_PKG_OUT) $(HCP_DBB_SWTPM_PKG_MOUNT)
-HCP_DBB_SWTPM_PKG_BOOTSTRAPPED := $(HCP_DBB_SWTPM_PKG_OUT)/_bootstrapped
-HCP_DBB_SWTPM_PKG_PACKAGED := $(HCP_DBB_SWTPM_PKG_OUT)/_packaged
+# - expected packages, and the canonical choice
+swtpm_PKGS := swtpm swtpm-libs swtpm-dbgsym swtpm-dev swtpm-tools swtpm-tools-dbgsym
+swtpm_CANONICAL := swtpm swtpm-libs swtpm-tools
 
-deb_swtpm: $(HCP_DBB_SWTPM_PKG_PACKAGED)
-ALL += $(HCP_DBB_SWTPM_PKG_PACKAGED)
-
+# - codebase info, how to build, etc
 SWTPM_PKG_REFFILE := ./autogen.sh
 SWTPM_PKG_CMD_BOOTSTRAP := NOCONFIGURE=1 ./autogen.sh
 SWTPM_PKG_CMD_PACKAGE := dpkg-buildpackage -uc -us
 
-# This should match swtpm/configure.ac: "AC_INIT([swtpm],[0.8.0])"
-SWTPM_VERSION ?= 0.8.0
-# This should match .... actually I can't find it anywhere in swtpm!?
-SWTPM_RELEASE ?= ~dev1
-# This should match the build architecture
-SWTPM_ARCH ?= amd64
-
-# When using 'builder' there is a tarball "package" for each codebase that
-# contains a full installation (libraries, tools, debug symbols, etc). When
-# using 'debbuilder' or upstream packages, things are divided into distinct
-# packages, and you may select from among them. So long as the 'builder'
-# mechanism sticks around (and the 'app' layer continutes to explicitly declare
-# 'builder'-scope codebases that should be installed in their images), we need
-# to know what debian packages should be installed if we are using 'debbuilder'
-# or upstream packages. I.e. if the "swtpm" codebase is installed in an
-# image, but swtpm is provided by debian packages, the individual packages
-# are given by $(swtpm_CANONICAL).
-swtpm_PKGS := swtpm swtpm-libs swtpm-dbgsym swtpm-dev swtpm-tools swtpm-tools-dbgsym
-swtpm_CANONICAL := swtpm swtpm-libs swtpm-tools
-$(foreach p,$(swtpm_PKGS),\
-$(eval $p_TFILE := $(HCP_DBB_SWTPM_PKG_PACKAGED))\
-$(eval $p_LOCAL_FILE := $p_$(SWTPM_VERSION)$(SWTPM_RELEASE)_$(SWTPM_ARCH).deb)\
-$(eval $p_LOCAL_PATH := $(HCP_DBB_SWTPM_PKG_OUT)/$($p_LOCAL_FILE)))
-
-# Dependencies between the packages needs to be known
+# - dependencies on any possibly-locally-built packages.
+# NB: no need to mention libtpms here, but _only_ because we passed
+# $(SWTPM_PKG_SRC) to the pp_add_layer() call above - this means that the image
+# _already_ has libtpms installed into it using locally-built packages.
 swtpm_DEPENDS := swtpm-libs
 swtpm-dbgsym := swtpm
 swtpm-dev_DEPENDS := swtpm
 swtpm-tools_DEPENDS := swtpm
 swtpm-tools-dbgsym_DEPENDS := swtpm-tools
 
-HCP_DBB_LIST += $(swtpm_PKGS)
+# - expected package filenames (including version/arch/etc)
+SWTPM_VERSION ?= 0.8.0
+SWTPM_RELEASE ?= ~dev1
+SWTPM_ARCH ?= amd64
+$(foreach p,$(swtpm_PKGS),\
+	$(eval $p_LOCAL_FILE := \
+		$p_$(SWTPM_VERSION)$(SWTPM_RELEASE)_$(SWTPM_ARCH).deb))
 
-SWTPM_PKG_DOCKERCMD := \
-		docker run --rm -v $(HCP_DBB_SWTPM_PKG_OUT):/empty \
-		-v $(SWTPM_PKG_SRC):/empty/swtpm \
-		$(HCP_DBB_SWTPM_DNAME) \
-		bash -c
-SWTPM_PKG_CHOWN := \
-		trap '/hcp/base/chowner.sh $(SWTPM_PKG_REFFILE) ..' EXIT ; \
-		cd /empty/swtpm
-
-# The bootstrapped target is only used as an order-only dependency, meaning it
-# won't get _explicitly_ bootstrapped again until a "make clean_<something>"
-# removes our touchfile.  OTOH, once bootstrapped, autotools set things up so
-# that a rebuild (dpkg-buildpackage) should re-bootstrap if and when necessary.
-$(HCP_DBB_SWTPM_PKG_BOOTSTRAPPED): $(HCP_DBB_SWTPM_TFILE)
-$(HCP_DBB_SWTPM_PKG_BOOTSTRAPPED): | $(HCP_DBB_SWTPM_PKG_MOUNT)
-$(HCP_DBB_SWTPM_PKG_BOOTSTRAPPED):
-	$Q$(SWTPM_PKG_DOCKERCMD) \
-		"$(SWTPM_PKG_CHOWN) ; $(SWTPM_PKG_CMD_BOOTSTRAP)"
-	$Qtouch $@
-
-# We create a dependency for package-building on the most recent file in the
-# source tree, hence the complex 'find' command
-$(HCP_DBB_SWTPM_PKG_PACKAGED): $(HCP_DBB_SWTPM_PKG_BOOTSTRAPPED)
-$(HCP_DBB_SWTPM_PKG_PACKAGED): $(shell \
-	find $(SWTPM_PKG_SRC) -type f -printf '%T@ %p\n' | \
-	sort -n | tail -1 | cut -f2- -d" ")
-$(HCP_DBB_SWTPM_PKG_PACKAGED):
-	$Q$(SWTPM_PKG_DOCKERCMD) \
-		"$(SWTPM_PKG_CHOWN) ; $(SWTPM_PKG_CMD_PACKAGE)"
-	$Qtouch $@
-
-ifneq (,$(wildcard $(HCP_DBB_SWTPM_PKG_OUT)))
-clean_dbb_swtpm_artifacts:
-	$Qif test -d $(HCP_DBB_SWTPM_PKG_MOUNT); then \
-		rmdir $(HCP_DBB_SWTPM_PKG_MOUNT); \
-	fi
-	$Qrm -f $(HCP_DBB_SWTPM_PKG_OUT)/*
-	$Qrmdir $(HCP_DBB_SWTPM_PKG_OUT)
-clean_dbb_swtpm: clean_dbb_swtpm_artifacts
-endif
+# Turn the crank
+$(eval $(call pp_add_dpkg_build,\
+	SWTPM,\
+	DBB_SWTPM))
