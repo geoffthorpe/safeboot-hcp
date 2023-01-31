@@ -21,12 +21,9 @@ SWTPM_PKG_CMD_BOOTSTRAP := NOCONFIGURE=1 ./autogen.sh
 SWTPM_PKG_CMD_PACKAGE := dpkg-buildpackage -uc -us
 
 # - dependencies on any possibly-locally-built packages.
-# NB: no need to mention libtpms here, but _only_ because we passed
-# $(SWTPM_PKG_SRC) to the pp_add_layer() call above - this means that the image
-# _already_ has libtpms installed into it using locally-built packages.
-swtpm_DEPENDS := swtpm-libs
-swtpm-dbgsym := swtpm
-swtpm-dev_DEPENDS := swtpm
+swtpm_DEPENDS := swtpm-libs libtpms0
+swtpm-dbgsym := swtpm libtpms0-dbgsym
+swtpm-dev_DEPENDS := swtpm libtpms-dev
 swtpm-tools_DEPENDS := swtpm
 swtpm-tools-dbgsym_DEPENDS := swtpm-tools
 
