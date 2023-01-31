@@ -195,9 +195,13 @@ $(out_dfile):
 
 # Rule to build the docker image
 $(eval pkgs_local_src := $(foreach i,$(pkgs_local),$($i_LOCAL_PATH)))
+$(eval pkgs_local_tfile :=)
+$(foreach i,$(pkgs_local),
+	$(if $(filter $i,$(pkgs_local_tfile)),,
+		$(eval pkgs_local_tfile += $($i_TFILE))))
 $(out_tfile): $(out_dfile)
 $(out_tfile): $(HCP_$(upper_name)_ANCESTOR_TFILE)
-$(out_tfile): $(pkgs_local_src)
+$(out_tfile): $(pkgs_local_tfile)
 $(out_tfile): $(files_copied)
 	$Qecho "Building container image $(out_dname)"
 	$Qbash -c \
