@@ -1,6 +1,6 @@
 #!/bin/bash
 
-FILES=/etc/apt/sources.list $(ls /etc/apt/sources.list.d)
+FILES="/etc/apt/sources.list $(ls /etc/apt/sources.list.d)"
 
 for i in $FILES; do
 	cat $i | (
