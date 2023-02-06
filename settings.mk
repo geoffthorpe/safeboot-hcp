@@ -121,3 +121,37 @@ HCP_APPS_GRANULAR := 1
 # make targets simpler/cleaner. On the other hand, enable the following if you
 # want fine-grained targets.
 #HCP_TPMWARE_SUBMODULE_TARGETS := 1
+
+##################
+# Cache settings #
+##################
+
+# Certain assets (like linux kernel source code, a bootstrap ext4 file system
+# image, ...) do not need to be downloaded or generated if a cached copy can be
+# found. If HCP_CACHE is given, then the path it specifies will be consulted
+# for such artifacts, and dependencies will be generated accordingly. If
+# HCP_CACHE_READONLY is set, this cache will not be created if it doesn't
+# exist, and assets will not be stored in the cache if they are downloaded or
+# generated. The cache directory is never cleaned out by any HCP dependencies.
+HCP_CACHE := $(TOP)/cache
+#HCP_CACHE_READONLY := 1
+
+##################################
+# UML (User Mode Linux) settings #
+##################################
+
+# We use UML (user-mode-linux) for a lightweight VM when a container isn't
+# enough, typically when we want to get around situations where root privileges
+# are required, most notably when making disk images.
+
+# By default, the UML kernel is built from source downloaded from
+# UML_KERNEL_SITE, per the below settings.
+HCP_UML_KERNEL_SITE ?= https://cdn.kernel.org/pub/linux/kernel
+HCP_UML_KERNEL_SITEDIR ?= v6.x
+HCP_UML_KERNEL_VERSION ?= 6.1.9
+HCP_UML_KERNEL_FNAME ?= linux-$(HCP_UML_KERNEL_VERSION).tar.xz
+HCP_UML_KERNEL_URL ?= \
+	$(HCP_UML_KERNEL_SITE)/$(HCP_UML_KERNEL_SITEDIR)/$(HCP_UML_KERNEL_FNAME)
+
+# What size ext4 image(s) to make
+HCP_UML_EXT4_SIZE := 1G

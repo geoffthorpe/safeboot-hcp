@@ -32,6 +32,12 @@ HCP_DEPS_COMMON := $(TOP)/Makefile $(TOP)/settings.mk
 endif
 
 ###############
+# Cache logic #
+###############
+
+include src/cache.Makefile
+
+###############
 # Build logic #
 ###############
 

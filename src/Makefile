@@ -37,5 +37,8 @@ include $(HCP_SRC)/caboodle/Makefile
 # Build the desired container images
 include $(HCP_SRC)/apps/Makefile
 
+# Build user-mode-linux support
+include $(HCP_SRC)/uml/Makefile
+
 # Produce usable (but test, non-production) credentials
 include $(HCP_SRC)/testcreds.Makefile
