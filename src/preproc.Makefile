@@ -87,6 +87,8 @@ endef
 #      its debian/control file) should be added to $4.
 # $8 - an arbitrary number of files in the source directory that should be
 #      mirrored to the output directory (and that the build should depend on).
+# $9 - an arbitrary number of files with absolute paths that should be mirrored
+#      to the output directory (and that the build should depend on).
 #
 # Silly choice (please forgive): 'ancestor' represents the layer we are deriving
 # from, in docker terms. 'parent' represents the directory we are beneath, in
@@ -104,6 +106,7 @@ $(eval dfile_xtra := $(strip $5))
 $(eval mfile_xtra := $(strip $6))
 $(eval codebase := $(strip $7))
 $(eval xtra := $(strip $8))
+$(eval xtra_abs := $(strip $9))
 
 $(eval parent_dir := $(if $(upper_parent),$(HCP_$(upper_parent)_OUT),$(HCP_OUT)))
 $(eval parent_clean := $(if $(upper_parent),clean_$(lower_parent),clean))
@@ -156,6 +159,14 @@ $(out_dir)/$i: $(my_src)/$i
 $(out_dir)/$i:
 	$Qcp $(my_src)/$i $(out_dir)/$i
 $(eval files_copied += $(out_dir)/$i))
+# Ditto for "xtra_abs"
+$(foreach i,$(xtra_abs),
+$(eval j := $(shell basename $i))
+$(out_dir)/$j: | $(out_dir)
+$(out_dir)/$j: $i
+$(out_dir)/$j:
+	$Qcp $i $(out_dir)/$j
+$(eval files_copied += $(out_dir)/$j))
 
 # For local packages, do the shell-fu to prepare commands to the dockerfile;
 # - COPY and RUN commands for installing locally-built packages
