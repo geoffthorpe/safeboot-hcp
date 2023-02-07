@@ -12,30 +12,6 @@ RUN apt-get install -y json-glib-tools libjson-perl libncurses5-dev \
 	python3-cryptography python3-openssl \
 	python3-flask python3-requests uwsgi-plugin-python3
 
-# And this, because it's needed in one of our apps and we're too impatient/lazy
-# to arrange for it to only get installed in that app. (Besides, the trend is
-# toward caboodle, so any such refinement would likely get clobbered anyway.)
-RUN apt-get install -y openssh-server
-# TODO: remove the host keys that openssh-server automatically creates on
-# installation.  It's a bad idea to have keys in images that serve as base
-# classes for multiple images, which in turn serve as templates for multiple
-# instances.
-
-# If we are using upstream Debian packaging for "tpm2-tools" (and "tpm2-tss" by
-# dependency), then this marker gets replaced by "apt-get install tpm2-tools",
-# otherwise it gets stubbed out.  (In such cases, tpm2-tss/tpm2-tools will get
-# built from source in the hcp/submodules layer, later on.)
-HCP_BASE_3PLATFORM_TPM2_TOOLS
-
-# Similar situation for Heimdal - it's either installed from package or built
-# from source in a submodule.
-HCP_BASE_3PLATFORM_HEIMDAL
-
-# If xtra ("make yourself at home" stuff) packages are requested, this marker
-# also gets replaced with an "apt-get install -y [...]" line, otherwise stubbed
-# out.
-HCP_BASE_3PLATFORM_XTRA
-
 RUN mkdir -p /hcp/base
 COPY chowner.sh /hcp/base/
 RUN chmod 755 /hcp/base/chowner.sh
