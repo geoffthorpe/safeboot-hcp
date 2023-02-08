@@ -63,7 +63,7 @@ endif
 
 $(eval $(call pp_add_layer,\
 	UML_RUN,\
-	BASE,\
+	APPS_BASE,\
 	UML,\
 	,\
 	$(HCP_UML_SRC)/run.Dockerfile,\
