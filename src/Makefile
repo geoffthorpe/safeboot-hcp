@@ -27,7 +27,6 @@ include $(HCP_SRC)/ext/heimdal.Makefile
 include $(HCP_SRC)/ext/safeboot.Makefile
 
 # HCP app code: old-style "tarball" packages (using "builder" -> *.tar.gz)
-include $(HCP_SRC)/tools/Makefile
 include $(HCP_SRC)/enrollsvc/Makefile
 include $(HCP_SRC)/attestsvc/Makefile
 include $(HCP_SRC)/swtpmsvc/Makefile

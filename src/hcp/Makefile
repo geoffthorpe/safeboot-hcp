@@ -71,3 +71,29 @@ $(foreach p,$(hcpxtra_PKGS),\
 $(eval $(call pp_add_dpkg_build,\
 	HCPXTRA,\
 	DBB_HCPAPP))
+
+#############
+# hcp-tools #
+#############
+
+# - expected packages, and the canonical choice
+hcptools_PKGS := hcp-tools
+hcptools_CANONICAL := hcp-tools
+# - codebase info, how to build, etc
+HCPTOOLS_PKG_SRC := $(HCP_PKG_SRC)/tools
+HCPTOOLS_PKG_REFFILE := ./run_client.sh
+HCPTOOLS_PKG_CMD_BOOTSTRAP := true
+HCPTOOLS_PKG_CMD_PACKAGE := debuild -uc -us
+# - dependencies on any possibly-locally-built packages.
+hcp-tools_DEPENDS := hcp-common hcp-xtra
+# - expected package filenames, per debian conventions
+HCPTOOLS_VERSION ?= 0.5
+HCPTOOLS_ARCH ?= all
+$(foreach p,$(hcptools_PKGS),\
+	$(eval $p_LOCAL_FILE := \
+		$p_$(HCPTOOLS_VERSION)_$(HCPTOOLS_ARCH).deb))
+
+# Turn the crank
+$(eval $(call pp_add_dpkg_build,\
+	HCPTOOLS,\
+	DBB_HCPAPP))

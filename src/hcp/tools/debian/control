@@ -1,0 +1,17 @@
+Source: hcp-tools
+Maintainer: Geoffrey Thorpe <geoffrey@twosigma.com>
+Section: misc
+Priority: optional
+Standards-Version: 4.0.0
+Build-Depends: debhelper (>= 13)
+
+Package: hcp-tools
+Architecture: all
+Depends: ${misc:Depends}, python3, hcp-common, hcp-xtra
+Description: HCP tools
+ hcp-tools contains client tools for;
+  enroll_api.py: a python interface to the enrollment service management API
+  run_client.sh: attestation client
+  attest_callback_common.py: reference callback for run_client.sh in python
+  attest_callback_common.py: simple callback for run_client.sh in bash
+  run_orchestrator: manage swtpmsvc instances and enrollments thereof

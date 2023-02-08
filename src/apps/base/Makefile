@@ -1,6 +1,6 @@
 # HCP apps will all (for now) want;
 # - the /hcp/common/ scripts (env, launcher, webapi, attester, purger, etc)
-PKGS := hcp-common hcp-xtra
+PKGS := hcp-common hcp-xtra hcp-tools
 # - external packages, possibly locally-built
 PKGS += swtpm-tools libtpms0
 # - external packages, upstream, primarily for webapi endpoints

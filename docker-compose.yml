@@ -135,7 +135,7 @@ services:
 # pass "-c -e" to this to make it do something.
     orchestrator:
         extends: common
-        image: ${HCP_IMAGE_tools}
+        image: ${HCP_IMAGE_caboodle}
         hostname: orchestrator.hcphacking.xyz
         networks:
           - hcpnetwork
@@ -153,7 +153,7 @@ services:
 # Attestation client
     aclient:
         extends: common
-        image: ${HCP_IMAGE_tools}
+        image: ${HCP_IMAGE_caboodle}
         hostname: aclient.hcphacking.xyz
         networks:
           - hcpnetwork
