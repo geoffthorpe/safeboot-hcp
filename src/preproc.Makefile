@@ -308,7 +308,7 @@ $(eval lower_layer := $(shell echo "$(upper_layer)" | tr '[:upper:]' '[:lower:]'
 
 # Calculate paths once
 $(eval parent_dir := $(HCP_$(upper_layer)_OUT))
-$(eval out_dir := $(parent_dir)/artifacts)
+$(eval out_dir := $(parent_dir)/artifacts-$(lower_name))
 $(eval mount_dir := $(out_dir)/$(lower_name))
 $(eval tfile_bootstrapped := $(out_dir)/_bootstrapped)
 $(eval tfile_packaged := $(out_dir)/_packaged)
