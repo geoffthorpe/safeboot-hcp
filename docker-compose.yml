@@ -355,3 +355,18 @@ services:
             test: /bin/true
             timeout: 3s
             interval: 10s
+
+    uml1:
+        extends: common
+        image: hcp_uml_run:devel
+        hostname: uml1.hcphacking.xyz
+        cap_add:
+          - SYS_ADMIN
+        environment:
+          - HCP_CONFIG_FILE=/usecase/uml1.json
+        volumes:
+          - ${HCP_TOP}/output/uml/uml_bootstrapper.ext4:/rootfs.ext4:ro
+        tmpfs:
+          - /dev/shm:exec
+        networks:
+          - hcpnetwork

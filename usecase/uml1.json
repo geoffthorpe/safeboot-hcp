@@ -1,0 +1,36 @@
+{
+    "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
+
+    "id": "uml1",
+    "hostnames": [ "uml1" ],
+    "default_domain": "hcphacking.xyz",
+
+    "services": [
+        "fqdn_updater",
+        "uml"
+    ],
+    "default_targets": [
+        "start-fqdn",
+        "start-uml"
+    ],
+    "args_for": "uml",
+
+    "fqdn_updater": {
+        "exec": "/hcp/common/fqdn_updater.py",
+        "until": "/etc/hcp/uml1/touch-fqdn-alive",
+        "nowait": 1,
+        "tag": "fqdn",
+        "env": {
+            "unset": { "HCP_NOTRACEFILE": null }
+        },
+        "path": "/fqdn-bus",
+        "refresh": 5,
+        "expiry": 20,
+        "bad_address": "100.100.100.100"
+    },
+
+    "uml": {
+        "exec": "/start.sh",
+        "tag": "uml"
+    }
+}

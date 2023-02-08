@@ -9,6 +9,8 @@ trap '/myshutdown' EXIT
 mount -t proc proc /proc/
 mount -t sysfs sys /sys/
 
+dhclient eth0
+
 mkdir -p /mnt/uml-command
 mount -t hostfs none /mnt/uml-command
 

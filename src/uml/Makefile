@@ -25,7 +25,7 @@ $(eval $(call pp_add_layer,\
 	UML_BUILDER,\
 	BUILDER,\
 	UML,\
-	bc kmod,\
+	bc kmod libvdeplug-dev,\
 	$(HCP_UML_SRC)/builder.Dockerfile,\
 	$(HCP_UML_SRC)/Makefile,\
 	,\
@@ -65,7 +65,7 @@ $(eval $(call pp_add_layer,\
 	UML_RUN,\
 	APPS_BASE,\
 	UML,\
-	,\
+	vde2,\
 	$(HCP_UML_SRC)/run.Dockerfile,\
 	$(HCP_UML_SRC)/Makefile,\
 	,\
@@ -102,7 +102,7 @@ $(eval $(call pp_add_layer,\
 	UML_BOOTSTRAPPER_ROOTFS,\
 	BASE,\
 	UML,\
-	kmod,\
+	kmod isc-dhcp-client,\
 	$(HCP_UML_SRC)/bootstrapper.Dockerfile,\
 	$(HCP_UML_SRC)/Makefile,\
 	,\
