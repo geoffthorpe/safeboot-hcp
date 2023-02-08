@@ -11,7 +11,8 @@ HCP_TESTCREDS_DOCKER_RUN := \
 	docker run -i --rm --init --label $(HCP_IMAGE_PREFIX)all=1 \
 	--mount type=bind,source=$(HCP_TESTCREDS_OUT),destination=/testcreds \
 	--env HCP_NO_CONFIG=1 \
-	$(call HCP_IMAGE,precommon) \
+	--entrypoint="" \
+	$(call HCP_IMAGE,common) \
 	bash -c
 
 # A pre-requisite for all assets is the "reference" file. This gets used as the

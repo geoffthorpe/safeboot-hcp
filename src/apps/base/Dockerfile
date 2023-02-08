@@ -6,3 +6,6 @@ RUN echo "source /hcp/common/hcp.sh" > /root/.bashrc
 # TODO: this is probably no longer needed. I made webapi support co-tenant instances, so the
 # presence of an absolute path suggests this is probably detritus.
 RUN rm /etc/nginx/sites-enabled/default
+
+# Set the launcher as our entrypoint
+ENTRYPOINT ["/hcp/common/launcher.py"]
