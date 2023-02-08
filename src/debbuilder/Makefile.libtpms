@@ -22,7 +22,7 @@ LIBTPMS_PKG_CMD_PACKAGE := dpkg-buildpackage -uc -us
 
 # - dependencies on any possibly-locally-built packages
 libtpms-dev_DEPENDS := libtpms0
-libtpms0-dbgsym_DEPENDS: libtpms0
+libtpms0-dbgsym_DEPENDS := libtpms0
 
 # - expected package filenames (including version/arch/etc)
 LIBTPMS_VERSION ?= 0.10.0
