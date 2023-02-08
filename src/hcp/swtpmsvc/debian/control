@@ -1,0 +1,14 @@
+Source: hcp-swtpmsvc
+Maintainer: Geoffrey Thorpe <geoffrey@twosigma.com>
+Section: misc
+Priority: optional
+Standards-Version: 4.0.0
+Build-Depends: debhelper (>= 13)
+
+Package: hcp-swtpmsvc
+Architecture: all
+# TODO: see src/hcp/Makefile for explanation
+#Depends: ${misc:Depends}, python3, tpm2-tools, tpm2-tss, swtpm, hcp-common, hcp-xtra
+Depends: ${misc:Depends}, python3, swtpm, hcp-common, hcp-xtra
+Description: HCP swtpmsvc
+ hcp-swtpmsvc contains code for the Software TPM Service.

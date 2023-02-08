@@ -16,7 +16,9 @@ $(eval $(call pp_add_layer,\
 	,\
 	,\
 	$(HCP_PKG_SRC)/Makefile,\
-	$(HCP_PKG_SRC)/common))
+	$(HCP_PKG_SRC)/common,\
+	,\
+	))
 
 ##############
 # hcp-common #
@@ -34,7 +36,9 @@ HCPCOMMON_PKG_CMD_PACKAGE := debuild -uc -us
 hcp-common_DEPENDS :=
 # - expected package filenames, per debian conventions
 HCPCOMMON_VERSION ?= 0.5
-#HCPCOMMON_RELEASE ?= 1 # <-- the packages are missing this
+# TODO: the _RELEASE part of the package version is not getting generated.
+# Commented-out here and absent in the subsequent sections.
+#HCPCOMMON_RELEASE ?= 1
 HCPCOMMON_ARCH ?= all
 $(foreach p,$(hcpcommon_PKGS),\
 	$(eval $p_LOCAL_FILE := \
@@ -50,24 +54,22 @@ $(eval $(call pp_add_dpkg_build,\
 # hcp-xtra #
 ############
 
-# - expected packages, and the canonical choice
 hcpxtra_PKGS := hcp-xtra
 hcpxtra_CANONICAL := hcp-xtra
-# - codebase info, how to build, etc
+
 HCPXTRA_PKG_SRC := $(HCP_PKG_SRC)/xtra
 HCPXTRA_PKG_REFFILE := ./HcpHostname.py
 HCPXTRA_PKG_CMD_BOOTSTRAP := true
 HCPXTRA_PKG_CMD_PACKAGE := debuild -uc -us
-# - dependencies on any possibly-locally-built packages.
+
 hcp-xtra_DEPENDS := hcp-common
-# - expected package filenames, per debian conventions
+
 HCPXTRA_VERSION ?= 0.5
 HCPXTRA_ARCH ?= all
 $(foreach p,$(hcpxtra_PKGS),\
 	$(eval $p_LOCAL_FILE := \
 		$p_$(HCPXTRA_VERSION)_$(HCPXTRA_ARCH).deb))
 
-# Turn the crank
 $(eval $(call pp_add_dpkg_build,\
 	HCPXTRA,\
 	DBB_HCPAPP))
@@ -76,24 +78,173 @@ $(eval $(call pp_add_dpkg_build,\
 # hcp-tools #
 #############
 
-# - expected packages, and the canonical choice
 hcptools_PKGS := hcp-tools
 hcptools_CANONICAL := hcp-tools
-# - codebase info, how to build, etc
+
 HCPTOOLS_PKG_SRC := $(HCP_PKG_SRC)/tools
 HCPTOOLS_PKG_REFFILE := ./run_client.sh
 HCPTOOLS_PKG_CMD_BOOTSTRAP := true
 HCPTOOLS_PKG_CMD_PACKAGE := debuild -uc -us
-# - dependencies on any possibly-locally-built packages.
+
 hcp-tools_DEPENDS := hcp-common hcp-xtra
-# - expected package filenames, per debian conventions
+
 HCPTOOLS_VERSION ?= 0.5
 HCPTOOLS_ARCH ?= all
 $(foreach p,$(hcptools_PKGS),\
 	$(eval $p_LOCAL_FILE := \
 		$p_$(HCPTOOLS_VERSION)_$(HCPTOOLS_ARCH).deb))
 
-# Turn the crank
 $(eval $(call pp_add_dpkg_build,\
 	HCPTOOLS,\
+	DBB_HCPAPP))
+
+#################
+# hcp-enrollsvc #
+#################
+
+hcpenrollsvc_PKGS := hcp-enrollsvc
+hcpenrollsvc_CANONICAL := hcp-enrollsvc
+
+HCPENROLLSVC_PKG_SRC := $(HCP_PKG_SRC)/enrollsvc
+HCPENROLLSVC_PKG_REFFILE := ./mgmt_api.py
+HCPENROLLSVC_PKG_CMD_BOOTSTRAP := true
+HCPENROLLSVC_PKG_CMD_PACKAGE := debuild -uc -us
+
+hcp-enrollsvc_DEPENDS := hcp-common hcp-xtra
+
+HCPENROLLSVC_VERSION ?= 0.5
+HCPENROLLSVC_ARCH ?= all
+$(foreach p,$(hcpenrollsvc_PKGS),\
+	$(eval $p_LOCAL_FILE := \
+		$p_$(HCPENROLLSVC_VERSION)_$(HCPENROLLSVC_ARCH).deb))
+
+$(eval $(call pp_add_dpkg_build,\
+	HCPENROLLSVC,\
+	DBB_HCPAPP))
+
+#################
+# hcp-attestsvc #
+#################
+
+hcpattestsvc_PKGS := hcp-attestsvc
+hcpattestsvc_CANONICAL := hcp-attestsvc
+
+HCPATTESTSVC_PKG_SRC := $(HCP_PKG_SRC)/attestsvc
+HCPATTESTSVC_PKG_REFFILE := ./hcp_api.py
+HCPATTESTSVC_PKG_CMD_BOOTSTRAP := true
+HCPATTESTSVC_PKG_CMD_PACKAGE := debuild -uc -us
+
+hcp-attestsvc_DEPENDS := hcp-common hcp-xtra
+
+HCPATTESTSVC_VERSION ?= 0.5
+HCPATTESTSVC_ARCH ?= all
+$(foreach p,$(hcpattestsvc_PKGS),\
+	$(eval $p_LOCAL_FILE := \
+		$p_$(HCPATTESTSVC_VERSION)_$(HCPATTESTSVC_ARCH).deb))
+
+$(eval $(call pp_add_dpkg_build,\
+	HCPATTESTSVC,\
+	DBB_HCPAPP))
+
+#################
+# hcp-policysvc #
+#################
+
+hcppolicysvc_PKGS := hcp-policysvc
+hcppolicysvc_CANONICAL := hcp-policysvc
+
+HCPPOLICYSVC_PKG_SRC := $(HCP_PKG_SRC)/policysvc
+HCPPOLICYSVC_PKG_REFFILE := ./policy_api.py
+HCPPOLICYSVC_PKG_CMD_BOOTSTRAP := true
+HCPPOLICYSVC_PKG_CMD_PACKAGE := debuild -uc -us
+
+hcp-policysvc_DEPENDS := hcp-common hcp-xtra
+
+HCPPOLICYSVC_VERSION ?= 0.5
+HCPPOLICYSVC_ARCH ?= all
+$(foreach p,$(hcppolicysvc_PKGS),\
+	$(eval $p_LOCAL_FILE := \
+		$p_$(HCPPOLICYSVC_VERSION)_$(HCPPOLICYSVC_ARCH).deb))
+
+$(eval $(call pp_add_dpkg_build,\
+	HCPPOLICYSVC,\
+	DBB_HCPAPP))
+
+################
+# hcp-swtpmsvc #
+################
+
+hcpswtpmsvc_PKGS := hcp-swtpmsvc
+hcpswtpmsvc_CANONICAL := hcp-swtpmsvc
+
+HCPSWTPMSVC_PKG_SRC := $(HCP_PKG_SRC)/swtpmsvc
+HCPSWTPMSVC_PKG_REFFILE := ./run_swtpm.sh
+HCPSWTPMSVC_PKG_CMD_BOOTSTRAP := true
+HCPSWTPMSVC_PKG_CMD_PACKAGE := debuild -uc -us
+
+# TODO: if tpm2-* was a choice between upstream and 'debbuilder', listing it
+# here would not be a problem. But while we use 'builder', this is a problem.
+#hcp-swtpmsvc_DEPENDS := hcp-common hcp-xtra tpm2-tools tpm2-tss swtpm libtpms0
+hcp-swtpmsvc_DEPENDS := hcp-common hcp-xtra swtpm libtpms0
+
+HCPSWTPMSVC_VERSION ?= 0.5
+HCPSWTPMSVC_ARCH ?= all
+$(foreach p,$(hcpswtpmsvc_PKGS),\
+	$(eval $p_LOCAL_FILE := \
+		$p_$(HCPSWTPMSVC_VERSION)_$(HCPSWTPMSVC_ARCH).deb))
+
+$(eval $(call pp_add_dpkg_build,\
+	HCPSWTPMSVC,\
+	DBB_HCPAPP))
+
+##############
+# hcp-kdcsvc #
+##############
+
+hcpkdcsvc_PKGS := hcp-kdcsvc
+hcpkdcsvc_CANONICAL := hcp-kdcsvc
+
+HCPKDCSVC_PKG_SRC := $(HCP_PKG_SRC)/kdcsvc
+HCPKDCSVC_PKG_REFFILE := ./mgmt_api.py
+HCPKDCSVC_PKG_CMD_BOOTSTRAP := true
+HCPKDCSVC_PKG_CMD_PACKAGE := debuild -uc -us
+
+# TODO: same note
+#hcp-kdcsvc_DEPENDS := hcp-common hcp-xtra hcp-tools tpm2-tools tpm2-tss
+hcp-kdcsvc_DEPENDS := hcp-common hcp-xtra hcp-tools
+
+HCPKDCSVC_VERSION ?= 0.5
+HCPKDCSVC_ARCH ?= all
+$(foreach p,$(hcpkdcsvc_PKGS),\
+	$(eval $p_LOCAL_FILE := \
+		$p_$(HCPKDCSVC_VERSION)_$(HCPKDCSVC_ARCH).deb))
+
+$(eval $(call pp_add_dpkg_build,\
+	HCPKDCSVC,\
+	DBB_HCPAPP))
+
+##############
+# hcp-sshsvc #
+##############
+
+hcpsshsvc_PKGS := hcp-sshsvc
+hcpsshsvc_CANONICAL := hcp-sshsvc
+
+HCPSSHSVC_PKG_SRC := $(HCP_PKG_SRC)/sshsvc
+HCPSSHSVC_PKG_REFFILE := ./run_sshd.py
+HCPSSHSVC_PKG_CMD_BOOTSTRAP := true
+HCPSSHSVC_PKG_CMD_PACKAGE := debuild -uc -us
+
+# TODO: same note
+#hcp-sshsvc_DEPENDS := hcp-common hcp-xtra hcp-tools tpm2-tools tpm2-tss
+hcp-sshsvc_DEPENDS := hcp-common hcp-xtra hcp-tools
+
+HCPSSHSVC_VERSION ?= 0.5
+HCPSSHSVC_ARCH ?= all
+$(foreach p,$(hcpsshsvc_PKGS),\
+	$(eval $p_LOCAL_FILE := \
+		$p_$(HCPSSHSVC_VERSION)_$(HCPSSHSVC_ARCH).deb))
+
+$(eval $(call pp_add_dpkg_build,\
+	HCPSSHSVC,\
 	DBB_HCPAPP))

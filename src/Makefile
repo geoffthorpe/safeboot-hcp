@@ -27,12 +27,6 @@ include $(HCP_SRC)/ext/heimdal.Makefile
 include $(HCP_SRC)/ext/safeboot.Makefile
 
 # HCP app code: old-style "tarball" packages (using "builder" -> *.tar.gz)
-include $(HCP_SRC)/enrollsvc/Makefile
-include $(HCP_SRC)/attestsvc/Makefile
-include $(HCP_SRC)/swtpmsvc/Makefile
-include $(HCP_SRC)/policysvc/Makefile
-include $(HCP_SRC)/kdcsvc/Makefile
-include $(HCP_SRC)/sshsvc/Makefile
 include $(HCP_SRC)/caboodle/Makefile
 
 # Build the desired container images

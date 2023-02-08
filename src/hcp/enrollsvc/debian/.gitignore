@@ -1,0 +1,4 @@
+.debhelper
+debhelper-*
+files
+hcp-*

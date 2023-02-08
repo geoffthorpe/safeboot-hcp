@@ -47,7 +47,6 @@ services:
 # Enrollment svc, mgmt interface
     emgmt:
         extends: common
-        image: ${HCP_IMAGE_enrollsvc}
         hostname: emgmt.hcphacking.xyz
         networks:
           - hcpnetwork
@@ -70,7 +69,6 @@ services:
             interval: 10s
     emgmt_pol:
         extends: common
-        image: ${HCP_IMAGE_policysvc}
         hostname: emgmt_pol.hcphacking.xyz
         networks:
           - emgmt_private
@@ -84,7 +82,6 @@ services:
 # Enrollment svc, replication interface
     erepl:
         extends: common
-        image: ${HCP_IMAGE_enrollsvc}
         hostname: erepl.hcphacking.xyz
         networks:
           - hcpnetwork
@@ -102,7 +99,6 @@ services:
 # Attestation svc, replication client
     arepl:
         extends: common
-        image: ${HCP_IMAGE_attestsvc}
         hostname: arepl.hcphacking.xyz
         networks:
           - hcpnetwork
@@ -118,7 +114,6 @@ services:
 # Attestation svc, attestation interface
     ahcp:
         extends: common
-        image: ${HCP_IMAGE_attestsvc}
         hostname: ahcp.hcphacking.xyz
         networks:
           - hcpnetwork
@@ -135,7 +130,6 @@ services:
 # pass "-c -e" to this to make it do something.
     orchestrator:
         extends: common
-        image: ${HCP_IMAGE_caboodle}
         hostname: orchestrator.hcphacking.xyz
         networks:
           - hcpnetwork
@@ -153,7 +147,6 @@ services:
 # Attestation client
     aclient:
         extends: common
-        image: ${HCP_IMAGE_caboodle}
         hostname: aclient.hcphacking.xyz
         networks:
           - hcpnetwork
@@ -164,7 +157,6 @@ services:
           - HCP_CONFIG_FILE=/usecase/aclient.json
     aclient_tpm:
         extends: common
-        image: ${HCP_IMAGE_swtpmsvc}
         hostname: aclient_tpm.hcphacking.xyz
         network_mode: "none"
         volumes:
@@ -180,7 +172,6 @@ services:
 # Kerberos Domain Controller - Primary
     kdc_primary:
         extends: common
-        image: ${HCP_IMAGE_kdcsvc}
         hostname: kdc_primary.hcphacking.xyz
         volumes:
           - kdc_primary:/kdc_primary
@@ -201,7 +192,6 @@ services:
             interval: 10s
     kdc_primary_tpm:
         extends: common
-        image: ${HCP_IMAGE_swtpmsvc}
         hostname: kdc_primary_tpm.hcphacking.xyz
         network_mode: "none"
         volumes:
@@ -215,7 +205,6 @@ services:
             interval: 10s
     kdc_primary_pol:
         extends: common
-        image: ${HCP_IMAGE_policysvc}
         hostname: kdc_primary_pol.hcphacking.xyz
         networks:
           - kdc_primary_private
@@ -229,7 +218,6 @@ services:
 # Kerberos Domain Controller - Secondary
     kdc_secondary:
         extends: common
-        image: ${HCP_IMAGE_kdcsvc}
         hostname: kdc_secondary.hcphacking.xyz
         volumes:
           - kdc_secondary:/kdc_secondary
@@ -248,7 +236,6 @@ services:
             interval: 10s
     kdc_secondary_tpm:
         extends: common
-        image: ${HCP_IMAGE_swtpmsvc}
         hostname: kdc_secondary_tpm.hcphacking.xyz
         network_mode: "none"
         volumes:
@@ -262,7 +249,6 @@ services:
             interval: 10s
     kdc_secondary_pol:
         extends: common
-        image: ${HCP_IMAGE_policysvc}
         hostname: kdc_secondary_pol.hcphacking.xyz
         networks:
           - kdc_secondary_private
@@ -276,7 +262,6 @@ services:
 # SSH host
     sherver:
         extends: common
-        image: ${HCP_IMAGE_sshsvc}
         hostname: sherver.hcphacking.xyz
         volumes:
           - sherver:/sherver:rw
@@ -292,7 +277,6 @@ services:
             interval: 10s
     sherver_tpm:
         extends: common
-        image: ${HCP_IMAGE_swtpmsvc}
         hostname: sherver_tpm.hcphacking.xyz
         network_mode: "none"
         volumes:
@@ -312,7 +296,6 @@ services:
 # 'services_basic' test case.
     workstation1:
         extends: common
-        image: ${HCP_IMAGE_caboodle}
         hostname: workstation1.hcphacking.xyz
         environment:
           - HCP_CONFIG_FILE=/usecase/workstation1.json
@@ -331,7 +314,6 @@ services:
             interval: 10s
     workstation1_tpm:
         extends: common
-        image: ${HCP_IMAGE_swtpmsvc}
         hostname: workstation1_tpm.hcphacking.xyz
         network_mode: "none"
         volumes:
@@ -351,7 +333,6 @@ services:
 # docker-compose commands into separate containers.)
     monolith:
         extends: common
-        image: ${HCP_IMAGE_caboodle}
         hostname: monolith.hcphacking.xyz
         environment:
           - HCP_IN_MONOLITH=1

@@ -1,0 +1,14 @@
+Source: hcp-policysvc
+Maintainer: Geoffrey Thorpe <geoffrey@twosigma.com>
+Section: misc
+Priority: optional
+Standards-Version: 4.0.0
+Build-Depends: debhelper (>= 13)
+
+Package: hcp-policysvc
+Architecture: all
+Depends: ${misc:Depends}, python3, hcp-common, hcp-xtra
+Description: HCP policysvc
+ hcp-policysvc contains code for the JSON Policy service, which provides an
+ system for filtering arbitrary JSON objects, using an 'iptables'-like
+ configuration (also in JSON).
