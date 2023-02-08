@@ -13,8 +13,12 @@ include $(HCP_SRC)/base/Makefile
 # source.
 include $(HCP_SRC)/debbuilder/Makefile
 
-# A "builder" docker image is created that can host building of submodule code
-# and installing to a tarball image.
+# HCP app code: debian packages (using "debbuilder" -> *.deb)
+include $(HCP_SRC)/hcp/Makefile
+
+# A "builder" docker image for building a low-brow, "tarball"-style package.
+# This uses a unique installation prefix onto a dedicated volume then tarballs
+# the result. We're moving things from this over to "debbuilder" with time.
 include $(HCP_SRC)/builder/Makefile
 
 # External code-bases with their own build systems, etc.
@@ -22,9 +26,7 @@ include $(HCP_SRC)/ext/tpmware.Makefile
 include $(HCP_SRC)/ext/heimdal.Makefile
 include $(HCP_SRC)/ext/safeboot.Makefile
 
-# Internal code-bases
-include $(HCP_SRC)/common/Makefile
-include $(HCP_SRC)/xtra/Makefile
+# HCP app code: old-style "tarball" packages (using "builder" -> *.tar.gz)
 include $(HCP_SRC)/tools/Makefile
 include $(HCP_SRC)/enrollsvc/Makefile
 include $(HCP_SRC)/attestsvc/Makefile

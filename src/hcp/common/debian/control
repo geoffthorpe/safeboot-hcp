@@ -1,0 +1,12 @@
+Source: hcp-common
+Maintainer: Geoffrey Thorpe <geoffrey@twosigma.com>
+Section: misc
+Priority: optional
+Standards-Version: 4.0.0
+Build-Depends: debhelper (>= 13)
+
+Package: hcp-common
+Architecture: all
+Depends: ${misc:Depends}, python3
+Description: HCP required scripts
+ hcp-common includes the baseline scripts required for any HCP workload.

@@ -1,0 +1,18 @@
+Source: hcp-xtra
+Maintainer: Geoffrey Thorpe <geoffrey@twosigma.com>
+Section: misc
+Priority: optional
+Standards-Version: 4.0.0
+Build-Depends: debhelper (>= 13)
+
+Package: hcp-xtra
+Architecture: all
+Depends: ${misc:Depends}, python3
+Description: HCP python helpers
+ hcp-xtra contains some python code for;
+  HcpHostname: hostname manipulations
+  HcpJsonPath: JSON data structure "path"-handling
+  HcpJsonExpander: JSON "expansion" (variable expansion and file inclusion)
+  HcpJsonPolicy: filtering of JSON, using 'iptables'-like rules in JSON
+  HcpRecursiveUnion: deep-merging of JSON data structures
+  HcpPemHelper: miscellaneous handling of OpenSSL 'PEM' files

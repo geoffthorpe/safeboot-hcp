@@ -14,7 +14,7 @@ include $(HCP_APPS_SRC)/Makefile.sub
 # fqdn-updater, purger, etc).
 # hcp_common: this is hcp_precommon plus the baking-in of the launcher as the
 # ENTRYPOINT. Think of this as the base class for all HCP apps.
-$(eval $(call app_image,precommon,SYM:APPS_BASE,safeboot tpmware heimdal xtra common,,))
+$(eval $(call app_image,precommon,SYM:APPS_BASE,safeboot tpmware heimdal,,))
 $(eval $(call app_image,common,precommon,,[\"/hcp/common/launcher.py\"],))
 
 # hcp_caboodle: at the other extreme, this contains everything. It's an image
