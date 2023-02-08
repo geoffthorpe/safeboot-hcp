@@ -16,12 +16,21 @@ LAZY := 1
 # everything that might be a dependency is a good way of keeping it simple.
 BUILDER_DEPS := $(HCP_DBB_LIST)
 
+# The pp_add_layer() logic, rightly, prioritizes the installation of
+# locally-built packages before the installation of upstream packages. This is
+# to avoid the case where an upstream package has a dependency on a package we
+# have locally-built but that 'apt' pulls an upstream version before we try to
+# install the locally-built one. However, here we are installing a large set of
+# upstream packages (like here) that do not depend on anything we're building,
+# and if they install after our locally-built packages, then they will be
+# downloaded and reinstalled every time we make local changes, without any
+# fancy docker (and buildkit) caching to speed it up.
+# --> Solution: use two layers.
 $(eval $(call pp_add_layer,\
-	BUILDER,\
+	PREBUILDER,\
 	BASE,\
 	,\
-	$(BUILDER_DEPS) \
-		gcc g++ make \
+	gcc g++ make \
 		automake autoconf autoconf-archive libtool pkg-config \
 		expect gawk socat help2man bison flex \
 		libc-dev libssl-dev libseccomp-dev libtasn1-6-dev \
@@ -31,7 +40,18 @@ $(eval $(call pp_add_layer,\
 	$(HCP_BUILDER_SRC)/Dockerfile,\
 	$(HCP_BUILDER_SRC)/Makefile,\
 	,\
-	deb_src_ify.sh))
+	,\
+	$(HCP_BUILDER_SRC)/deb_src_ify.sh))
+$(eval $(call pp_add_layer,\
+	BUILDER,\
+	PREBUILDER,\
+	,\
+	$(BUILDER_DEPS),\
+	,\
+	$(HCP_BUILDER_SRC)/Makefile,\
+	,\
+	,\
+	))
 
 # $1 = package name, used in naming dependency targets, docker volumes, etc.
 # $2 = tarball name, often $2==$1.
