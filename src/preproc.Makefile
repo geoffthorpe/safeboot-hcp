@@ -142,14 +142,19 @@ $(eval HCP_$(upper_name)_ANCESTOR_TFILE := $($(HCP_$(upper_name)_ANCESTOR)_TFILE
 $(if $(codebase),$(eval pkg_list += \
 	$(shell $(HCP_DEBBUILDER_SRC)/get_build_deps.py $(codebase) "")))
 
-# Split the requested packages into those that are(n't) locally-built.
+# OK, the tricky bit. We need to explicitly follow any *_DEPENDS attributes to
+# get transitive closure. This is in order to handle locally-built packages
+# depending on other locally-built packages. Ie. this isn't required for
+# dependencies on upstream packages, 'apt' installs them as required. But if a
+# locally-built package depends on another, and we don't include this in our
+# declarative list, we may install the dependent locally-built package but
+# 'apt' might satisfy its dependencies with upstream packages rather than the
+# locally-built alternatives. The "expand_depends" performs the transitive
+# closure, and then we identify and separate out locally-built vs upstream
+# packages.
+$(eval $(call expand_depends,pkg_list))
 $(eval pkgs_local := $(foreach i,$(pkg_list),$(if $($i_LOCAL_FILE),$i)))
 $(eval pkgs_nonlocal := $(foreach i,$(pkg_list),$(if $($i_LOCAL_FILE),,$i)))
-
-# OK, the tricky bit. For any locally-built packages, we need to explicitly
-# follow any *_DEPENDS attributes to explicitly install locally-built packages
-# that are dependencies. That's the "expand_depends" stuff above.
-$(eval $(call expand_depends,pkgs_local))
 
 # For each "xtra" file, add a dependency for it to be copied to the context
 # area too.
@@ -206,6 +211,7 @@ $(out_dfile):
 
 # Rule to build the docker image
 $(eval pkgs_local_src := $(foreach i,$(pkgs_local),$($i_LOCAL_PATH)))
+$(eval pkgs_local_fnames := $(foreach i,$(pkgs_local),$($i_LOCAL_FILE)))
 $(eval pkgs_local_tfile :=)
 $(foreach i,$(pkgs_local),
 	$(if $(filter $i,$(pkgs_local_tfile)),,
@@ -215,17 +221,14 @@ $(out_tfile): $(HCP_$(upper_name)_ANCESTOR_TFILE)
 $(out_tfile): $(pkgs_local_tfile)
 $(out_tfile): $(files_copied)
 	$Qecho "Building container image $(out_dname)"
-	$Qbash -c \
-		"if [[ -n \"$(pkgs_local_src)\" ]]; then \
+	$Qbash -c " \
+	( \
+		trap 'cd $(out_dir) && rm -f $(pkgs_local_fnames)' EXIT; \
+		if [[ -n \"$(pkgs_local_src)\" ]]; then \
 			ln -t $(out_dir) $(pkgs_local_src); \
-		fi"
-	$Qdocker build -t $(out_dname) \
-	               -f $(out_dfile) \
-	               $(out_dir)
-	$Qbash -c \
-		"if [[ -n \"$(pkgs_local_src)\" ]]; then \
-			(cd $(out_dir) && rm -f $(pkgs_local_file)) \
-		fi"
+		fi; \
+		docker build -t $(out_dname) -f $(out_dfile) $(out_dir); \
+	)"
 	$Qtouch $$@
 
 # Cleanup
