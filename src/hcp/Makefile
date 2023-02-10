@@ -1,12 +1,4 @@
 HCP_PKG_SRC := $(HCP_SRC)/hcp
-HCP_PKG_OUT := $(HCP_OUT)/hcp
-$(HCP_PKG_OUT): | $(HCP_OUT)
-MDIRS += $(HCP_PKG_OUT)
-ifneq (,$(wildcard $(HCP_PKG_OUT)))
-clean_pkg:
-	$Qrmdir $(HCP_PKG_OUT)
-clean: clean_pkg
-endif
 
 # HCP_VERSION is in settings.mk
 # TODO: the DPKG_RELEASE part of the package version is not getting generated.
@@ -139,10 +131,19 @@ list_lower := common xtra tools enrollsvc attestsvc policysvc swtpmsvc \
 		kdcsvc sshsvc
 list_upper := COMMON XTRA TOOLS ENROLLSVC ATTESTSVC POLICYSVC SWTPMSVC \
 		KDCSVC SSHSVC
+# Prepare missing inputs for debian_build()
 $(foreach s,$(list_lower),$(foreach p,$(hcp$s_PKGS),\
 $(eval $p_LOCAL_FILE := $p$(HCP_DPKG_SUFFIX))))
 
+# Generate the layers and package output symbols, dependencies, etc
 $(eval $(call debian_build,\
 	$(foreach s,$(list_upper),HCP$s),\
 	DEBBUILDER,\
 	$(HCP_PKG_SRC)/Makefile))
+
+# Process the output of debian_build()
+$(eval package_outputs :=)
+$(foreach s,$(list_lower),$(foreach p,$(hcp$s_PKGS),\
+$(eval package_outputs += $($p_LOCAL_PATH))))
+
+hcp_pkgs: $(package_outputs)

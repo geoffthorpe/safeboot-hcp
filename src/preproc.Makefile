@@ -205,13 +205,9 @@ $(ppa_out_dfile):
 # Rule to build the docker image
 $(eval ppa_pkgs_local_src := $(foreach i,$(ppa_pkgs_local),$($i_LOCAL_PATH)))
 $(eval ppa_pkgs_local_fnames := $(foreach i,$(ppa_pkgs_local),$($i_LOCAL_FILE)))
-$(eval ppa_pkgs_local_tfile :=)
-$(foreach i,$(ppa_pkgs_local),
-	$(if $(filter $i,$(ppa_pkgs_local_tfile)),,
-		$(eval ppa_pkgs_local_tfile += $($i_TFILE))))
 $(ppa_out_tfile): $(ppa_out_dfile)
 $(ppa_out_tfile): $(HCP_$(ppa_name_upper)_ANCESTOR_TFILE)
-$(ppa_out_tfile): $(ppa_pkgs_local_tfile)
+$(ppa_out_tfile): $(ppa_pkgs_local_src)
 $(ppa_out_tfile): $(ppa_copied)
 	$Qecho "Building container image $(ppa_out_dname)"
 	$Qbash -c " \

@@ -62,18 +62,11 @@ endef
 #          "libtpms0_LOCAL_FILE := libtpms0_0.10.0~dev1_amd64.deb"
 # Outputs;
 #      - HCP_DBB_LIST: foo_PKGS gets added to this accumulator.
-#      - HCP_FOO_PKG_BOOTSTRAPPED: absolute path to the touchfile that gets set
-#        when the package set is bootstrapped. Can be used as a dependency.
-#      - HCP_FOO_PKG_PACKAGED: absolute path to the touchfile that gets set
-#        when the package set is built. Can be used as a dependency.
 #      - deb_foo: symbolic make target for HCP_FOO_PKG_PACKAGES, ie. to build
 #        the package set.
 #      - clean_deb_foo: symbolic make target to remove output associated with
 #        this package set.
 #      For each <pkg> in foo_PKGS;
-#      - <pkg>_TFILE: set equal to HCP_FOO_PKG_PACKAGED, which is set when the
-#        package set is built. (This isn't package-specific, all the packages
-#        in the same set will have the same _TFILE attribute.)
 #      - <pkg>_LOCAL_PATH: absolute path to the debian package file (whose name
 #        is expected to be <pkg>_LOCAL_FILE).
 
@@ -93,7 +86,6 @@ $(eval dbo_tfile_bootstrapped := $(dbo_out_dir)/_bootstrapped)
 $(eval dbo_tfile_packaged := $(dbo_out_dir)/_packaged)
 $(eval dbo_src_dir := $($(dbo_name_upper)_PKG_SRC))
 $(eval dbo_layer_upper_dname := $(HCP_$(dbo_layer_upper)_DNAME))
-$(eval dbo_layer_upper_tfile := $(HCP_$(dbo_layer_upper)_TFILE))
 $(eval dbo_reffile := $($(dbo_name_upper)_PKG_REFFILE))
 $(eval dbo_cmd_bootstrap := $($(dbo_name_upper)_PKG_CMD_BOOTSTRAP))
 $(eval dbo_cmd_package := $($(dbo_name_upper)_PKG_CMD_PACKAGE))
@@ -123,13 +115,12 @@ $(eval MDIRS += $(dbo_out_dir) $(dbo_mount_dir))
 
 # Expected outputs
 $(eval HCP_DBB_LIST += $($(dbo_name_lower)_PKGS))
-$(eval HCP_$(dbo_name_upper)_PKG_BOOTSTRAPPED := $(dbo_tfile_bootstrapped))
-$(eval HCP_$(dbo_name_upper)_PKG_PACKAGED := $(dbo_tfile_packaged))
-deb_$(dbo_name_lower): $(dbo_tfile_packaged)
+$(eval dbo_local_paths := )
+$(foreach p,$($(dbo_name_lower)_PKGS),\
+	$(eval $p_LOCAL_PATH := $(dbo_out_dir)/$($p_LOCAL_FILE))\
+	$(eval dbo_local_paths += $($p_LOCAL_PATH)))
+deb_$(dbo_name_lower): $(dbo_local_paths)
 $(eval ALL += deb_$(dbo_name_lower))
-$(foreach p,$($(dbo_name_lower)_PKGS),
-	$(eval $p_TFILE := $(dbo_tfile_packaged))
-	$(eval $p_LOCAL_PATH := $(dbo_out_dir)/$($p_LOCAL_FILE)))
 
 # How to launch the image layer
 $(eval docker_run := docker run --rm -v $(dbo_out_dir):/empty \
@@ -147,14 +138,30 @@ $(dbo_tfile_bootstrapped):
 	$Q$(docker_run) "$(docker_cmd) ; $(dbo_cmd_bootstrap)"
 	$Qtouch $$@
 
-# Package target. NB: we add a dependency on the most recent file in the
-# codebase, hence the complicated 'find' command.
+# Packaging target. This gets set when the packaging is run. This is an
+# internal target only, however.  Immediately after this, we create
+# dependencies on this packaging target by the package files themselves, which
+# is what other code should depend on.
+# NB: we add a dependency on the most recent file in the codebase, hence the
+# complicated 'find' command.
 $(dbo_tfile_packaged): $(dbo_tfile_bootstrapped)
 $(dbo_tfile_packaged): $(shell find $(dbo_src_dir) -type f -printf '%T@ %p\n' | \
 			sort -n | tail -1 | cut -f2- -d" ")
 $(dbo_tfile_packaged):
 	$Q$(docker_run) "$(docker_cmd) ; $(dbo_cmd_package)"
 	$Qtouch $$@
+
+# Make the debian package files depend on the packaging target that produces
+# them. (We confirm that the packaging process produced the expected package,
+# then we touch that package so that the dependency won't re-trigger.)
+$(foreach p,$($(dbo_name_lower)_PKGS),
+$($p_LOCAL_PATH): $(dbo_tfile_packaged)
+	$Qif ! test -f $($p_LOCAL_PATH); then \
+		echo "Error, package file missing: $($p_LOCAL_PATH)" >&2; \
+		exit 1; \
+	fi
+	$Qtouch $($p_LOCAL_PATH)
+)
 
 $(if $(wildcard $(dbo_out_dir)),
 clean_deb_$(dbo_name_lower):
