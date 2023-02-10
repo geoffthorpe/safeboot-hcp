@@ -13,9 +13,8 @@ clean_base_layers:
 clean: clean_base_layers
 endif
 
-# settings.mk defines HCP_ORIGIN_DNAME - all we need to use "ORIGIN" as an
-# ancestor in the pp_add_layer() macro is to define a HCP_ORIGIN_TFILE and
-# corresponding rules.
+# settings.mk defines HCP_ORIGIN_DNAME. To pass "ORIGIN" as the "ancestor" to
+# pp_add_layer(), we must define a HCP_ORIGIN_TFILE and a corresponding rule.
 HCP_ORIGIN_TFILE := $(HCP_BASE_LAYERS_OUT)/origin.imported
 $(HCP_ORIGIN_TFILE): | $(HCP_BASE_LAYERS_OUT)
 $(HCP_ORIGIN_TFILE):
@@ -42,7 +41,6 @@ $(eval $(call pp_add_layer,\
 	,\
 	$(HCP_BASE_LAYERS_DEPS_COMMON),\
 	,\
-	,\
 	))
 
 # LAYER: 1apt-source
@@ -67,7 +65,6 @@ $(eval $(call pp_add_layer,\
 	BASE_LAYERS,\
 	,\
 	$(HCP_BASE_LAYERS_SRC)/1apt-source.Dockerfile,\
-	,\
 	,\
 	$(FILES_1APT),\
 	))
@@ -94,7 +91,6 @@ $(eval $(call pp_add_layer,\
 	,\
 	$(HCP_BASE_LAYERS_SRC)/2apt-usable.Dockerfile,\
 	,\
-	,\
 	$(FILES_2APT),\
 	/etc/timezone))
 
@@ -110,7 +106,6 @@ $(eval $(call pp_add_layer,\
 	BASE_LAYERS,\
 	$(HCP_3PLATFORM_XTRA),\
 	$(HCP_BASE_LAYERS_SRC)/3platform.Dockerfile,\
-	,\
 	,\
 	$(FILES_3PLATFORM),\
 	))
@@ -133,7 +128,6 @@ $(eval $(call pp_add_layer,\
 	$(HCP_BASE_LAYERS_SRC)/4add-cacerts.Dockerfile,\
 	,\
 	,\
-	,\
 	$(FILES_4CA_CERT)))
 
 ANCESTOR5 := BASE4
@@ -149,7 +143,6 @@ $(eval $(call pp_add_layer,\
 	BASE,\
 	$(ANCESTOR5),\
 	BASE_LAYERS,\
-	,\
 	,\
 	,\
 	,\

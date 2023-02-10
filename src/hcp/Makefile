@@ -9,14 +9,14 @@ clean: clean_pkg
 endif
 
 # Layer to build hcp-*
+$(eval $(call debian_control_deps,DEPS_HCP_COMMON,$(HCP_PKG_SRC)/common))
 $(eval $(call pp_add_layer,\
 	DBB_HCPAPP,\
 	DEBBUILDER,\
 	PKG,\
-	,\
+	$(DEPS_HCP_COMMON),\
 	,\
 	$(HCP_PKG_SRC)/Makefile,\
-	$(HCP_PKG_SRC)/common,\
 	,\
 	))
 

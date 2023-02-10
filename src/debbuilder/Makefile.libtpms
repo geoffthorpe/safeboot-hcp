@@ -1,13 +1,15 @@
 LIBTPMS_PKG_SRC := $(TOP)/ext-tpmware/libtpms
 
+$(eval $(call debian_control_deps,DEPS_LIBTPMS,$(LIBTPMS_PKG_SRC)))
 $(eval $(call pp_add_layer,\
 	DBB_LIBTPMS,\
 	DEBBUILDER,\
 	DEBBUILDER,\
-	,\
+	$(DEPS_LIBTPMS),\
 	,\
 	$(HCP_DEBBUILDER_SRC)/Makefile.libtpms,\
-	$(LIBTPMS_PKG_SRC)))
+	,\
+	))
 
 # Prep the inputs for pp_add_dpkg_build()
 

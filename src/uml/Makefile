@@ -29,7 +29,6 @@ $(eval $(call pp_add_layer,\
 	$(HCP_UML_SRC)/builder.Dockerfile,\
 	$(HCP_UML_SRC)/Makefile,\
 	,\
-	,\
 	$(HCP_UML_SRC)/uml.kconfig $(HCP_UML_SRC)/myshutdown.c))
 
 # UML_BUILDER is dependent on this kernel source.
@@ -69,7 +68,6 @@ $(eval $(call pp_add_layer,\
 	$(HCP_UML_SRC)/run.Dockerfile,\
 	$(HCP_UML_SRC)/Makefile,\
 	,\
-	,\
 	$(HCP_UML_SRC)/start.sh))
 
 # run.Dockerfile pulls the compiled UML kernel from HCP_UML_BUILDER, so note
@@ -105,7 +103,6 @@ $(eval $(call pp_add_layer,\
 	kmod isc-dhcp-client,\
 	$(HCP_UML_SRC)/bootstrapper.Dockerfile,\
 	$(HCP_UML_SRC)/Makefile,\
-	,\
 	,\
 	$(HCP_UML_SRC)/init.sh))
 

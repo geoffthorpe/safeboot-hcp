@@ -1,13 +1,15 @@
 SWTPM_PKG_SRC := $(TOP)/ext-tpmware/swtpm
 
+$(eval $(call debian_control_deps,DEPS_SWTPM,$(SWTPM_PKG_SRC)))
 $(eval $(call pp_add_layer,\
 	DBB_SWTPM,\
 	DEBBUILDER,\
 	DEBBUILDER,\
-	,\
+	$(DEPS_SWTPM),\
 	,\
 	$(HCP_DEBBUILDER_SRC)/Makefile.swtpm,\
-	$(SWTPM_PKG_SRC)))
+	,\
+	))
 
 # Prep the inputs for pp_add_dpkg_build()
 

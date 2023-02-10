@@ -40,7 +40,6 @@ $(eval $(call pp_add_layer,\
 	$(HCP_BUILDER_SRC)/Dockerfile,\
 	$(HCP_BUILDER_SRC)/Makefile,\
 	,\
-	,\
 	$(HCP_BUILDER_SRC)/deb_src_ify.sh))
 $(eval $(call pp_add_layer,\
 	BUILDER,\
@@ -49,7 +48,6 @@ $(eval $(call pp_add_layer,\
 	$(BUILDER_DEPS),\
 	,\
 	$(HCP_BUILDER_SRC)/Makefile,\
-	,\
 	,\
 	))
 

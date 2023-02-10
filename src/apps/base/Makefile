@@ -28,7 +28,6 @@ $(eval $(call pp_add_layer,\
 	$(HCP_SRC)/apps/base/Dockerfile,\
 	$(HCP_SRC)/apps/base/Makefile $(HCP_SRC)/apps/base/Dockerfile,\
 	,\
-	,\
 	))
 $(eval $(call pp_add_layer,\
 	APPS_BASE,\
@@ -37,6 +36,5 @@ $(eval $(call pp_add_layer,\
 	$(PKGS),\
 	,\
 	$(HCP_SRC)/apps/base/Makefile,\
-	,\
 	,\
 	))

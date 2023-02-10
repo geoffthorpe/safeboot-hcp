@@ -58,6 +58,18 @@ $(eval $(call expand_depends_subrecursive,$(list)))
 $(eval $(name) := $(newlist))
 endef
 
+# $1 - name of the variable to receive the package list (additively, so this
+#      should be set empty if you don't stale values to persist)
+# $2 - path to the codebase that has the ./debian/ subdirectory
+#
+define debian_control_deps
+$(eval varname := $(strip $1))
+$(eval codebase := $(strip $2))
+$(if $(wildcard $(codebase)),,$(error codebase '$(codebase)' missing))
+$(if $(codebase),$(eval $(varname) += \
+	$(shell $(HCP_DEBBUILDER_SRC)/get_build_deps.py $(codebase) "")))
+endef
+
 # The following wrapper defines a new layer for building a docker image. It
 # encapsulates;
 # $1 - gives the new layer a symbolic name. This should be upper case, as it
@@ -69,7 +81,7 @@ endef
 #      derived from.
 # $3 - the symbolic name (in upper case) of the layer whose output directory
 #      should be the parent of this layer's output directory. If empty, it will
-#      be made a top-level layer (underneath $(HCP_OUT), for example). If $8 is
+#      be made a top-level layer (underneath $(HCP_OUT), for example). If $7 is
 #      given, then we also assume this layer's source directory is a child of
 #      the source directory for the same parent.
 # $4 - the packages to be installed in the new layer. For any packages foo that
@@ -83,11 +95,9 @@ endef
 # $6 - optional, path to the caller's Makefile, and/or any other files that
 #      should be listed as dependencies for the re-generation of the layer's
 #      Dockerfile.
-# $7 - optional, path to a codebase whose package-building dependencies (per
-#      its debian/control file) should be added to $4.
-# $8 - an arbitrary number of files in the source directory that should be
+# $7 - an arbitrary number of files in the source directory that should be
 #      mirrored to the output directory (and that the build should depend on).
-# $9 - an arbitrary number of files with absolute paths that should be mirrored
+# $8 - an arbitrary number of files with absolute paths that should be mirrored
 #      to the output directory (and that the build should depend on).
 #
 # Silly choice (please forgive): 'ancestor' represents the layer we are deriving
@@ -104,9 +114,8 @@ $(eval lower_parent := $(shell echo "$(upper_parent)" | tr '[:upper:]' '[:lower:
 $(eval pkg_list := $(strip $4))
 $(eval dfile_xtra := $(strip $5))
 $(eval mfile_xtra := $(strip $6))
-$(eval codebase := $(strip $7))
-$(eval xtra := $(strip $8))
-$(eval xtra_abs := $(strip $9))
+$(eval xtra := $(strip $7))
+$(eval xtra_abs := $(strip $8))
 
 $(eval parent_dir := $(if $(upper_parent),$(HCP_$(upper_parent)_OUT),$(HCP_OUT)))
 $(eval parent_clean := $(if $(upper_parent),clean_$(lower_parent),clean))
@@ -137,10 +146,6 @@ $(eval HCP_$(upper_name)_DFILE := $(out_dfile))
 $(eval HCP_$(upper_name)_ANCESTOR := HCP_$(upper_ancestor))
 $(eval HCP_$(upper_name)_ANCESTOR_DNAME := $($(HCP_$(upper_name)_ANCESTOR)_DNAME))
 $(eval HCP_$(upper_name)_ANCESTOR_TFILE := $($(HCP_$(upper_name)_ANCESTOR)_TFILE))
-
-# If we're given a codebase, include its package-building requirements
-$(if $(codebase),$(eval pkg_list += \
-	$(shell $(HCP_DEBBUILDER_SRC)/get_build_deps.py $(codebase) "")))
 
 # OK, the tricky bit. We need to explicitly follow any *_DEPENDS attributes to
 # get transitive closure. This is in order to handle locally-built packages
@@ -250,11 +255,7 @@ endif
 endef # pp_add_layer()
 
 # The following wrapper adds rules to build debian packages;
-# $1 - name of the package set in upper case. This should be upper case as it
-#      will get converted to lower case internally where appropriate. The
-#      codebase that produces the packages is usually the lower case value. The
-#      inputs required by this function will be prefixed by this name (see
-#      below).
+# $1 - name(s) of the package set(s) in upper case.
 # $2 - name of the layer used for building these packages (usually created by
 #      the pp_add_layer() API just above). The artifacts produced will be put
 #      in the 'artifacts' subdirectory of that layer's output directory.
@@ -303,7 +304,7 @@ endef # pp_add_layer()
 #      - <pkg>_LOCAL_PATH: absolute path to the debian package file (whose name
 #        is expected to be <pkg>_LOCAL_FILE).
 
-define pp_add_dpkg_build
+define pp_add_dpkg_build_sub
 $(eval upper_name := $(strip $1))
 $(eval lower_name := $(shell echo "$(upper_name)" | tr '[:upper:]' '[:lower:]'))
 $(eval upper_layer := $(strip $2))
@@ -369,4 +370,10 @@ clean_deb_$(lower_name):
 	$Qrmdir $(out_dir)
 clean_$(lower_layer): clean_deb_$(lower_name)
 )
+endef # pp_add_dpkg_build_sub
+define pp_add_dpkg_build
+$(eval upper_names := $(strip $1))
+$(eval upper_layer := $(strip $2))
+$(foreach n,$(upper_names),$(eval $(call \
+	pp_add_dpkg_build_sub,$n,$(upper_layer))))
 endef # pp_add_dpkg_build
