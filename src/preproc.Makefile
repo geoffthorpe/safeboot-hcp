@@ -7,16 +7,16 @@
 # $3=unique id (must be different each time this is called)
 # $4=parent clean rule
 define pp_rule_docker_image_rm
-	$(eval rname := clean_image_$(strip $3))
-	$(eval pname := $(strip $4))
-	$(eval tpath := $(strip $1))
-	$(eval iname := $(strip $2))
-ifneq (,$(wildcard $(tpath)))
-$(pname): $(rname)
-$(rname):
-	$Qecho "Removing container image $(iname)"
-	$Qdocker image rm $(iname)
-	rm $(strip $(tpath))
+	$(eval ppr_rname := clean_image_$(strip $3))
+	$(eval ppr_pname := $(strip $4))
+	$(eval ppr_tpath := $(strip $1))
+	$(eval ppr_iname := $(strip $2))
+ifneq (,$(wildcard $(ppr_tpath)))
+$(ppr_pname): $(ppr_rname)
+$(ppr_rname):
+	$Qecho "Removing container image $(ppr_iname)"
+	$Qdocker image rm $(ppr_iname)
+	rm $(strip $(ppr_tpath))
 endif
 endef
 
@@ -35,39 +35,27 @@ endef
 # (NB: The parameter is "FOOLIST", not "$(FOOLIST)"!)
 
 define expand_depends_subrecursive
-$(eval oldlist := $(strip $1))
-$(eval newlist :=)
-$(eval recurse_limit = x$(strip $(recurse_limit)))
-$(foreach i,$(oldlist),
+$(eval ppe_oldlist := $(strip $1))
+$(eval ppe_newlist :=)
+$(eval ppe_recurse_limit = x$(strip $(ppe_recurse_limit)))
+$(foreach i,$(ppe_oldlist),
 	$(if $($i_DEPENDS),
 		$(foreach j,$($i_DEPENDS),
-			$(if $(or $(filter $j,$(oldlist)),$(filter $j,$(newlist))),,
-				$(eval newlist += $j))))
-	$(eval newlist += $i))
-$(if $(and $(findstring $(oldlist),$(newlist)),
-		$(findstring $(newlist),$(oldlist))),,
-	$(if $(filter xxxx,$(recurse_limit)),,
-	$(eval $(call expand_depends_subrecursive,$(newlist)))))
+			$(if $(or $(filter $j,$(ppe_oldlist)),$(filter $j,$(ppe_newlist))),,
+				$(eval ppe_newlist += $j))))
+	$(eval ppe_newlist += $i))
+$(if $(and $(findstring $(ppe_oldlist),$(ppe_newlist)),
+		$(findstring $(ppe_newlist),$(ppe_oldlist))),,
+	$(if $(filter xxxx,$(ppe_recurse_limit)),,
+	$(eval $(call expand_depends_subrecursive,$(ppe_newlist)))))
 endef
 
 define expand_depends
-$(eval name := $(strip $1))
-$(eval list := $($(name)))
-$(eval recurse_limit := )
-$(eval $(call expand_depends_subrecursive,$(list)))
-$(eval $(name) := $(newlist))
-endef
-
-# $1 - name of the variable to receive the package list (additively, so this
-#      should be set empty if you don't stale values to persist)
-# $2 - path to the codebase that has the ./debian/ subdirectory
-#
-define debian_control_deps
-$(eval varname := $(strip $1))
-$(eval codebase := $(strip $2))
-$(if $(wildcard $(codebase)),,$(error codebase '$(codebase)' missing))
-$(if $(codebase),$(eval $(varname) += \
-	$(shell $(HCP_DEBBUILDER_SRC)/get_build_deps.py $(codebase) "")))
+$(eval ppe_name := $(strip $1))
+$(eval ppe_list := $($(ppe_name)))
+$(eval ppe_recurse_limit := )
+$(eval $(call expand_depends_subrecursive,$(ppe_list)))
+$(eval $(ppe_name) := $(ppe_newlist))
 endef
 
 # The following wrapper defines a new layer for building a docker image. It
@@ -105,47 +93,47 @@ endef
 # file system terms. The new layer is dependent on both.
 
 define pp_add_layer
-$(eval upper_name := $(strip $1))
-$(eval lower_name := $(shell echo "$(upper_name)" | tr '[:upper:]' '[:lower:]'))
-$(eval upper_ancestor := $(strip $2))
-$(eval lower_ancestor := $(shell echo "$(upper_ancestor)" | tr '[:upper:]' '[:lower:]'))
-$(eval upper_parent := $(strip $3))
-$(eval lower_parent := $(shell echo "$(upper_parent)" | tr '[:upper:]' '[:lower:]'))
-$(eval pkg_list := $(strip $4))
-$(eval dfile_xtra := $(strip $5))
-$(eval mfile_xtra := $(strip $6))
-$(eval xtra := $(strip $7))
-$(eval xtra_abs := $(strip $8))
+$(eval ppa_name_upper := $(strip $1))
+$(eval ppa_name_lower := $(shell echo "$(ppa_name_upper)" | tr '[:upper:]' '[:lower:]'))
+$(eval ppa_ancestor_upper := $(strip $2))
+$(eval ppa_ancestor_lower := $(shell echo "$(ppa_ancestor_upper)" | tr '[:upper:]' '[:lower:]'))
+$(eval ppa_parent_upper := $(strip $3))
+$(eval ppa_parent_lower := $(shell echo "$(ppa_parent_upper)" | tr '[:upper:]' '[:lower:]'))
+$(eval ppa_pkg_list := $(strip $4))
+$(eval ppa_dfile_xtra := $(strip $5))
+$(eval ppa_mfile_xtra := $(strip $6))
+$(eval ppa_xtra := $(strip $7))
+$(eval ppa_xtra_abs := $(strip $8))
 
-$(eval parent_dir := $(if $(upper_parent),$(HCP_$(upper_parent)_OUT),$(HCP_OUT)))
-$(eval parent_clean := $(if $(upper_parent),clean_$(lower_parent),clean))
-$(eval parent_src := $(if $(upper_parent),$(HCP_$(upper_parent)_SRC),$(HCP_SRC)))
-$(eval out_dir := $(parent_dir)/$(lower_name))
-$(eval out_dname := $(call HCP_IMAGE,$(lower_name)))
-$(eval out_tfile := $(out_dir)/built)
-$(eval out_dfile := $(out_dir)/Dockerfile)
-$(eval my_src := $(parent_src)/$(lower_name))
-$(eval files_copied :=)
+$(eval ppa_parent_dir := $(if $(ppa_parent_upper),$(HCP_$(ppa_parent_upper)_OUT),$(HCP_OUT)))
+$(eval ppa_parent_clean := $(if $(ppa_parent_upper),clean_$(ppa_parent_lower),clean))
+$(eval ppa_parent_src := $(if $(ppa_parent_upper),$(HCP_$(ppa_parent_upper)_SRC),$(HCP_SRC)))
+$(eval ppa_out_dir := $(ppa_parent_dir)/$(ppa_name_lower))
+$(eval ppa_out_dname := $(call HCP_IMAGE,$(ppa_name_lower)))
+$(eval ppa_out_tfile := $(ppa_out_dir)/built)
+$(eval ppa_out_dfile := $(ppa_out_dir)/Dockerfile)
+$(eval ppa_src := $(ppa_parent_src)/$(ppa_name_lower))
+$(eval ppa_copied :=)
 
-$(eval HCP_$(upper_name)_OUT := $(out_dir))
-$(eval HCP_$(upper_name)_SRC := $(my_src))
+$(eval HCP_$(ppa_name_upper)_OUT := $(ppa_out_dir))
+$(eval HCP_$(ppa_name_upper)_SRC := $(ppa_src))
 
-$(out_dir): | $(parent_dir)
-$(eval MDIRS += $(out_dir))
+$(ppa_out_dir): | $(ppa_parent_dir)
+$(eval MDIRS += $(ppa_out_dir))
 
-# A wrapper target to build the "$(lower_name)" image
-$(lower_name): $(out_dir)/built
-$(eval ALL += $(out_dir)/built)
+# A wrapper target to build the "$(ppa_name_lower)" image
+$(ppa_name_lower): $(ppa_out_dir)/built
+$(eval ALL += $(ppa_out_dir)/built)
 
 # Symbolic handles this layer should define
-$(eval HCP_$(upper_name)_DNAME := $(out_dname))
-$(eval HCP_$(upper_name)_TFILE := $(out_tfile))
-$(eval HCP_$(upper_name)_DFILE := $(out_dfile))
+$(eval HCP_$(ppa_name_upper)_DNAME := $(ppa_out_dname))
+$(eval HCP_$(ppa_name_upper)_TFILE := $(ppa_out_tfile))
+$(eval HCP_$(ppa_name_upper)_DFILE := $(ppa_out_dfile))
 
 # And references to our docker ancestor.
-$(eval HCP_$(upper_name)_ANCESTOR := HCP_$(upper_ancestor))
-$(eval HCP_$(upper_name)_ANCESTOR_DNAME := $($(HCP_$(upper_name)_ANCESTOR)_DNAME))
-$(eval HCP_$(upper_name)_ANCESTOR_TFILE := $($(HCP_$(upper_name)_ANCESTOR)_TFILE))
+$(eval HCP_$(ppa_name_upper)_ANCESTOR := HCP_$(ppa_ancestor_upper))
+$(eval HCP_$(ppa_name_upper)_ANCESTOR_DNAME := $($(HCP_$(ppa_name_upper)_ANCESTOR)_DNAME))
+$(eval HCP_$(ppa_name_upper)_ANCESTOR_TFILE := $($(HCP_$(ppa_name_upper)_ANCESTOR)_TFILE))
 
 # OK, the tricky bit. We need to explicitly follow any *_DEPENDS attributes to
 # get transitive closure. This is in order to handle locally-built packages
@@ -157,223 +145,99 @@ $(eval HCP_$(upper_name)_ANCESTOR_TFILE := $($(HCP_$(upper_name)_ANCESTOR)_TFILE
 # locally-built alternatives. The "expand_depends" performs the transitive
 # closure, and then we identify and separate out locally-built vs upstream
 # packages.
-$(eval $(call expand_depends,pkg_list))
-$(eval pkgs_local := $(foreach i,$(pkg_list),$(if $($i_LOCAL_FILE),$i)))
-$(eval pkgs_nonlocal := $(foreach i,$(pkg_list),$(if $($i_LOCAL_FILE),,$i)))
+$(eval $(call expand_depends,ppa_pkg_list))
+$(eval ppa_pkgs_local := $(foreach i,$(ppa_pkg_list),$(if $($i_LOCAL_FILE),$i)))
+$(eval ppa_pkgs_nonlocal := $(foreach i,$(ppa_pkg_list),$(if $($i_LOCAL_FILE),,$i)))
 
-# For each "xtra" file, add a dependency for it to be copied to the context
+# For each "ppa_xtra" file, add a dependency for it to be copied to the context
 # area too.
-$(foreach i,$(xtra),
-$(out_dir)/$i: | $(out_dir)
-$(out_dir)/$i: $(my_src)/$i
-$(out_dir)/$i:
-	$Qcp $(my_src)/$i $(out_dir)/$i
-$(eval files_copied += $(out_dir)/$i))
-# Ditto for "xtra_abs"
-$(foreach i,$(xtra_abs),
+$(foreach i,$(ppa_xtra),
+$(ppa_out_dir)/$i: | $(ppa_out_dir)
+$(ppa_out_dir)/$i: $(ppa_src)/$i
+$(ppa_out_dir)/$i:
+	$Qcp $(ppa_src)/$i $(ppa_out_dir)/$i
+$(eval ppa_copied += $(ppa_out_dir)/$i))
+# Ditto for "ppa_xtra_abs"
+$(foreach i,$(ppa_xtra_abs),
 $(eval j := $(shell basename $i))
-$(out_dir)/$j: | $(out_dir)
-$(out_dir)/$j: $i
-$(out_dir)/$j:
-	$Qcp $i $(out_dir)/$j
-$(eval files_copied += $(out_dir)/$j))
+$(ppa_out_dir)/$j: | $(ppa_out_dir)
+$(ppa_out_dir)/$j: $i
+$(ppa_out_dir)/$j:
+	$Qcp $i $(ppa_out_dir)/$j
+$(eval ppa_copied += $(ppa_out_dir)/$j))
 
 # For local packages, do the shell-fu to prepare commands to the dockerfile;
 # - COPY and RUN commands for installing locally-built packages
 # - RUN commands for installing upstream packages
 # - a path to unconditionally append to the Dockerfile (given that the
 #   corresponding parameter is optional)
-$(eval pkgs_local_file := $(foreach i,$(pkgs_local),$($i_LOCAL_FILE)))
-$(eval pkgs_local_path := $(foreach i,$(pkgs_local),/$($i_LOCAL_FILE)))
-$(if $(strip $(pkgs_local)),
-	$(eval pkgs_local_cmd1 := COPY $(pkgs_local_file) /)
-	$(eval pkgs_local_cmd2 := RUN apt install -y $(pkgs_local_path) && \
-			rm -f $(pkgs_local_path))
+$(eval ppa_pkgs_local_file := $(foreach i,$(ppa_pkgs_local),$($i_LOCAL_FILE)))
+$(eval ppa_pkgs_local_path := $(foreach i,$(ppa_pkgs_local),/$($i_LOCAL_FILE)))
+$(if $(strip $(ppa_pkgs_local)),
+	$(eval ppa_pkgs_local_cmd1 := COPY $(ppa_pkgs_local_file) /)
+	$(eval ppa_pkgs_local_cmd2 := RUN apt install -y $(ppa_pkgs_local_path) && \
+			rm -f $(ppa_pkgs_local_path))
 ,
-	$(eval pkgs_local_cmd1 := RUN echo no local packages to copy)
-	$(eval pkgs_local_cmd2 := RUN echo no local packages to install)
+	$(eval ppa_pkgs_local_cmd1 := RUN echo no local packages to copy)
+	$(eval ppa_pkgs_local_cmd2 := RUN echo no local packages to install)
 )
-$(if $(strip $(pkgs_nonlocal)),
-	$(eval pkgs_nonlocal_cmd := RUN apt-get install -y $(pkgs_nonlocal))
+$(if $(strip $(ppa_pkgs_nonlocal)),
+	$(eval ppa_pkgs_nonlocal_cmd := RUN apt-get install -y $(ppa_pkgs_nonlocal))
 ,
-	$(eval pkgs_nonlocal_cmd := RUN echo no upstream packages to install)
+	$(eval ppa_pkgs_nonlocal_cmd := RUN echo no upstream packages to install)
 )
-$(if $(dfile_xtra),
-	$(eval new_dfile_xtra := $(dfile_xtra))
+$(if $(ppa_dfile_xtra),
+	$(eval new_ppa_dfile_xtra := $(ppa_dfile_xtra))
 ,
-	$(eval new_dfile_xtra := /dev/null)
+	$(eval new_ppa_dfile_xtra := /dev/null)
 )
 
 # Rule to produce the dockerfile
-$(out_dfile): | $(out_dir)
-$(out_dfile): $(dfile_xtra) $(mfile_xtra)
-$(out_dfile):
-	$Qecho "FROM $(HCP_$(upper_name)_ANCESTOR_DNAME)" > $$@
-	$Qecho "$(pkgs_local_cmd1)" >> $$@
-	$Qecho "$(pkgs_local_cmd2)" >> $$@
-	$Qecho "$(pkgs_nonlocal_cmd)" >> $$@
-	$Qcat $(new_dfile_xtra) >> $$@
+$(ppa_out_dfile): | $(ppa_out_dir)
+$(ppa_out_dfile): $(ppa_dfile_xtra) $(ppa_mfile_xtra)
+$(ppa_out_dfile):
+	$Qecho "FROM $(HCP_$(ppa_name_upper)_ANCESTOR_DNAME)" > $$@
+	$Qecho "$(ppa_pkgs_local_cmd1)" >> $$@
+	$Qecho "$(ppa_pkgs_local_cmd2)" >> $$@
+	$Qecho "$(ppa_pkgs_nonlocal_cmd)" >> $$@
+	$Qcat $(new_ppa_dfile_xtra) >> $$@
 
 # Rule to build the docker image
-$(eval pkgs_local_src := $(foreach i,$(pkgs_local),$($i_LOCAL_PATH)))
-$(eval pkgs_local_fnames := $(foreach i,$(pkgs_local),$($i_LOCAL_FILE)))
-$(eval pkgs_local_tfile :=)
-$(foreach i,$(pkgs_local),
-	$(if $(filter $i,$(pkgs_local_tfile)),,
-		$(eval pkgs_local_tfile += $($i_TFILE))))
-$(out_tfile): $(out_dfile)
-$(out_tfile): $(HCP_$(upper_name)_ANCESTOR_TFILE)
-$(out_tfile): $(pkgs_local_tfile)
-$(out_tfile): $(files_copied)
-	$Qecho "Building container image $(out_dname)"
+$(eval ppa_pkgs_local_src := $(foreach i,$(ppa_pkgs_local),$($i_LOCAL_PATH)))
+$(eval ppa_pkgs_local_fnames := $(foreach i,$(ppa_pkgs_local),$($i_LOCAL_FILE)))
+$(eval ppa_pkgs_local_tfile :=)
+$(foreach i,$(ppa_pkgs_local),
+	$(if $(filter $i,$(ppa_pkgs_local_tfile)),,
+		$(eval ppa_pkgs_local_tfile += $($i_TFILE))))
+$(ppa_out_tfile): $(ppa_out_dfile)
+$(ppa_out_tfile): $(HCP_$(ppa_name_upper)_ANCESTOR_TFILE)
+$(ppa_out_tfile): $(ppa_pkgs_local_tfile)
+$(ppa_out_tfile): $(ppa_copied)
+	$Qecho "Building container image $(ppa_out_dname)"
 	$Qbash -c " \
 	( \
-		trap 'cd $(out_dir) && rm -f $(pkgs_local_fnames)' EXIT; \
-		if [[ -n \"$(pkgs_local_src)\" ]]; then \
-			ln -t $(out_dir) $(pkgs_local_src); \
+		trap 'cd $(ppa_out_dir) && rm -f $(ppa_pkgs_local_fnames)' EXIT; \
+		if [[ -n \"$(ppa_pkgs_local_src)\" ]]; then \
+			ln -t $(ppa_out_dir) $(ppa_pkgs_local_src); \
 		fi; \
-		docker build -t $(out_dname) -f $(out_dfile) $(out_dir); \
+		docker build -t $(ppa_out_dname) -f $(ppa_out_dfile) $(ppa_out_dir); \
 	)"
 	$Qtouch $$@
 
 # Cleanup
 $(eval $(call pp_rule_docker_image_rm,\
-	$(out_tfile),\
-	$(out_dname),\
-	$(lower_name),\
-	clean_$(lower_name)))
+	$(ppa_out_tfile),\
+	$(ppa_out_dname),\
+	$(ppa_name_lower),\
+	clean_$(ppa_name_lower)))
 
-ifneq (,$(wildcard $(out_dir)))
-clean_$(lower_name): | preclean
-	$Qrm -f $(out_dfile) $(out_tfile) \
-		$(files_copied)
-	$Qrmdir $(out_dir)
-clean_image_$(lower_ancestor): clean_$(lower_name)
-$(parent_clean): clean_$(lower_name)
+ifneq (,$(wildcard $(ppa_out_dir)))
+clean_$(ppa_name_lower): | preclean
+	$Qrm -f $(ppa_out_dfile) $(ppa_out_tfile) \
+		$(ppa_copied)
+	$Qrmdir $(ppa_out_dir)
+clean_image_$(ppa_ancestor_lower): clean_$(ppa_name_lower)
+$(ppa_parent_clean): clean_$(ppa_name_lower)
 endif
 
 endef # pp_add_layer()
-
-# The following wrapper adds rules to build debian packages;
-# $1 - name(s) of the package set(s) in upper case.
-# $2 - name of the layer used for building these packages (usually created by
-#      the pp_add_layer() API just above). The artifacts produced will be put
-#      in the 'artifacts' subdirectory of that layer's output directory.
-#
-# Makefile variables are used for the remainder of input to (and output from)
-# this function. Assuming $1==FOO, voici;
-# Inputs;
-#      - foo_PKGS: the short names of the packages produced by this package
-#        set. Eg; "libtpms0 libtpms0-dbgsym libtpms-dev"
-#      - foo_CANONICAL: if, later on, a 'builder'-based image says its needs
-#        'libtpms', what subset of foo_PKGS do they mean?
-#      - FOO_PKG_SRC: absolute path to the codebase for this package set.
-#      - FOO_PKG_REFFILE: path relative to FOO_PKG_SRC, points to an immutable
-#        file in the codebase, which is used as a reference when "chown"ing
-#        files in mounted directories.
-#      - FOO_PKG_CMD_BOOTSTRAP: the command to run to ensure that the codebase
-#        is ready to be built (like triggering autoconf/automake). Eg;
-#        "./autogen.sh"
-#      - FOO_PKG_CMD_PACKAGE: the command to build the debian packages. Eg;
-#        "dpkg-buildpackage -uc -us"
-#      For each <pkg> in foo_PKGS;
-#      - <pkg>_DEPENDS: if <pkg> depends on any other packages that might be
-#        locally-built, in this package set or another, this variable should
-#        list them. When locally-built packages get installed later on, this
-#        declaration helps ensure that locally-built dependencies also get
-#        installed rather than upstream versions. Eg;
-#          "libtpms-dev_DEPENDS := libtpms0"
-#      - <pkg>_LOCAL_FILE: the filename that the resulting debian package
-#        is expected to have. The build does not ensure this, the caller is
-#        expected to predict it. Eg;
-#          "libtpms0_LOCAL_FILE := libtpms0_0.10.0~dev1_amd64.deb"
-# Outputs;
-#      - HCP_DBB_LIST: foo_PKGS gets added to this accumulator.
-#      - HCP_FOO_PKG_BOOTSTRAPPED: absolute path to the touchfile that gets set
-#        when the package set is bootstrapped. Can be used as a dependency.
-#      - HCP_FOO_PKG_PACKAGED: absolute path to the touchfile that gets set
-#        when the package set is built. Can be used as a dependency.
-#      - deb_foo: symbolic make target for HCP_FOO_PKG_PACKAGES, ie. to build
-#        the package set.
-#      - clean_deb_foo: symbolic make target to remove output associated with
-#        this package set.
-#      For each <pkg> in foo_PKGS;
-#      - <pkg>_TFILE: set equal to HCP_FOO_PKG_PACKAGED, which is set when the
-#        package set is built. (This isn't package-specific, all the packages
-#        in the same set will have the same _TFILE attribute.)
-#      - <pkg>_LOCAL_PATH: absolute path to the debian package file (whose name
-#        is expected to be <pkg>_LOCAL_FILE).
-
-define pp_add_dpkg_build_sub
-$(eval upper_name := $(strip $1))
-$(eval lower_name := $(shell echo "$(upper_name)" | tr '[:upper:]' '[:lower:]'))
-$(eval upper_layer := $(strip $2))
-$(eval lower_layer := $(shell echo "$(upper_layer)" | tr '[:upper:]' '[:lower:]'))
-
-# Calculate paths once
-$(eval parent_dir := $(HCP_$(upper_layer)_OUT))
-$(eval out_dir := $(parent_dir)/artifacts-$(lower_name))
-$(eval mount_dir := $(out_dir)/$(lower_name))
-$(eval tfile_bootstrapped := $(out_dir)/_bootstrapped)
-$(eval tfile_packaged := $(out_dir)/_packaged)
-$(eval src_dir := $($(upper_name)_PKG_SRC))
-$(eval layer_dname := $(HCP_$(upper_layer)_DNAME))
-$(eval layer_tfile := $(HCP_$(upper_layer)_TFILE))
-$(eval reffile := $($(upper_name)_PKG_REFFILE))
-$(eval cmd_bootstrap := $($(upper_name)_PKG_CMD_BOOTSTRAP))
-$(eval cmd_package := $($(upper_name)_PKG_CMD_PACKAGE))
-
-# Auto-create output directories
-$(out_dir): | $(parent_dir)
-$(mount_dir): | $(out_dir)
-$(eval MDIRS += $(out_dir) $(mount_dir))
-
-# Expected outputs
-$(eval HCP_DBB_LIST += $($(lower_name)_PKGS))
-$(eval HCP_$(upper_name)_PKG_BOOTSTRAPPED := $(tfile_bootstrapped))
-$(eval HCP_$(upper_name)_PKG_PACKAGED := $(tfile_packaged))
-deb_$(lower_name): $(tfile_packaged)
-$(eval ALL += deb_$(lower_name))
-$(foreach p,$($(lower_name)_PKGS),
-	$(eval $p_TFILE := $(tfile_packaged))
-	$(eval $p_LOCAL_PATH := $(out_dir)/$($p_LOCAL_FILE)))
-
-# How to launch the image layer
-$(eval docker_run := docker run --rm -v $(out_dir):/empty \
-			-v $(src_dir):/empty/$(lower_name) \
-			$(layer_dname) \
-			bash -c)
-# and common preamble to what we run in the container
-$(eval docker_cmd := trap '/hcp/base/chowner.sh $(reffile) ..' EXIT ; \
-			cd /empty/$(lower_name))
-
-# Bootstrap target
-$(tfile_bootstrapped): $(layer_tfile)
-$(tfile_bootstrapped): | $(mount_dir)
-$(tfile_bootstrapped):
-	$Q$(docker_run) "$(docker_cmd) ; $(cmd_bootstrap)"
-	$Qtouch $$@
-
-# Package target. NB: we add a dependency on the most recent file in the
-# codebase, hence the complicated 'find' command.
-$(tfile_packaged): $(tfile_bootstrapped)
-$(tfile_packaged): $(shell find $(src_dir) -type f -printf '%T@ %p\n' | \
-			sort -n | tail -1 | cut -f2- -d" ")
-$(tfile_packaged):
-	$Q$(docker_run) "$(docker_cmd) ; $(cmd_package)"
-	$Qtouch $$@
-
-$(if $(wildcard $(out_dir)),
-clean_deb_$(lower_name):
-	$Qif test -d $(mount_dir); then rmdir $(mount_dir); fi
-	$Qrm -f $(out_dir)/*
-	$Qrmdir $(out_dir)
-clean_$(lower_layer): clean_deb_$(lower_name)
-)
-endef # pp_add_dpkg_build_sub
-define pp_add_dpkg_build
-$(eval upper_names := $(strip $1))
-$(eval upper_layer := $(strip $2))
-$(foreach n,$(upper_names),$(eval $(call \
-	pp_add_dpkg_build_sub,$n,$(upper_layer))))
-endef # pp_add_dpkg_build

@@ -8,18 +8,6 @@ clean_pkg:
 clean: clean_pkg
 endif
 
-# Layer to build hcp-*
-$(eval $(call debian_control_deps,DEPS_HCP_COMMON,$(HCP_PKG_SRC)/common))
-$(eval $(call pp_add_layer,\
-	DBB_HCPAPP,\
-	DEBBUILDER,\
-	PKG,\
-	$(DEPS_HCP_COMMON),\
-	,\
-	$(HCP_PKG_SRC)/Makefile,\
-	,\
-	))
-
 ##############
 # hcp-common #
 ##############
@@ -46,9 +34,10 @@ $(foreach p,$(hcpcommon_PKGS),\
 #		$p_$(HCPCOMMON_VERSION)-$(HCPCOMMON_RELEASE)_$(HCPCOMMON_ARCH).deb))
 
 # Turn the crank
-$(eval $(call pp_add_dpkg_build,\
+$(eval $(call debian_build,\
 	HCPCOMMON,\
-	DBB_HCPAPP))
+	DEBBUILDER,\
+	$(HCP_PKG_SRC)/Makefile))
 
 ############
 # hcp-xtra #
@@ -70,9 +59,10 @@ $(foreach p,$(hcpxtra_PKGS),\
 	$(eval $p_LOCAL_FILE := \
 		$p_$(HCPXTRA_VERSION)_$(HCPXTRA_ARCH).deb))
 
-$(eval $(call pp_add_dpkg_build,\
+$(eval $(call debian_build,\
 	HCPXTRA,\
-	DBB_HCPAPP))
+	DEBBUILDER,\
+	$(HCP_PKG_SRC)/Makefile))
 
 #############
 # hcp-tools #
@@ -94,9 +84,10 @@ $(foreach p,$(hcptools_PKGS),\
 	$(eval $p_LOCAL_FILE := \
 		$p_$(HCPTOOLS_VERSION)_$(HCPTOOLS_ARCH).deb))
 
-$(eval $(call pp_add_dpkg_build,\
+$(eval $(call debian_build,\
 	HCPTOOLS,\
-	DBB_HCPAPP))
+	DEBBUILDER,\
+	$(HCP_PKG_SRC)/Makefile))
 
 #################
 # hcp-enrollsvc #
@@ -118,9 +109,10 @@ $(foreach p,$(hcpenrollsvc_PKGS),\
 	$(eval $p_LOCAL_FILE := \
 		$p_$(HCPENROLLSVC_VERSION)_$(HCPENROLLSVC_ARCH).deb))
 
-$(eval $(call pp_add_dpkg_build,\
+$(eval $(call debian_build,\
 	HCPENROLLSVC,\
-	DBB_HCPAPP))
+	DEBBUILDER,\
+	$(HCP_PKG_SRC)/Makefile))
 
 #################
 # hcp-attestsvc #
@@ -142,9 +134,10 @@ $(foreach p,$(hcpattestsvc_PKGS),\
 	$(eval $p_LOCAL_FILE := \
 		$p_$(HCPATTESTSVC_VERSION)_$(HCPATTESTSVC_ARCH).deb))
 
-$(eval $(call pp_add_dpkg_build,\
+$(eval $(call debian_build,\
 	HCPATTESTSVC,\
-	DBB_HCPAPP))
+	DEBBUILDER,\
+	$(HCP_PKG_SRC)/Makefile))
 
 #################
 # hcp-policysvc #
@@ -166,9 +159,10 @@ $(foreach p,$(hcppolicysvc_PKGS),\
 	$(eval $p_LOCAL_FILE := \
 		$p_$(HCPPOLICYSVC_VERSION)_$(HCPPOLICYSVC_ARCH).deb))
 
-$(eval $(call pp_add_dpkg_build,\
+$(eval $(call debian_build,\
 	HCPPOLICYSVC,\
-	DBB_HCPAPP))
+	DEBBUILDER,\
+	$(HCP_PKG_SRC)/Makefile))
 
 ################
 # hcp-swtpmsvc #
@@ -193,9 +187,10 @@ $(foreach p,$(hcpswtpmsvc_PKGS),\
 	$(eval $p_LOCAL_FILE := \
 		$p_$(HCPSWTPMSVC_VERSION)_$(HCPSWTPMSVC_ARCH).deb))
 
-$(eval $(call pp_add_dpkg_build,\
+$(eval $(call debian_build,\
 	HCPSWTPMSVC,\
-	DBB_HCPAPP))
+	DEBBUILDER,\
+	$(HCP_PKG_SRC)/Makefile))
 
 ##############
 # hcp-kdcsvc #
@@ -219,9 +214,10 @@ $(foreach p,$(hcpkdcsvc_PKGS),\
 	$(eval $p_LOCAL_FILE := \
 		$p_$(HCPKDCSVC_VERSION)_$(HCPKDCSVC_ARCH).deb))
 
-$(eval $(call pp_add_dpkg_build,\
+$(eval $(call debian_build,\
 	HCPKDCSVC,\
-	DBB_HCPAPP))
+	DEBBUILDER,\
+	$(HCP_PKG_SRC)/Makefile))
 
 ##############
 # hcp-sshsvc #
@@ -245,6 +241,7 @@ $(foreach p,$(hcpsshsvc_PKGS),\
 	$(eval $p_LOCAL_FILE := \
 		$p_$(HCPSSHSVC_VERSION)_$(HCPSSHSVC_ARCH).deb))
 
-$(eval $(call pp_add_dpkg_build,\
+$(eval $(call debian_build,\
 	HCPSSHSVC,\
-	DBB_HCPAPP))
+	DEBBUILDER,\
+	$(HCP_PKG_SRC)/Makefile))

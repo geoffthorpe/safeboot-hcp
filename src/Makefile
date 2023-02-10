@@ -13,6 +13,9 @@ include $(HCP_SRC)/base/Makefile
 # source.
 include $(HCP_SRC)/debbuilder/Makefile
 
+# External code-bases (using "debbuilder" -> *.deb)
+include $(HCP_SRC)/ext/tpmware-deb.Makefile
+
 # HCP app code: debian packages (using "debbuilder" -> *.deb)
 include $(HCP_SRC)/hcp/Makefile
 
