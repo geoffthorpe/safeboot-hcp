@@ -4,6 +4,9 @@ HCP_IMAGE_TAG ?= devel
 # Function for converting '$1' into a fully-qualified docker image name
 HCP_IMAGE=$(HCP_IMAGE_PREFIX)$1:$(HCP_IMAGE_TAG)
 
+# And debian packages of HCP code get this version
+HCP_VERSION ?= 0.5
+
 # Specify the underlying (debian-based) docker image to use as the system
 # environment for all operations.
 # - This will affect the versions of numerous system packages that get
