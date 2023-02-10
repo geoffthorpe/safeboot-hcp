@@ -13,9 +13,8 @@ libtpms0-dbgsym_DEPENDS := libtpms0
 LIBTPMS_VERSION ?= 0.10.0
 LIBTPMS_RELEASE ?= ~dev1
 LIBTPMS_ARCH ?= amd64
-$(foreach p,$(libtpms_PKGS),\
-	$(eval $p_LOCAL_FILE := \
-		$p_$(LIBTPMS_VERSION)$(LIBTPMS_RELEASE)_$(LIBTPMS_ARCH).deb))
+LIBTPMS_SUFFIX := _$(LIBTPMS_VERSION)$(LIBTPMS_RELEASE)_$(LIBTPMS_ARCH).deb
+$(foreach p,$(libtpms_PKGS),$(eval $p_LOCAL_FILE := $p$(LIBTPMS_SUFFIX)))
 
 SWTPM_PKG_SRC := $(TOP)/ext-tpmware/swtpm
 swtpm_PKGS := swtpm swtpm-libs swtpm-dbgsym swtpm-dev swtpm-tools swtpm-tools-dbgsym
@@ -31,15 +30,10 @@ swtpm-tools-dbgsym_DEPENDS := swtpm-tools
 SWTPM_VERSION ?= 0.8.0
 SWTPM_RELEASE ?= ~dev1
 SWTPM_ARCH ?= amd64
-$(foreach p,$(swtpm_PKGS),\
-	$(eval $p_LOCAL_FILE := \
-		$p_$(SWTPM_VERSION)$(SWTPM_RELEASE)_$(SWTPM_ARCH).deb))
+SWTPM_SUFFIX := $(SWTPM_VERSION)$(SWTPM_RELEASE)_$(SWTPM_ARCH).deb
+$(foreach p,$(swtpm_PKGS),$(eval $p_LOCAL_FILE := $p_$(SWTPM_SUFFIX)))
 
 $(eval $(call debian_build,\
-	LIBTPMS,\
-	DEBBUILDER,\
-	$(HCP_SRC)/ext/tpmware.Makefile))
-$(eval $(call debian_build,\
-	SWTPM,\
+	LIBTPMS SWTPM,\
 	DEBBUILDER,\
 	$(HCP_SRC)/ext/tpmware.Makefile))
