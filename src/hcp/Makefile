@@ -1,12 +1,12 @@
-HCP_PKG_SRC := $(HCP_SRC)/hcp
+hcp_PKG_SRC := $(HCP_SRC)/hcp
 
 # HCP_VERSION is in settings.mk
 # TODO: the DPKG_RELEASE part of the package version is not getting generated.
 # Commented-out here and absent in the subsequent sections.
-#HCP_DPKG_RELEASE ?= 1
-HCP_DPKG_ARCH ?= all
-HCP_DPKG_SUFFIX := _$(HCP_VERSION)_$(HCP_DPKG_ARCH).deb
-#HCP_DPKG_SUFFIX := _$(HCP_VERSION)-$(HCP_DPKG_RELEASE)_$(HCP_DPKG_ARCH).deb
+#hcp_DPKG_RELEASE ?= 1
+hcp_DPKG_ARCH ?= all
+hcp_DPKG_SUFFIX := _$(HCP_VERSION)_$(hcp_DPKG_ARCH).deb
+#hcp_DPKG_SUFFIX := _$(HCP_VERSION)-$(hcp_DPKG_RELEASE)_$(hcp_DPKG_ARCH).deb
 
 ##############
 # hcp-common #
@@ -14,10 +14,10 @@ HCP_DPKG_SUFFIX := _$(HCP_VERSION)_$(HCP_DPKG_ARCH).deb
 
 hcpcommon_PKGS := hcp-common
 hcpcommon_CANONICAL := hcp-common
-HCPCOMMON_PKG_SRC := $(HCP_PKG_SRC)/common
-HCPCOMMON_PKG_REFFILE := ./hcp.sh
-HCPCOMMON_PKG_CMD_BOOTSTRAP := true
-HCPCOMMON_PKG_CMD_PACKAGE := debuild -uc -us
+hcpcommon_PKG_SRC := $(hcp_PKG_SRC)/common
+hcpcommon_PKG_REFFILE := ./hcp.sh
+hcpcommon_PKG_CMD_BOOTSTRAP := true
+hcpcommon_PKG_CMD_PACKAGE := debuild -uc -us
 hcp-common_DEPENDS :=
 
 ############
@@ -26,10 +26,10 @@ hcp-common_DEPENDS :=
 
 hcpxtra_PKGS := hcp-xtra
 hcpxtra_CANONICAL := hcp-xtra
-HCPXTRA_PKG_SRC := $(HCP_PKG_SRC)/xtra
-HCPXTRA_PKG_REFFILE := ./HcpHostname.py
-HCPXTRA_PKG_CMD_BOOTSTRAP := true
-HCPXTRA_PKG_CMD_PACKAGE := debuild -uc -us
+hcpxtra_PKG_SRC := $(hcp_PKG_SRC)/xtra
+hcpxtra_PKG_REFFILE := ./HcpHostname.py
+hcpxtra_PKG_CMD_BOOTSTRAP := true
+hcpxtra_PKG_CMD_PACKAGE := debuild -uc -us
 hcp-xtra_DEPENDS := hcp-common
 
 #############
@@ -38,10 +38,10 @@ hcp-xtra_DEPENDS := hcp-common
 
 hcptools_PKGS := hcp-tools
 hcptools_CANONICAL := hcp-tools
-HCPTOOLS_PKG_SRC := $(HCP_PKG_SRC)/tools
-HCPTOOLS_PKG_REFFILE := ./run_client.sh
-HCPTOOLS_PKG_CMD_BOOTSTRAP := true
-HCPTOOLS_PKG_CMD_PACKAGE := debuild -uc -us
+hcptools_PKG_SRC := $(hcp_PKG_SRC)/tools
+hcptools_PKG_REFFILE := ./run_client.sh
+hcptools_PKG_CMD_BOOTSTRAP := true
+hcptools_PKG_CMD_PACKAGE := debuild -uc -us
 hcp-tools_DEPENDS := hcp-common hcp-xtra
 
 #################
@@ -50,10 +50,10 @@ hcp-tools_DEPENDS := hcp-common hcp-xtra
 
 hcpenrollsvc_PKGS := hcp-enrollsvc
 hcpenrollsvc_CANONICAL := hcp-enrollsvc
-HCPENROLLSVC_PKG_SRC := $(HCP_PKG_SRC)/enrollsvc
-HCPENROLLSVC_PKG_REFFILE := ./mgmt_api.py
-HCPENROLLSVC_PKG_CMD_BOOTSTRAP := true
-HCPENROLLSVC_PKG_CMD_PACKAGE := debuild -uc -us
+hcpenrollsvc_PKG_SRC := $(hcp_PKG_SRC)/enrollsvc
+hcpenrollsvc_PKG_REFFILE := ./mgmt_api.py
+hcpenrollsvc_PKG_CMD_BOOTSTRAP := true
+hcpenrollsvc_PKG_CMD_PACKAGE := debuild -uc -us
 hcp-enrollsvc_DEPENDS := hcp-common hcp-xtra
 
 #################
@@ -62,10 +62,10 @@ hcp-enrollsvc_DEPENDS := hcp-common hcp-xtra
 
 hcpattestsvc_PKGS := hcp-attestsvc
 hcpattestsvc_CANONICAL := hcp-attestsvc
-HCPATTESTSVC_PKG_SRC := $(HCP_PKG_SRC)/attestsvc
-HCPATTESTSVC_PKG_REFFILE := ./hcp_api.py
-HCPATTESTSVC_PKG_CMD_BOOTSTRAP := true
-HCPATTESTSVC_PKG_CMD_PACKAGE := debuild -uc -us
+hcpattestsvc_PKG_SRC := $(hcp_PKG_SRC)/attestsvc
+hcpattestsvc_PKG_REFFILE := ./hcp_api.py
+hcpattestsvc_PKG_CMD_BOOTSTRAP := true
+hcpattestsvc_PKG_CMD_PACKAGE := debuild -uc -us
 hcp-attestsvc_DEPENDS := hcp-common hcp-xtra
 
 #################
@@ -74,10 +74,10 @@ hcp-attestsvc_DEPENDS := hcp-common hcp-xtra
 
 hcppolicysvc_PKGS := hcp-policysvc
 hcppolicysvc_CANONICAL := hcp-policysvc
-HCPPOLICYSVC_PKG_SRC := $(HCP_PKG_SRC)/policysvc
-HCPPOLICYSVC_PKG_REFFILE := ./policy_api.py
-HCPPOLICYSVC_PKG_CMD_BOOTSTRAP := true
-HCPPOLICYSVC_PKG_CMD_PACKAGE := debuild -uc -us
+hcppolicysvc_PKG_SRC := $(hcp_PKG_SRC)/policysvc
+hcppolicysvc_PKG_REFFILE := ./policy_api.py
+hcppolicysvc_PKG_CMD_BOOTSTRAP := true
+hcppolicysvc_PKG_CMD_PACKAGE := debuild -uc -us
 hcp-policysvc_DEPENDS := hcp-common hcp-xtra
 
 ################
@@ -86,10 +86,10 @@ hcp-policysvc_DEPENDS := hcp-common hcp-xtra
 
 hcpswtpmsvc_PKGS := hcp-swtpmsvc
 hcpswtpmsvc_CANONICAL := hcp-swtpmsvc
-HCPSWTPMSVC_PKG_SRC := $(HCP_PKG_SRC)/swtpmsvc
-HCPSWTPMSVC_PKG_REFFILE := ./run_swtpm.sh
-HCPSWTPMSVC_PKG_CMD_BOOTSTRAP := true
-HCPSWTPMSVC_PKG_CMD_PACKAGE := debuild -uc -us
+hcpswtpmsvc_PKG_SRC := $(hcp_PKG_SRC)/swtpmsvc
+hcpswtpmsvc_PKG_REFFILE := ./run_swtpm.sh
+hcpswtpmsvc_PKG_CMD_BOOTSTRAP := true
+hcpswtpmsvc_PKG_CMD_PACKAGE := debuild -uc -us
 # TODO: if tpm2-* was a choice between upstream and 'debbuilder', listing it
 # here would not be a problem. But while we use 'builder', this is a problem.
 #hcp-swtpmsvc_DEPENDS := hcp-common hcp-xtra tpm2-tools tpm2-tss swtpm libtpms0
@@ -101,10 +101,10 @@ hcp-swtpmsvc_DEPENDS := hcp-common hcp-xtra swtpm libtpms0
 
 hcpkdcsvc_PKGS := hcp-kdcsvc
 hcpkdcsvc_CANONICAL := hcp-kdcsvc
-HCPKDCSVC_PKG_SRC := $(HCP_PKG_SRC)/kdcsvc
-HCPKDCSVC_PKG_REFFILE := ./mgmt_api.py
-HCPKDCSVC_PKG_CMD_BOOTSTRAP := true
-HCPKDCSVC_PKG_CMD_PACKAGE := debuild -uc -us
+hcpkdcsvc_PKG_SRC := $(hcp_PKG_SRC)/kdcsvc
+hcpkdcsvc_PKG_REFFILE := ./mgmt_api.py
+hcpkdcsvc_PKG_CMD_BOOTSTRAP := true
+hcpkdcsvc_PKG_CMD_PACKAGE := debuild -uc -us
 # TODO: same note
 #hcp-kdcsvc_DEPENDS := hcp-common hcp-xtra hcp-tools tpm2-tools tpm2-tss
 hcp-kdcsvc_DEPENDS := hcp-common hcp-xtra hcp-tools
@@ -115,10 +115,10 @@ hcp-kdcsvc_DEPENDS := hcp-common hcp-xtra hcp-tools
 
 hcpsshsvc_PKGS := hcp-sshsvc
 hcpsshsvc_CANONICAL := hcp-sshsvc
-HCPSSHSVC_PKG_SRC := $(HCP_PKG_SRC)/sshsvc
-HCPSSHSVC_PKG_REFFILE := ./run_sshd.py
-HCPSSHSVC_PKG_CMD_BOOTSTRAP := true
-HCPSSHSVC_PKG_CMD_PACKAGE := debuild -uc -us
+hcpsshsvc_PKG_SRC := $(hcp_PKG_SRC)/sshsvc
+hcpsshsvc_PKG_REFFILE := ./run_sshd.py
+hcpsshsvc_PKG_CMD_BOOTSTRAP := true
+hcpsshsvc_PKG_CMD_PACKAGE := debuild -uc -us
 # TODO: same note
 #hcp-sshsvc_DEPENDS := hcp-common hcp-xtra hcp-tools tpm2-tools tpm2-tss
 hcp-sshsvc_DEPENDS := hcp-common hcp-xtra hcp-tools
@@ -129,17 +129,15 @@ hcp-sshsvc_DEPENDS := hcp-common hcp-xtra hcp-tools
 
 list_lower := common xtra tools enrollsvc attestsvc policysvc swtpmsvc \
 		kdcsvc sshsvc
-list_upper := COMMON XTRA TOOLS ENROLLSVC ATTESTSVC POLICYSVC SWTPMSVC \
-		KDCSVC SSHSVC
 # Prepare missing inputs for debian_build()
 $(foreach s,$(list_lower),$(foreach p,$(hcp$s_PKGS),\
-$(eval $p_LOCAL_FILE := $p$(HCP_DPKG_SUFFIX))))
+$(eval $p_LOCAL_FILE := $p$(hcp_DPKG_SUFFIX))))
 
 # Generate the layers and package output symbols, dependencies, etc
 $(eval $(call debian_build,\
-	$(foreach s,$(list_upper),HCP$s),\
+	$(foreach s,$(list_lower),hcp$s),\
 	DEBBUILDER,\
-	$(HCP_PKG_SRC)/Makefile))
+	$(hcp_PKG_SRC)/Makefile))
 
 # Process the output of debian_build()
 $(eval package_outputs :=)

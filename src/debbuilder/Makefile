@@ -26,7 +26,7 @@ $(if $(dcd_codebase),$(eval $(dcd_varname) += \
 endef
 
 # The following wrapper adds rules to build debian packages;
-# $1 - name(s) of the package set(s) in upper case.
+# $1 - name(s) of the package set(s) in lower case.
 # $2 - name of the layer used for building these packages (usually created by
 #      the pp_add_layer() API just above). The artifacts produced will be put
 #      in the 'artifacts' subdirectory of that layer's output directory.
@@ -40,14 +40,14 @@ endef
 #        set. Eg; "libtpms0 libtpms0-dbgsym libtpms-dev"
 #      - foo_CANONICAL: if, later on, a 'builder'-based image says its needs
 #        'libtpms', what subset of foo_PKGS do they mean?
-#      - FOO_PKG_SRC: absolute path to the codebase for this package set.
-#      - FOO_PKG_REFFILE: path relative to FOO_PKG_SRC, points to an immutable
+#      - foo_PKG_SRC: absolute path to the codebase for this package set.
+#      - foo_PKG_REFFILE: path relative to foo_PKG_SRC, points to an immutable
 #        file in the codebase, which is used as a reference when "chown"ing
 #        files in mounted directories.
-#      - FOO_PKG_CMD_BOOTSTRAP: the command to run to ensure that the codebase
+#      - foo_PKG_CMD_BOOTSTRAP: the command to run to ensure that the codebase
 #        is ready to be built (like triggering autoconf/automake). Eg;
 #        "./autogen.sh"
-#      - FOO_PKG_CMD_PACKAGE: the command to build the debian packages. Eg;
+#      - foo_PKG_CMD_PACKAGE: the command to build the debian packages. Eg;
 #        "dpkg-buildpackage -uc -us"
 #      For each <pkg> in foo_PKGS;
 #      - <pkg>_DEPENDS: if <pkg> depends on any other packages that might be
@@ -62,8 +62,8 @@ endef
 #          "libtpms0_LOCAL_FILE := libtpms0_0.10.0~dev1_amd64.deb"
 # Outputs;
 #      - HCP_DBB_LIST: foo_PKGS gets added to this accumulator.
-#      - deb_foo: symbolic make target for HCP_FOO_PKG_PACKAGES, ie. to build
-#        the package set.
+#      - deb_foo: symbolic make target for foo_PKGS, ie. to build the package
+#        set.
 #      - clean_deb_foo: symbolic make target to remove output associated with
 #        this package set.
 #      For each <pkg> in foo_PKGS;
@@ -72,8 +72,8 @@ endef
 
 define debian_build_one
 
-$(eval dbo_name_upper := $(strip $1))
-$(eval dbo_name_lower := $(shell echo "$(dbo_name_upper)" | tr '[:upper:]' '[:lower:]'))
+$(eval dbo_name_lower := $(strip $1))
+$(eval dbo_name_upper := $(shell echo "$(dbo_name_lower)" | tr '[:lower:]' '[:upper:]'))
 $(eval dbo_layer_upper := $(strip $2))
 $(eval dbo_layer_lower := $(shell echo "$(dbo_layer_upper)" | tr '[:upper:]' '[:lower:]'))
 $(eval dbo_file_deps := $(strip $3))
@@ -84,11 +84,11 @@ $(eval dbo_out_dir := $(dbo_parent_dir)/artifacts-$(dbo_name_lower))
 $(eval dbo_mount_dir := $(dbo_out_dir)/$(dbo_name_lower))
 $(eval dbo_tfile_bootstrapped := $(dbo_out_dir)/_bootstrapped)
 $(eval dbo_tfile_packaged := $(dbo_out_dir)/_packaged)
-$(eval dbo_src_dir := $($(dbo_name_upper)_PKG_SRC))
+$(eval dbo_src_dir := $($(dbo_name_lower)_PKG_SRC))
 $(eval dbo_layer_upper_dname := $(HCP_$(dbo_layer_upper)_DNAME))
-$(eval dbo_reffile := $($(dbo_name_upper)_PKG_REFFILE))
-$(eval dbo_cmd_bootstrap := $($(dbo_name_upper)_PKG_CMD_BOOTSTRAP))
-$(eval dbo_cmd_package := $($(dbo_name_upper)_PKG_CMD_PACKAGE))
+$(eval dbo_reffile := $($(dbo_name_lower)_PKG_REFFILE))
+$(eval dbo_cmd_bootstrap := $($(dbo_name_lower)_PKG_CMD_BOOTSTRAP))
+$(eval dbo_cmd_package := $($(dbo_name_lower)_PKG_CMD_PACKAGE))
 
 # Get the packages this package depends on
 $(eval dbo_deps :=)
@@ -173,8 +173,8 @@ clean_$(dbo_layer_lower): clean_deb_$(dbo_name_lower)
 endef # debian_build_one
 
 define debian_build
-$(eval db_names_upper := $(strip $1))
+$(eval db_names_lower := $(strip $1))
 $(eval db_layer_upper := $(strip $2))
-$(foreach n,$(db_names_upper),$(eval $(call \
+$(foreach n,$(db_names_lower),$(eval $(call \
 	debian_build_one,$n,$(db_layer_upper))))
 endef # debian_build
