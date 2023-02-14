@@ -73,6 +73,9 @@ $(eval APPS_NAMES := $(strip $(APPS_NAMES)))
 APPS := $(foreach i,$(APPS_NAMES),$(HCP_$i_TFILE))
 ALL += $(APPS)
 
+# Create a UMLified (bootable ext4 image) version of caboodle
+$(eval $(call umlify,CABOODLE))
+
 ###########
 # Wrapper #
 ###########

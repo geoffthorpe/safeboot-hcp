@@ -9,6 +9,9 @@ include $(HCP_SRC)/preproc.Makefile
 #   and utilities that constitue HCP.
 include $(HCP_SRC)/base/Makefile
 
+# Build user-mode-linux support
+include $(HCP_SRC)/uml/Makefile
+
 # A "debbuilder" docker image specifically for building debian packages from
 # source.
 include $(HCP_SRC)/debbuilder/Makefile
@@ -34,9 +37,6 @@ include $(HCP_SRC)/caboodle/Makefile
 
 # Build the desired container images
 include $(HCP_SRC)/apps/Makefile
-
-# Build user-mode-linux support
-include $(HCP_SRC)/uml/Makefile
 
 # Produce usable (but test, non-production) credentials
 include $(HCP_SRC)/testcreds.Makefile

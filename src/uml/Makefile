@@ -21,11 +21,13 @@ endif
 ### UML_BUILDER - for compiling the kernel, modules, and 'myshutdown'
 ###############
 
+uml_builder_packages := gcc make xz-utils flex bison bc kmod libvdeplug-dev
+
 $(eval $(call pp_add_layer,\
 	UML_BUILDER,\
-	BUILDER,\
+	BASE,\
 	UML,\
-	bc kmod libvdeplug-dev,\
+	$(uml_builder_packages),\
 	$(HCP_UML_SRC)/builder.Dockerfile,\
 	$(HCP_UML_SRC)/Makefile,\
 	,\
@@ -62,17 +64,13 @@ endif
 
 $(eval $(call pp_add_layer,\
 	UML_RUN,\
-	APPS_BASE,\
+	BASE,\
 	UML,\
 	vde2,\
 	$(HCP_UML_SRC)/run.Dockerfile,\
-	$(HCP_UML_SRC)/Makefile,\
+	$(HCP_UML_SRC)/Makefile $(HCP_UML_BUILDER_TFILE),\
 	,\
 	$(HCP_UML_SRC)/start.sh))
-
-# run.Dockerfile pulls the compiled UML kernel from HCP_UML_BUILDER, so note
-# that dependency;
-$(HCP_UML_RUN_TFILE): $(HCP_UML_BUILDER_TFILE)
 
 #######################
 ### Bootable disk image - docker image -> tarball -> ext4 image
@@ -102,7 +100,7 @@ $(eval $(call pp_add_layer,\
 	UML,\
 	kmod isc-dhcp-client,\
 	$(HCP_UML_SRC)/bootstrapper.Dockerfile,\
-	$(HCP_UML_SRC)/Makefile,\
+	$(HCP_UML_SRC)/Makefile $(HCP_UML_BUILDER_TFILE),\
 	,\
 	$(HCP_UML_SRC)/init.sh))
 
@@ -167,3 +165,76 @@ endif
 # use those two for "make uml", and include them in "make all"
 uml: $(HCP_UML_BOOTSTRAPPER_PATH) $(HCP_UML_RUN_TFILE)
 ALL += $(HCP_UML_BOOTSTRAPPER_PATH) $(HCP_UML_RUN_TFILE)
+
+#################
+# Converter API #
+#################
+
+# Here, we provide a directory for hosting ext4 conversions of HCP images. (Ie.
+# "FOO" corresponding to HCP_FOO_DNAME, HCP_FOO_TFILE, hcp_foo:devel, etc.) We
+# declare variables holding their ultimate paths, rules on those paths so that
+# they can be generated when required, and dependencies so that they are
+# regenerated when sources are newer.
+HCP_UMLIFY_OUT := $(HCP_UML_OUT)/converted
+$(HCP_UMLIFY_OUT): | $(HCP_UML_OUT)
+MDIRS += $(HCP_UMLIFY_OUT)
+ifneq (,$(wildcard $(HCP_UMLIFY_OUT)))
+clean_umlify:
+	$Qrmdir $(HCP_UMLIFY_OUT)
+clean_uml: clean_umlify
+endif
+
+# umlify()
+# $1 - the upper-case image name
+# Outputs:
+# - HCP_$1_UML_PATH - path to the ext4 image
+# This derives a new layer from the requested one, in order to add the
+# /myshutdown and /init.sh tools.
+define umlify
+$(eval name_upper := $(strip $1))
+$(eval name_lower := $(shell echo "$(name_upper)" | tr '[:upper:]' '[:lower:]'))
+
+# TODO: fix the use of $(name_lower) in the parent image. It should be
+# $(name_upper) but app_image() is terrible.
+$(eval $(call pp_add_layer,\
+	UMLIFY_$(name_upper),\
+	$(name_lower),\
+	UMLIFY,\
+	,\
+	$(HCP_UML_SRC)/bootstrapper.Dockerfile,\
+	$(HCP_UML_SRC)/Makefile $(HCP_UML_BUILDER_TFILE),\
+	,\
+	$(HCP_UML_SRC)/init.sh))
+
+$(eval path_tar := $(HCP_UMLIFY_OUT)/$(name_lower).tar)
+$(eval path_ext4 := $(HCP_UMLIFY_OUT)/$(name_lower).ext4)
+$(path_tar) $(path_ext4): | $(HCP_UMLIFY_OUT)
+
+# TODO: fix the use of $(name_lower), should be $(name_upper)
+$(path_tar): $(HCP_$(name_lower)_TFILE)
+$(path_tar): $(HCP_UML_SRC)/hcp_mkext4.sh
+$(path_tar):
+	$Q$(HCP_UML_SRC)/hcp_mkext4.sh \
+		dname2tar $(HCP_$(name_lower)_DNAME) $$@
+
+$(path_ext4): $(path_tar)
+$(path_ext4): $(HCP_UML_RUN_TFILE)
+$(path_ext4): $(HCP_UML_BOOTSTRAPPER_PATH)
+$(path_ext4):
+	$QBOOTSTRAP_IMG="$(HCP_UML_BOOTSTRAPPER_PATH)" \
+		BOOTSTRAP_DNAME="$(HCP_UML_RUN_DNAME)" \
+		$(HCP_UML_SRC)/hcp_mkext4.sh \
+		tar2ext4 $(path_tar) $$@ $(HCP_UML_EXT4_SIZE) unused
+
+$(eval HCP_$(name_upper)_UML_PATH := $(path_ext4))
+
+umlify_$(name_lower): $(path_ext4)
+$(eval ALL += $(path_ext4))
+
+ifneq (,$(wildcard $(path_ext4) $(path_tar)))
+clean_umlify_$(name_lower)_files:
+	$Qrm -f $(path_ext4) $(path_tar)
+clean_umlify: clean_umlify_$(name_lower)_files
+endif
+
+endef
