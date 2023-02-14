@@ -237,3 +237,14 @@ $(ppa_parent_clean): clean_$(ppa_name_lower)
 endif
 
 endef # pp_add_layer()
+
+# exec_stdout_to_make() runs an arbitrary shell command ($1), with stdout
+# redirected to a file ($2), that is then included. Ie. runs an arbitrary
+# command whose output is inlined to makefile processing.
+define pp_exec_stdout_to_make
+$(eval pps_cmd := $(strip $1))
+$(eval pps_mkout := $(strip $2))
+$(shell $(pps_cmd) > $(pps_mkout).tmp)
+$(shell $(HCP_SRC)/tmp2new.sh $(pps_mkout))
+include $(pps_mkout)
+endef
