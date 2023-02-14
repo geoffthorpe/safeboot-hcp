@@ -67,10 +67,11 @@ def next_attribute(fp):
         l = l.strip()
     return attr_name, allvals
 
-def parse_control(srcdir):
-    debcontrol = f"{srcdir}/debian/control"
-    if not os.path.isdir(srcdir):
-        e(f"Package source directory missing: {srcdir}")
+def parse_control(srcdir, debiandir = None):
+    if debiandir:
+        debcontrol = f"{debiandir}/control"
+    else:
+        debcontrol = f"{srcdir}/debian/control"
     if not os.path.isfile(debcontrol):
         e(f"Debian control file missing: {debcontrol}")
     # The basic idea is; we continue pulling attributes and putting
@@ -83,6 +84,8 @@ def parse_control(srcdir):
         'srcdir': srcdir,
         'Package': []
     }
+    if debiandir:
+        result['debiandir'] = debiandir
     current = result
     with open(debcontrol, 'r') as f:
         while True:
@@ -97,13 +100,19 @@ def parse_control(srcdir):
     return result
 
 def main():
-    if len(sys.argv) != 2:
+    if len(sys.argv) < 2 or len(sys.argv) > 3:
         e([ "Error wrong number of arguments",
-            f"    usage: {sys.argv[0]} <srcdir>",
-            "The '<srcdir>/debian/control' file is parsed, and the result is",
-	    "written to stdout as a JSON object." ])
+            f"    usage: {sys.argv[0]} <srcdir> [debiandir]",
+            "The debian 'control' file is parsed, and the result is written to",
+	    "stdout as a JSON object.",
+            "If [debiandir] is provided, then the control file is assumed read",
+            "from '<debiandir>/control', otherwise it is read from",
+            "'<srcdir>/debian/control'." ])
     srcdir = sys.argv[1]
-    result = parse_control(srcdir)
+    debiandir = None
+    if len(sys.argv) == 3:
+        debiandir = sys.argv[2]
+    result = parse_control(srcdir, debiandir = debiandir)
     print(json.dumps(result))
 
 if __name__ == '__main__':

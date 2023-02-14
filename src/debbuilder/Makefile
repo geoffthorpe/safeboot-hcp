@@ -4,7 +4,7 @@ $(eval $(call pp_add_layer,\
 	DEBBUILDER,\
 	BASE,\
 	,\
-	build-essential devscripts dpkg-dev,\
+	build-essential devscripts dpkg-dev pkg-config,\
 	,\
 	$(HCP_DEBBUILDER_SRC)/Makefile,\
 	,\
@@ -25,6 +25,10 @@ $(eval $(call pp_add_layer,\
 #      - foo_PKGS: the short names of the packages produced by this package
 #        set. Eg; "libtpms0 libtpms0-dbgsym libtpms-dev"
 #      - foo_PKG_SRC: absolute path to the codebase for this package set.
+#      - foo_PKG_DEBIAN_SRC: absolute path to a directory that should
+#        mounted as the "debian" sub-directory of foo_PKG_SRC.
+#        sub-directory. This setting is optional - without it, the source tree
+#        is assumed to have its own docker subdirectory.
 #      - foo_PKG_CMD_BOOTSTRAP: the command to run to ensure that the codebase
 #        is ready to be built (like triggering autoconf/automake).
 #        Default: "/bin/true"
@@ -71,6 +75,7 @@ $(eval dbo_mount_dir := $(dbo_out_dir)/$(dbo_name_lower))
 $(eval dbo_tfile_bootstrapped := $(dbo_out_dir)/_bootstrapped)
 $(eval dbo_tfile_packaged := $(dbo_out_dir)/_packaged)
 $(eval dbo_src_dir := $($(dbo_name_lower)_PKG_SRC))
+$(eval dbo_debian_src_dir := $($(dbo_name_lower)_PKG_DEBIAN_SRC))
 $(eval dbo_layer_upper_dname := $(HCP_$(dbo_layer_upper)_DNAME))
 $(eval dbo_cmd_bootstrap := $($(dbo_name_lower)_PKG_CMD_BOOTSTRAP))
 $(eval dbo_cmd_package := $($(dbo_name_lower)_PKG_CMD_PACKAGE))
@@ -121,8 +126,13 @@ deb_$(dbo_name_lower): $(dbo_local_paths)
 $(eval ALL += deb_$(dbo_name_lower))
 
 # How to launch the image layer
+$(if $(dbo_debian_src_dir),\
+	$(eval debian_xtra := \
+		-v $(dbo_debian_src_dir):/empty/$(dbo_name_lower)/debian),\
+	$(eval debian_xtra :=))
 $(eval docker_run := docker run --rm -v $(dbo_out_dir):/empty \
 			-v $(dbo_src_dir):/empty/$(dbo_name_lower) \
+			$(debian_xtra) \
 			-v $(HCP_SRC)/reffile:/reffile:ro \
 			$(dbo_build_layer_dname) \
 			bash -c)
@@ -173,7 +183,7 @@ endef # debian_build_one
 
 # $1 - prefix for variables with the package set details. Input attributes must
 #      be provided using this prefix (_PKG_SRC, _PKG_CMD_{BOOTSTRAP,PACKAGE},
-#      _PKG_SUFFIX).
+#      _PKG_SUFFIX, _PKG_DOCKER_SRC).
 # $2 - name of the layer used for building the package(s)
 # $3 - the calling Makefile or anything else this package should depend on
 define debian_build
@@ -183,6 +193,7 @@ $(eval db_file_deps := $(strip $3))
 $(eval db_xtra :=)
 
 $(eval db_srcdir := $($(db_mksym)_PKG_SRC))
+$(eval db_debiandir := $($(db_mksym)_PKG_DEBIAN_SRC))
 
 $(eval db_mkout := $(HCP_OUT)/.mkout.$(db_mksym))
 $(eval db_file_deps += $(db_mkout))
@@ -191,7 +202,7 @@ clean_mkout_$(db_mksym):
 clean: clean_mkout_$(db_mksym)
 
 $(eval $(call pp_exec_stdout_to_make,\
-	$(HCP_DEBBUILDER_SRC)/parse_debian_control.py $(db_srcdir) | \
+	$(HCP_DEBBUILDER_SRC)/parse_debian_control.py $(db_srcdir) $(db_debiandir) | \
 	$(HCP_DEBBUILDER_SRC)/mkvars_from_debcontrol.py,\
 	$(db_mkout)))
 
