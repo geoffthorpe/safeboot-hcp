@@ -14,7 +14,7 @@ fi
 if [[ ! -f $path ]]; then
 	mv "$path.tmp" "$path"
 else
-	if cmp "$path.tmp" "$path"; then
+	if cmp "$path.tmp" "$path" > /dev/null 2>&1; then
 		rm "$path.tmp"
 	else
 		mv -f "$path.tmp" "$path"
