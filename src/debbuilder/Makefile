@@ -10,45 +10,29 @@ $(eval $(call pp_add_layer,\
 	,\
 	))
 
-# $1 - name of the variable to receive the package list (additively, so this
-#      should be set empty if you don't stale values to persist)
-# $2 - path to the codebase that has the ./debian/ subdirectory
-# $3 - exclusions, not to show up in the resulting dependency list
-#
-define debian_control_deps
-$(eval dcd_varname := $(strip $1))
-$(eval dcd_codebase := $(strip $2))
-$(eval dcd_exclusions := $(strip $3))
-$(if $(wildcard $(dcd_codebase)),,$(error dcd_codebase '$(dcd_codebase)' missing))
-$(if $(dcd_codebase),$(eval $(dcd_varname) += \
-	$(shell $(HCP_DEBBUILDER_SRC)/get_build_deps.py \
-			$(dcd_codebase) "$(dcd_exclusions)")))
-endef
-
-# The following wrapper adds rules to build debian packages;
-# $1 - name(s) of the package set(s) in lower case.
+# pvt_debian_build() - adds rules to build debian packages. This private function
+#      is used by the debian_build() API.
+# $1 - name of the package set in lower case.
 # $2 - name of the layer used for building these packages (usually created by
 #      the pp_add_layer() API just above). The artifacts produced will be put
 #      in the 'artifacts' subdirectory of that layer's output directory.
-# $3 - calling Makefile and any other source files that the resulting debian
-#      build rules should be dependent on.
+# $3 - the calling Makefile and any other source files that the resulting
+#      debian build rules should be dependent on.
 #
 # Makefile variables are used for the remainder of input to (and output from)
 # this function. Assuming $1==FOO, voici;
 # Inputs;
 #      - foo_PKGS: the short names of the packages produced by this package
 #        set. Eg; "libtpms0 libtpms0-dbgsym libtpms-dev"
-#      - foo_CANONICAL: if, later on, a 'builder'-based image says its needs
-#        'libtpms', what subset of foo_PKGS do they mean?
 #      - foo_PKG_SRC: absolute path to the codebase for this package set.
-#      - foo_PKG_REFFILE: path relative to foo_PKG_SRC, points to an immutable
-#        file in the codebase, which is used as a reference when "chown"ing
-#        files in mounted directories.
 #      - foo_PKG_CMD_BOOTSTRAP: the command to run to ensure that the codebase
-#        is ready to be built (like triggering autoconf/automake). Eg;
-#        "./autogen.sh"
-#      - foo_PKG_CMD_PACKAGE: the command to build the debian packages. Eg;
-#        "dpkg-buildpackage -uc -us"
+#        is ready to be built (like triggering autoconf/automake).
+#        Default: "/bin/true"
+#      - foo_PKG_CMD_PACKAGE: the command to build the debian packages.
+#        Default: "debuild -uc -us"
+#      - foo_PKG_SUFFIX: when appended to an individual <pkg> name, gives the
+#        expected filename of the resulting package. (Each package can override
+#        this with <pkg>_LOCAL_FILE.)
 #      For each <pkg> in foo_PKGS;
 #      - <pkg>_DEPENDS: if <pkg> depends on any other packages that might be
 #        locally-built, in this package set or another, this variable should
@@ -60,6 +44,8 @@ endef
 #        is expected to have. The build does not ensure this, the caller is
 #        expected to predict it. Eg;
 #          "libtpms0_LOCAL_FILE := libtpms0_0.10.0~dev1_amd64.deb"
+#        If this per-package filename is not specified, it will be deduced from
+#        foo_PKG_SUFFIX.
 # Outputs;
 #      - HCP_DBB_LIST: foo_PKGS gets added to this accumulator.
 #      - deb_foo: symbolic make target for foo_PKGS, ie. to build the package
@@ -70,7 +56,7 @@ endef
 #      - <pkg>_LOCAL_PATH: absolute path to the debian package file (whose name
 #        is expected to be <pkg>_LOCAL_FILE).
 
-define debian_build_one
+define pvt_debian_build
 
 $(eval dbo_name_lower := $(strip $1))
 $(eval dbo_name_upper := $(shell echo "$(dbo_name_lower)" | tr '[:lower:]' '[:upper:]'))
@@ -78,7 +64,7 @@ $(eval dbo_layer_upper := $(strip $2))
 $(eval dbo_layer_lower := $(shell echo "$(dbo_layer_upper)" | tr '[:upper:]' '[:lower:]'))
 $(eval dbo_file_deps := $(strip $3))
 
-# Calculate paths once
+# Calculate derivates once
 $(eval dbo_parent_dir := $(HCP_$(dbo_layer_upper)_OUT))
 $(eval dbo_out_dir := $(dbo_parent_dir)/artifacts-$(dbo_name_lower))
 $(eval dbo_mount_dir := $(dbo_out_dir)/$(dbo_name_lower))
@@ -86,13 +72,24 @@ $(eval dbo_tfile_bootstrapped := $(dbo_out_dir)/_bootstrapped)
 $(eval dbo_tfile_packaged := $(dbo_out_dir)/_packaged)
 $(eval dbo_src_dir := $($(dbo_name_lower)_PKG_SRC))
 $(eval dbo_layer_upper_dname := $(HCP_$(dbo_layer_upper)_DNAME))
-$(eval dbo_reffile := $($(dbo_name_lower)_PKG_REFFILE))
 $(eval dbo_cmd_bootstrap := $($(dbo_name_lower)_PKG_CMD_BOOTSTRAP))
 $(eval dbo_cmd_package := $($(dbo_name_lower)_PKG_CMD_PACKAGE))
+$(eval dbo_builddeps := $($(dbo_name_lower)_PKG_BUILD_DEPENDS))
+$(eval dbo_suffix := $($(dbo_name_lower)_PKG_SUFFIX))
 
-# Get the packages this package depends on
-$(eval dbo_deps :=)
-$(eval $(call debian_control_deps,dbo_deps,$(dbo_src_dir),))
+$(if $(dbo_cmd_bootstrap),,$(eval dbo_cmd_bootstrap := /bin/true))
+$(if $(dbo_cmd_package),,$(eval dbo_cmd_package := debuild -uc -us))
+
+# In addition to the 'Build-Depends' packages, we also want to preinstall any
+# run-time dependencies of the individual packages we're installing. However,
+# we need to exclude duplicates, and also avoid listing packages that we are
+# producing. (If one of our output packages depends on another of our output
+# packages, neither of them should be preinstalled!)
+$(foreach p,$($(dbo_name_lower)_PKGS),\
+	$(foreach d,$($p_DEPENDS),\
+		$(if $(filter $d,$(dbo_builddeps)),,\
+			$(if $(filter $d,$($(dbo_name_lower)_PKGS)),,\
+				$(eval dbo_builddeps += $d)))))
 
 # Derive a layer that will have our deps installed
 $(eval dbo_build_layer_upper := $(dbo_layer_upper)_$(dbo_name_upper))
@@ -100,7 +97,7 @@ $(eval $(call pp_add_layer,\
 	$(dbo_build_layer_upper),\
 	$(dbo_layer_upper),\
 	$(dbo_layer_upper),\
-	$(dbo_deps),\
+	$(dbo_builddeps),\
 	,\
 	$(dbo_file_deps),\
 	,\
@@ -117,6 +114,7 @@ $(eval MDIRS += $(dbo_out_dir) $(dbo_mount_dir))
 $(eval HCP_DBB_LIST += $($(dbo_name_lower)_PKGS))
 $(eval dbo_local_paths := )
 $(foreach p,$($(dbo_name_lower)_PKGS),\
+	$(if $($p_LOCAL_FILE),,$(eval $p_LOCAL_FILE := $p$(dbo_suffix)))\
 	$(eval $p_LOCAL_PATH := $(dbo_out_dir)/$($p_LOCAL_FILE))\
 	$(eval dbo_local_paths += $($p_LOCAL_PATH)))
 deb_$(dbo_name_lower): $(dbo_local_paths)
@@ -125,10 +123,11 @@ $(eval ALL += deb_$(dbo_name_lower))
 # How to launch the image layer
 $(eval docker_run := docker run --rm -v $(dbo_out_dir):/empty \
 			-v $(dbo_src_dir):/empty/$(dbo_name_lower) \
+			-v $(HCP_SRC)/reffile:/reffile:ro \
 			$(dbo_build_layer_dname) \
 			bash -c)
 # and common preamble to what we run in the container
-$(eval docker_cmd := trap '/hcp/base/chowner.sh $(dbo_reffile) ..' EXIT ; \
+$(eval docker_cmd := trap '/hcp/base/chowner.sh /reffile/reffile ..' EXIT ; \
 			cd /empty/$(dbo_name_lower))
 
 # Bootstrap target
@@ -172,9 +171,30 @@ clean_$(dbo_layer_lower): clean_deb_$(dbo_name_lower)
 )
 endef # debian_build_one
 
+# $1 - prefix for variables with the package set details. Input attributes must
+#      be provided using this prefix (_PKG_SRC, _PKG_CMD_{BOOTSTRAP,PACKAGE},
+#      _PKG_SUFFIX).
+# $2 - name of the layer used for building the package(s)
+# $3 - the calling Makefile or anything else this package should depend on
 define debian_build
-$(eval db_names_lower := $(strip $1))
+$(eval db_mksym := $(strip $1))
 $(eval db_layer_upper := $(strip $2))
-$(foreach n,$(db_names_lower),$(eval $(call \
-	debian_build_one,$n,$(db_layer_upper))))
+$(eval db_file_deps := $(strip $3))
+$(eval db_xtra :=)
+
+$(eval db_srcdir := $($(db_mksym)_PKG_SRC))
+
+$(eval db_mkout := $(HCP_OUT)/.mkout.$(db_mksym))
+$(eval db_file_deps += $(db_mkout))
+clean_mkout_$(db_mksym):
+	$Qrm -f $(db_mkout)
+clean: clean_mkout_$(db_mksym)
+
+$(eval $(call pp_exec_stdout_to_make,\
+	$(HCP_DEBBUILDER_SRC)/parse_debian_control.py $(db_srcdir) | \
+	$(HCP_DEBBUILDER_SRC)/mkvars_from_debcontrol.py,\
+	$(db_mkout)))
+
+$(eval $(call pvt_debian_build,$(db_mksym),$(db_layer_upper),$(db_file_deps)))
+
 endef # debian_build
