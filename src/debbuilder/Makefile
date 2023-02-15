@@ -20,45 +20,45 @@ $(eval $(call pp_add_layer,\
 #      debian build rules should be dependent on.
 #
 # Makefile variables are used for the remainder of input to (and output from)
-# this function. Assuming $1==FOO, voici;
-# Inputs;
-#      - foo_PKGS: the short names of the packages produced by this package
-#        set. Eg; "libtpms0 libtpms0-dbgsym libtpms-dev"
-#      - foo_PKG_SRC: absolute path to the codebase for this package set.
-#      - foo_PKG_DEBIAN_SRC: absolute path to a directory that should
-#        mounted as the "debian" sub-directory of foo_PKG_SRC.
-#        sub-directory. This setting is optional - without it, the source tree
-#        is assumed to have its own docker subdirectory.
-#      - foo_PKG_CMD_BOOTSTRAP: the command to run to ensure that the codebase
-#        is ready to be built (like triggering autoconf/automake).
-#        Default: "/bin/true"
-#      - foo_PKG_CMD_PACKAGE: the command to build the debian packages.
-#        Default: "debuild -uc -us"
-#      - foo_PKG_SUFFIX: when appended to an individual <pkg> name, gives the
-#        expected filename of the resulting package. (Each package can override
-#        this with <pkg>_LOCAL_FILE.)
-#      For each <pkg> in foo_PKGS;
-#      - <pkg>_DEPENDS: if <pkg> depends on any other packages that might be
-#        locally-built, in this package set or another, this variable should
-#        list them. When locally-built packages get installed later on, this
-#        declaration helps ensure that locally-built dependencies also get
-#        installed rather than upstream versions. Eg;
-#          "libtpms-dev_DEPENDS := libtpms0"
-#      - <pkg>_LOCAL_FILE: the filename that the resulting debian package
-#        is expected to have. The build does not ensure this, the caller is
-#        expected to predict it. Eg;
-#          "libtpms0_LOCAL_FILE := libtpms0_0.10.0~dev1_amd64.deb"
-#        If this per-package filename is not specified, it will be deduced from
-#        foo_PKG_SUFFIX.
+# this function. Assuming $1==FOO, and assuming <pkg> refers to any package
+# within the package set, voici;
+# Compulsory inputs;
+#   - foo_PKG_SRC: absolute path to the codebase for this package set.
+#   - foo_PKG_SUFFIX: when appended to an individual <pkg> name, gives the
+#     expected filename of the resulting package. (Each package can override
+#     this with <pkg>_LOCAL_FILE.)
+# Optional inputs;
+#   - foo_PKG_DEBIAN_SRC: absolute path to a directory that should mounted as
+#     the "debian" sub-directory of foo_PKG_SRC.  sub-directory. This setting
+#     is optional - without it, the source tree is assumed to have its own
+#     docker subdirectory.
+#   - foo_PKG_CMD_ENV: raw shell command content to include in the
+#     ";"-separated commands that run in the container during configure, build,
+#     package, etc. Typically it's things like; "THIS=that FOO=bar"
+#   - foo_PKG_CMD_BOOTSTRAP: the command to run to ensure that the codebase is
+#     ready to be built (like triggering autoconf/automake).
+#     Default: "/bin/true"
+#   - foo_PKG_CMD_PACKAGE: the command to build the debian packages.
+#     Default: "debuild -uc -us"
+#   - <pkg>_LOCAL_FILE: the filename that the resulting debian package is
+#     expected to have. The build does not ensure this, the caller is expected
+#     to predict it. Eg;
+#       "libtpms0_LOCAL_FILE := libtpms0_0.10.0~dev1_amd64.deb"
+#     If this per-package filename is not specified, it will be deduced from
+#     foo_PKG_SUFFIX.
 # Outputs;
-#      - HCP_DBB_LIST: foo_PKGS gets added to this accumulator.
-#      - deb_foo: symbolic make target for foo_PKGS, ie. to build the package
-#        set.
-#      - clean_deb_foo: symbolic make target to remove output associated with
-#        this package set.
-#      For each <pkg> in foo_PKGS;
-#      - <pkg>_LOCAL_PATH: absolute path to the debian package file (whose name
-#        is expected to be <pkg>_LOCAL_FILE).
+#   - foo_PKGS: the short names of the packages produced by this package set.
+#     Eg; "libtpms0 libtpms0-dbgsym libtpms-dev"
+#   - HCP_DBB_LIST: foo_PKGS gets added to this accumulator.
+#   - deb_foo: symbolic make target for foo_PKGS, ie. to build the package set.
+#   - clean_deb_foo: symbolic make target to remove output associated with this
+#     package set.
+#   For each <pkg> in foo_PKGS;
+#   - <pkg>_DEPENDS: if <pkg> depends on any other packages that might be
+#     locally-built, in this package set or another, this variable should list
+#     them.
+#   - <pkg>_LOCAL_PATH: absolute path to the debian package file (whose name is
+#     expected to be <pkg>_LOCAL_FILE).
 
 define pvt_debian_build
 
@@ -77,6 +77,7 @@ $(eval dbo_tfile_packaged := $(dbo_out_dir)/_packaged)
 $(eval dbo_src_dir := $($(dbo_name_lower)_PKG_SRC))
 $(eval dbo_debian_src_dir := $($(dbo_name_lower)_PKG_DEBIAN_SRC))
 $(eval dbo_layer_upper_dname := $(HCP_$(dbo_layer_upper)_DNAME))
+$(eval dbo_cmd_env := $($(dbo_name_lower)_PKG_CMD_ENV))
 $(eval dbo_cmd_bootstrap := $($(dbo_name_lower)_PKG_CMD_BOOTSTRAP))
 $(eval dbo_cmd_package := $($(dbo_name_lower)_PKG_CMD_PACKAGE))
 $(eval dbo_builddeps := $($(dbo_name_lower)_PKG_BUILD_DEPENDS))
@@ -137,8 +138,9 @@ $(eval docker_run := docker run --rm -v $(dbo_out_dir):/empty \
 			$(dbo_build_layer_dname) \
 			bash -c)
 # and common preamble to what we run in the container
+$(if $(dbo_cmd_env),$(eval dbo_cmd_env += ;))
 $(eval docker_cmd := trap '/hcp/base/chowner.sh /reffile/reffile ..' EXIT ; \
-			cd /empty/$(dbo_name_lower))
+			$(dbo_cmd_env) cd /empty/$(dbo_name_lower))
 
 # Bootstrap target
 $(dbo_tfile_bootstrapped): $(dbo_build_layer_tfile)
