@@ -6,10 +6,6 @@
     "default_domain": "hcphacking.xyz",
 
     "env": {
-        "pathadd": {
-            "PATH": "/install-heimdal/libexec:/install-heimdal/bin",
-            "LD_LIBRARY_PATH": "/install-heimdal/lib"
-        },
         "set": { "KRB5_CONFIG": "/etc/hcp/secondary.kdc/krb5.conf" }
     },
 
@@ -134,7 +130,7 @@
         "setup": {
             "touchfile": "/etc/hcp/secondary.kdc/touch-kdcsvc-local-setup"
         },
-        "exec": "kdc",
+        "exec": "/usr/libexec/kdc",
         "args": [ "--config-file=/kdc_secondary/etc/kdc.conf", "--ports=3088" ],
         "tag": "services"
     },
@@ -149,7 +145,7 @@
             "-C",
             "FILE:/etc/hcp/secondary.kdc/pkinit/iprop-key.pem",
             "iprop/secondary.kdc.hcphacking.xyz@HCPHACKING.XYZ",
-            "ipropd-slave"
+            "/usr/libexec/ipropd-slave"
         ],
         "args": [
             "--config-file=/kdc_secondary/etc/kdc.conf",

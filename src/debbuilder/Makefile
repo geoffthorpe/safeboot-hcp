@@ -54,6 +54,7 @@ $(eval $(call pp_add_layer,\
 #   - clean_deb_foo: symbolic make target to remove output associated with this
 #     package set.
 #   For each <pkg> in foo_PKGS;
+#   - <pkg>_PKG_FORMAT: this will be set to 'debbuilder'
 #   - <pkg>_DEPENDS: if <pkg> depends on any other packages that might be
 #     locally-built, in this package set or another, this variable should list
 #     them.
@@ -120,6 +121,7 @@ $(eval MDIRS += $(dbo_out_dir) $(dbo_mount_dir))
 $(eval HCP_DBB_LIST += $($(dbo_name_lower)_PKGS))
 $(eval dbo_local_paths := )
 $(foreach p,$($(dbo_name_lower)_PKGS),\
+	$(eval $p_PKG_FORMAT := debbuilder)\
 	$(if $($p_LOCAL_FILE),,$(eval $p_LOCAL_FILE := $p$(dbo_suffix)))\
 	$(eval $p_LOCAL_PATH := $(dbo_out_dir)/$($p_LOCAL_FILE))\
 	$(eval dbo_local_paths += $($p_LOCAL_PATH)))

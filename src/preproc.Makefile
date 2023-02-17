@@ -72,12 +72,17 @@ endef
 #      be made a top-level layer (underneath $(HCP_OUT), for example). If $7 is
 #      given, then we also assume this layer's source directory is a child of
 #      the source directory for the same parent.
-# $4 - the packages to be installed in the new layer. For any packages foo that
-#      are built locally, foo_LOCAL_FILE should be the path to the resulting
-#      package file (and should be a valid makefile target). Locally-built
-#      packages should explicitly declare dependencies on other locally-built
-#      packages using foo_DEPENDS. The function will expand such dependencies
-#      by adding them to the installation layer.
+# $4 - the packages to be installed in the new layer. For each package <foo>;
+#      If foo_PKG_FORMAT == debbuilder;
+#      - foo_LOCAL_FILE should be the path to the package file (and should be a
+#        valid makefile target).
+#      If foo_PKG_FORMAT == builder;
+#      - HCP_BUILD_TGZ_PATH_foo should be the path to the tarball.
+#      Locally-built packages should declare their dependencies on other
+#      (possibly locally-built) packages using foo_DEPENDS. The function will
+#      expand such dependencies and add them to the installation layer. For
+#      'debbuilder', this should be set automatically. For 'builder', it's
+#      coded.
 # $5 - optional, a Dockerfile stub to be included in the generated Dockerfile
 #      (at the end).
 # $6 - optional, path to the caller's Makefile, and/or any other files that
@@ -146,8 +151,13 @@ $(eval HCP_$(ppa_name_upper)_ANCESTOR_TFILE := $($(HCP_$(ppa_name_upper)_ANCESTO
 # closure, and then we identify and separate out locally-built vs upstream
 # packages.
 $(eval $(call expand_depends,ppa_pkg_list))
-$(eval ppa_pkgs_local := $(foreach i,$(ppa_pkg_list),$(if $($i_LOCAL_FILE),$i)))
-$(eval ppa_pkgs_nonlocal := $(foreach i,$(ppa_pkg_list),$(if $($i_LOCAL_FILE),,$i)))
+$(eval ppa_pkgs_debbuilder :=)
+$(eval ppa_pkgs_builder :=)
+$(eval ppa_pkgs_nonlocal :=)
+$(foreach i,$(ppa_pkg_list),\
+$(if $(filter debbuilder,$($i_PKG_FORMAT)),$(eval ppa_pkgs_debbuilder += $i),\
+$(if $(filter builder,$($i_PKG_FORMAT)),$(eval ppa_pkgs_builder += $i),\
+$(eval ppa_pkgs_nonlocal += $i))))
 
 # For each "ppa_xtra" file, add a dependency for it to be copied to the context
 # area too.
@@ -166,20 +176,41 @@ $(ppa_out_dir)/$j:
 	$Qcp $i $(ppa_out_dir)/$j
 $(eval ppa_copied += $(ppa_out_dir)/$j))
 
-# For local packages, do the shell-fu to prepare commands to the dockerfile;
+# For local packages, do the fu to prepare commands for the dockerfile;
 # - COPY and RUN commands for installing locally-built packages
 # - RUN commands for installing upstream packages
 # - a path to unconditionally append to the Dockerfile (given that the
 #   corresponding parameter is optional)
-$(eval ppa_pkgs_local_file := $(foreach i,$(ppa_pkgs_local),$($i_LOCAL_FILE)))
-$(eval ppa_pkgs_local_path := $(foreach i,$(ppa_pkgs_local),/$($i_LOCAL_FILE)))
-$(if $(strip $(ppa_pkgs_local)),
-	$(eval ppa_pkgs_local_cmd1 := COPY $(ppa_pkgs_local_file) /)
-	$(eval ppa_pkgs_local_cmd2 := RUN apt install -y $(ppa_pkgs_local_path) && \
-			rm -f $(ppa_pkgs_local_path))
+$(eval ppa_pkgs_deb_file :=)
+$(eval ppa_pkgs_deb_path :=)
+$(eval ppa_pkgs_deb_src :=)
+$(if $(strip $(ppa_pkgs_debbuilder)),
+	$(foreach i,$(ppa_pkgs_debbuilder),
+		$(eval ppa_pkgs_deb_file += $($i_LOCAL_FILE))
+		$(eval ppa_pkgs_deb_path += /$($i_LOCAL_FILE))
+		$(eval ppa_pkgs_deb_src += $($i_LOCAL_PATH)))
+	$(eval ppa_pkgs_deb_cmd1 := COPY $(ppa_pkgs_deb_file) /)
+	$(eval ppa_pkgs_deb_cmd2 := RUN apt install -y $(ppa_pkgs_deb_path) && \
+			rm -f $(ppa_pkgs_deb_path))
 ,
-	$(eval ppa_pkgs_local_cmd1 := RUN echo no local packages to copy)
-	$(eval ppa_pkgs_local_cmd2 := RUN echo no local packages to install)
+	$(eval ppa_pkgs_deb_cmd1 := RUN echo no local deb packages to copy)
+	$(eval ppa_pkgs_deb_cmd2 := RUN echo no local deb packages to install)
+)
+$(eval ppa_pkgs_tgz_file :=)
+$(eval ppa_pkgs_tgz_path :=)
+$(eval ppa_pkgs_tgz_src :=)
+$(if $(strip $(ppa_pkgs_builder)),
+	$(foreach i,$(ppa_pkgs_builder),
+		$(eval ppa_pkgs_tgz_file += $($i_LOCAL_FILE))
+		$(eval ppa_pkgs_tgz_path += /$($i_LOCAL_FILE))
+		$(eval ppa_pkgs_tgz_src += $($i_LOCAL_PATH))
+		)
+	$(eval ppa_pkgs_tgz_cmd1 := COPY $(ppa_pkgs_tgz_file) /)
+	$(eval ppa_pkgs_tgz_cmd2 := RUN $(foreach i,$(ppa_pkgs_tgz_path),tar zxf $i && ) \
+			rm -f $(ppa_pkgs_tgz_path))
+,
+	$(eval ppa_pkgs_tgz_cmd1 := RUN echo no local tgz packages to copy)
+	$(eval ppa_pkgs_tgz_cmd2 := RUN echo no local tgz packages to install)
 )
 $(if $(strip $(ppa_pkgs_nonlocal)),
 	$(eval ppa_pkgs_nonlocal_cmd := RUN apt-get install -y $(ppa_pkgs_nonlocal))
@@ -197,25 +228,28 @@ $(ppa_out_dfile): | $(ppa_out_dir)
 $(ppa_out_dfile): $(ppa_dfile_xtra) $(ppa_mfile_xtra)
 $(ppa_out_dfile):
 	$Qecho "FROM $(HCP_$(ppa_name_upper)_ANCESTOR_DNAME)" > $$@
-	$Qecho "$(ppa_pkgs_local_cmd1)" >> $$@
-	$Qecho "$(ppa_pkgs_local_cmd2)" >> $$@
+	$Qecho "$(ppa_pkgs_deb_cmd1)" >> $$@
+	$Qecho "$(ppa_pkgs_deb_cmd2)" >> $$@
+	$Qecho "$(ppa_pkgs_tgz_cmd1)" >> $$@
+	$Qecho "$(ppa_pkgs_tgz_cmd2)" >> $$@
 	$Qecho "$(ppa_pkgs_nonlocal_cmd)" >> $$@
 	$Qcat $(new_ppa_dfile_xtra) >> $$@
 
 # Rule to build the docker image
-$(eval ppa_pkgs_local_src := $(foreach i,$(ppa_pkgs_local),$($i_LOCAL_PATH)))
-$(eval ppa_pkgs_local_fnames := $(foreach i,$(ppa_pkgs_local),$($i_LOCAL_FILE)))
+$(eval ppa_pkgs_local_src := $(strip $(ppa_pkgs_deb_src) $(ppa_pkgs_tgz_src)))
+$(eval ppa_pkgs_local_fnames := $(strip $(ppa_pkgs_deb_file) $(ppa_pkgs_tgz_file)))
+$(if $(ppa_pkgs_local_src),
+	$(eval ppa_pkgs_preamble := \
+		trap 'cd $(ppa_out_dir) && rm -f $(ppa_pkgs_local_fnames)' EXIT; \
+		ln -t $(ppa_out_dir) $(ppa_pkgs_local_src)),
+	$(eval ppa_pkgs_preamble := /bin/true))
 $(ppa_out_tfile): $(ppa_out_dfile)
 $(ppa_out_tfile): $(HCP_$(ppa_name_upper)_ANCESTOR_TFILE)
-$(ppa_out_tfile): $(ppa_pkgs_local_src)
-$(ppa_out_tfile): $(ppa_copied)
+$(ppa_out_tfile): $(ppa_pkgs_local_src) $(ppa_copied)
 	$Qecho "Building container image $(ppa_out_dname)"
 	$Qbash -c " \
 	( \
-		trap 'cd $(ppa_out_dir) && rm -f $(ppa_pkgs_local_fnames)' EXIT; \
-		if [[ -n \"$(ppa_pkgs_local_src)\" ]]; then \
-			ln -t $(ppa_out_dir) $(ppa_pkgs_local_src); \
-		fi; \
+		$(ppa_pkgs_preamble); \
 		docker build -t $(ppa_out_dname) -f $(ppa_out_dfile) $(ppa_out_dir); \
 	)"
 	$Qtouch $$@
@@ -247,4 +281,11 @@ $(eval pps_mkout := $(strip $2))
 $(shell $(pps_cmd) > $(pps_mkout).tmp)
 $(shell $(HCP_SRC)/tmp2new.sh $(pps_mkout))
 include $(pps_mkout)
+endef
+
+# This routine turns out to be handy.
+define pp_if_empty
+$(eval k := $(strip $1))
+$(eval v := $(strip $2))
+$(if $($k),,$(eval $k := $v))
 endef

@@ -37,14 +37,7 @@ $(eval $(call pp_add_layer,\
 # APPS_BASE #
 #############
 
-# HCP: generic code (env, launcher, webapi, attester, purger, ...)
-apps_base_pkgs := hcp-common hcp-xtra hcp-tools
-# HCP: app/service-specific code (enrollsvc, attestsvc, swtpmsvc, ...)
-apps_base_pkgs += hcp-enrollsvc hcp-attestsvc hcp-policysvc hcp-swtpmsvc
-# HCP: other apps/services (kdcsvc, sshsvc, ...)
-apps_base_pkgs += hcp-kdcsvc hcp-sshsvc
-# external packages, possibly locally-built
-apps_base_pkgs += swtpm-tools libtpms0
+apps_base_pkgs := hcp swtpm-tools tpm2-tools heimdal safeboot
 
 $(eval $(call pp_add_layer,\
 	APPS_BASE,\
@@ -59,16 +52,13 @@ $(eval $(call pp_add_layer,\
 # Include the app_image() subroutine
 include $(HCP_APPS_SRC)/Makefile.sub
 
-# hcp_common: base class for all HCP apps.
-$(eval $(call app_image,common,SYM:APPS_BASE,safeboot tpmware heimdal,,))
-
 # hcp_caboodle: at the other extreme, this contains everything. It's an image
 # that can run any of the HCP apps/purposes, because it contains the code for
 # all of it.
-$(eval $(call app_image,caboodle,common,caboodle,,))
+$(eval $(call app_image,caboodle,SYM:APPS_BASE,,,))
 
 # Post-process now that all apps are registered
-$(eval $(call app_image_post,common))
+$(eval $(call app_image_post,caboodle))
 $(eval APPS_NAMES := $(strip $(APPS_NAMES)))
 APPS := $(foreach i,$(APPS_NAMES),$(HCP_$i_TFILE))
 ALL += $(APPS)

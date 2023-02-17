@@ -6,10 +6,6 @@
     "default_domain": "hcphacking.xyz",
 
     "env": {
-        "pathadd": {
-            "PATH": "/install-heimdal/libexec:/install-heimdal/bin",
-            "LD_LIBRARY_PATH": "/install-heimdal/lib"
-        },
         "set": { "KRB5_CONFIG": "/etc/hcp/primary.kdc/krb5.conf" }
     },
 
@@ -146,7 +142,7 @@
             "secondary, but point the secondary to the primary and specify",
             "this non-standard port." ],
         "setup": { "touchfile": "/etc/hcp/primary.kdc/touch-kdcsvc-local-setup" },
-        "exec": "kdc",
+        "exec": "/usr/libexec/kdc",
         "args": [ "--config-file=/kdc_primary/etc/kdc.conf", "--ports=3089" ],
         "tag": "services"
     },
@@ -155,7 +151,7 @@
         "setup": { "touchfile": "/etc/hcp/primary.kdc/touch-kdcsvc-local-setup" },
         "exec": [
             "/hcp/common/restarter.py", "-t", "5",
-            "ipropd-master"
+            "/usr/libexec/ipropd-master"
         ],
         "args": [
             "--config-file=/kdc_primary/etc/kdc.conf",

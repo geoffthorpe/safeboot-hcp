@@ -37,19 +37,3 @@ if [[ -z $HCP_KDCSVC_NAMESPACE ]]; then
 	echo "Error, HCP_KDCSVC_NAMESPACE isn't set" >&2
 	exit 1
 fi
-
-if [[ ! -x $(which kdc) ]]; then
-	echo "Error, no 'kdc' binary found"
-	exit 1
-fi
-
-if [[ ! -x $(which ipropd-master) ]]; then
-	echo "Error, no 'ipropd-master' binary found"
-	exit 1
-fi
-
-if [[ ! -x $(which ipropd-slave) ]]; then
-	echo "Error, no 'ipropd-slave' binary found"
-	exit 1
-fi
-

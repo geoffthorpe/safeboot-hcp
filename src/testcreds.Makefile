@@ -10,22 +10,13 @@ MDIRS += $(HCP_TESTCREDS_OUT)
 HCP_TESTCREDS_DOCKER_RUN := \
 	docker run -i --rm --init --label $(HCP_IMAGE_PREFIX)all=1 \
 	--mount type=bind,source=$(HCP_TESTCREDS_OUT),destination=/testcreds \
+	--mount type=bind,source=$(HCP_SRC)/reffile,destination=/reffile,readonly \
 	--env HCP_NO_CONFIG=1 \
 	--entrypoint="" \
-	$(call HCP_IMAGE,common) \
+	$(call HCP_IMAGE,caboodle) \
 	bash -c
 
-# A pre-requisite for all assets is the "reference" file. This gets used as the
-# "--reference" argument to chown commands, to ensure that all files created
-# within the containers have the expected file-system ownership on the
-# host-side. It also encapsulates the dependencies on output directories being
-# created and the hcp_precommon image being built.
-$(HCP_TESTCREDS_OUT)/reference: | $(HCP_TESTCREDS_OUT)
-$(HCP_TESTCREDS_OUT)/reference: | $(HCP_precommon_TFILE)
-$(HCP_TESTCREDS_OUT)/reference:
-	$Qecho "Unused file" > "$@"
-
-CMD_CREDS_CHOWN := /hcp/base/chowner.sh /testcreds/reference .
+CMD_CREDS_CHOWN := /hcp/base/chowner.sh /reffile/reffile .
 
 # "enrollsigner" This signs enrollments so that attesting clients can verify
 # them. Note that this is not acting as a credential issuer, e.g. if an
@@ -42,7 +33,6 @@ CMD_CREDS_ENROLLSIG += openssl genrsa -out key.priv &&
 CMD_CREDS_ENROLLSIG += openssl rsa -pubout -in key.priv -out key.pem &&
 CMD_CREDS_ENROLLSIG += $(CMD_CREDS_CHOWN)
 $(HCP_TESTCREDS_OUT)/done.enrollsigner: | $(HCP_TESTCREDS_ENROLLSIGNER)
-$(HCP_TESTCREDS_OUT)/done.enrollsigner: $(HCP_TESTCREDS_OUT)/reference
 $(HCP_TESTCREDS_OUT)/done.enrollsigner:
 	$Q$(HCP_TESTCREDS_DOCKER_RUN) "$(CMD_CREDS_ENROLLSIG)"
 	$Qtouch $@
@@ -82,7 +72,6 @@ CMD_CREDS_ENROLLCERTISSUER += openssl x509 \
 			-in CA.pem -outform PEM -out "CA.cert" &&
 CMD_CREDS_ENROLLCERTISSUER += $(CMD_CREDS_CHOWN)
 $(HCP_TESTCREDS_OUT)/done.enrollcertissuer: | $(HCP_TESTCREDS_ENROLLCERTISSUER)
-$(HCP_TESTCREDS_OUT)/done.enrollcertissuer: $(HCP_TESTCREDS_OUT)/reference
 $(HCP_TESTCREDS_OUT)/done.enrollcertissuer:
 	$Q$(HCP_TESTCREDS_DOCKER_RUN) "$(CMD_CREDS_ENROLLCERTISSUER)"
 	$Qtouch $@
@@ -176,7 +165,6 @@ ALL += $(HCP_TESTCREDS_DONE)
 # Cleanup
 ifneq (,$(wildcard $(HCP_TESTCREDS_OUT)))
 clean_testcreds:
-	$Qrm -f $(HCP_TESTCREDS_OUT)/reference
 	$Qrm -rf $(HCP_TESTCREDS_ENROLLCERTISSUER)
 	$Qrm -rf $(HCP_TESTCREDS_ENROLLCERTCHECKER)
 	$Qrm -rf $(HCP_TESTCREDS_ENROLLSIGNER)
