@@ -3,10 +3,6 @@ HCP_TESTCREDS_OUT := $(HCP_OUT)/testcreds
 $(HCP_TESTCREDS_OUT): | $(HCP_OUT)
 MDIRS += $(HCP_TESTCREDS_OUT)
 
-# The "caboodle_test" case spins up its credentials internally and doesn't use
-# the stuff below. NB: KEEP THIS CONSISTENT WITH src/caboodle/common.sh, OR
-# CONSOLIDATE THEM SOMEHOW!
-
 HCP_TESTCREDS_DOCKER_RUN := \
 	docker run -i --rm --init --label $(HCP_IMAGE_PREFIX)all=1 \
 	--mount type=bind,source=$(HCP_TESTCREDS_OUT),destination=/testcreds \

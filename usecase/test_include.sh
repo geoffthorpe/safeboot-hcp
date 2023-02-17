@@ -38,19 +38,19 @@ wrapper()
 	targets=$(echo "$targets" | sed -e 's/^[[:space:]]*//')
 	if [[ $cmd == start ]]; then
 		if [[ -n $HCP_IN_MONOLITH ]]; then
-			cmdline="/hcp/caboodle/monolith.py start -l"
+			cmdline="/hcp/monolith/monolith.py start -l"
 		else
 			cmdline="docker-compose up -d"
 		fi
 	elif [[ $cmd == run_fg ]]; then
 		if [[ -n $HCP_IN_MONOLITH ]]; then
-			cmdline="/hcp/caboodle/monolith.py run_fg"
+			cmdline="/hcp/monolith/monolith.py run_fg"
 		else
 			cmdline="docker-compose run --rm"
 		fi
 	elif [[ $cmd == run_bg ]]; then
 		if [[ -n $HCP_IN_MONOLITH ]]; then
-			cmdline="/hcp/caboodle/monolith.py run_bg"
+			cmdline="/hcp/monolith/monolith.py run_bg"
 		else
 			cmdline="docker-compose up -d"
 		fi
@@ -58,7 +58,7 @@ wrapper()
 		wload=$1
 		shift
 		if [[ -n $HCP_IN_MONOLITH ]]; then
-			cmdline="/hcp/caboodle/monolith.py exec"
+			cmdline="/hcp/monolith/monolith.py exec"
 		else
 			cmdline="docker-compose exec -T"
 		fi
@@ -67,7 +67,7 @@ wrapper()
 		wload=$1
 		shift
 		if [[ -n $HCP_IN_MONOLITH ]]; then
-			cmdline="/hcp/caboodle/monolith.py exec"
+			cmdline="/hcp/monolith/monolith.py exec"
 		else
 			cmdline="docker-compose exec"
 		fi

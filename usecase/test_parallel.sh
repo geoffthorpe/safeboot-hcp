@@ -50,7 +50,7 @@ do_core_fg orchestrator -c -e
 
 title "Waiting for 'sherver' and 'workstation1' to be alive"
 do_exec sherver /hcp/sshsvc/healthcheck.sh $RARGS
-do_exec workstation1 /hcp/caboodle/networked_healthcheck.sh $RARGS
+do_exec workstation1 /hcp/monolith/networked_healthcheck.sh $RARGS
 
 title "Extracting sherver's ssh hostkey"
 do_exec sherver bash -c "ssh-keyscan -p 2222 $SHERVER_FQDN" > $tmpfile

@@ -7,7 +7,7 @@ default: install
 $(eval DESTDIR := $(strip $(DESTDIR)))
 $(if $(DESTDIR),,$(error DESTDIR is not set))
 
-# The installation prefix should be passed in too (by src/caboodle/Makefile)
+# The installation prefix should be passed in too (by src/hcp/Makefile)
 $(eval LOCAL_PREFIX := $(strip $(LOCAL_PREFIX)))
 $(if $(LOCAL_PREFIX),,$(error LOCAL_PREFIX is not set))
 
@@ -35,7 +35,7 @@ endef
 $(eval $(call hcp_install,common,common,755,))
 $(eval $(call hcp_install,tools,tools,755,))
 $(eval $(call hcp_install,xtra,xtra,755,))
-$(eval $(call hcp_install,caboodle,caboodle,755,))
+$(eval $(call hcp_install,monolith,monolith,755,))
 $(eval $(call hcp_install,enrollsvc,enrollsvc,755,))
 $(eval $(call hcp_install,enrollsvc_genprogs,enrollsvc/genprogs,755,ls -1))
 $(eval $(call hcp_install,attestsvc,attestsvc,755,))

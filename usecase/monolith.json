@@ -40,11 +40,11 @@
         ],
         "setup": [ {
             "tag": "local",
-            "exec": [ "/hcp/caboodle/set-container-env.sh" ],
-            "touchfile": "/etc/hcp-caboodle-container.env"
+            "exec": [ "/hcp/monolith/set-container-env.sh" ],
+            "touchfile": "/etc/hcp-monolith-container.env"
         }, {
             "tag": "local",
-            "exec": [ "/hcp/caboodle/monolith.py", "bootstrap" ],
+            "exec": [ "/hcp/monolith/monolith.py", "bootstrap" ],
             "touchfile": "/etc/hcp/monolith/touch-local-setup"
         } ],
         "fakemounts": [

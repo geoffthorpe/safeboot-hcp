@@ -153,7 +153,7 @@ title "start client machine (workstation1)"
 do_normal_start workstation1
 
 title "waiting for the client machine to be up"
-do_exec workstation1 /hcp/caboodle/networked_healthcheck.sh $RARGS
+do_exec workstation1 /hcp/monolith/networked_healthcheck.sh $RARGS
 
 title "obtaining the sshd server's randomly-generated public key"
 do_exec sherver bash -c "ssh-keyscan -p 2222 $SHERVER_FQDN" > $tmpfile

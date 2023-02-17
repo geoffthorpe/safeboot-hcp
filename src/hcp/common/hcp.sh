@@ -142,9 +142,9 @@ elif [[ ! -n $HCP_CONFIG_FILE ]]; then
 	if [[ -n $HOME && -d $HOME && -f "$HOME/hcp_config" ]]; then
 		source "$HOME/hcp_config"
 		hlog 2 "hcp_config: loaded from $HOME/hcp_config"
-	elif [[ -f /etc/hcp-caboodle-container.env ]]; then
-		source /etc/hcp-caboodle-container.env
-		hlog 2 "hcp_config: loaded from /etc/hcp-caboodle-container.env"
+	elif [[ -f /etc/hcp-monolith-container.env ]]; then
+		source /etc/hcp-monolith-container.env
+		hlog 2 "hcp_config: loaded from /etc/hcp-monolith-container.env"
 	else
 		echo "Error, no HCP_CONFIG_FILE set" >&2
 		exit 1

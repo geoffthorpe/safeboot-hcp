@@ -152,11 +152,11 @@ def hcp_config_scope_get():
 		# and we're coming up as a regular user and need to find
 		# context. In this case, we try;
 		# - $HOME/hcp_config_file, see internal_role_account_uid_file().
-		# - /etc/hcp-caboodle-container.env, see
-		#   src/caboodle/set_container_env.sh.
+		# - /etc/hcp-monolith-container.env, see
+		#   src/hcp/monolith/set_container_env.sh.
 		if 'HCP_CONFIG_FILE' not in os.environ:
 			home = ''
-			_global = "/etc/hcp-caboodle-container.env"
+			_global = "/etc/hcp-monolith-container.env"
 			if 'HOME' in os.environ:
 				home = os.environ['HOME']
 			worldfile = f"{home}/hcp_config_file"

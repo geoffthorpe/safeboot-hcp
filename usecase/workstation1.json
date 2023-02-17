@@ -67,8 +67,8 @@
     "config": {
         "setup": [ {
             "tag": "local",
-            "exec": "/hcp/caboodle/set-container-env.sh",
-            "touchfile": "/etc/hcp-caboodle-container.env"
+            "exec": "/hcp/monolith/set-container-env.sh",
+            "touchfile": "/etc/hcp-monolith-container.env"
         } ]
     },
 
