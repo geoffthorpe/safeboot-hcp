@@ -31,6 +31,9 @@ ifndef HCP_RELAX
 HCP_DEPS_COMMON := $(TOP)/Makefile $(TOP)/settings.mk
 endif
 
+# Helper, before any included Makefiles might need it
+uniq = $(if $1,$(firstword $1) $(call uniq,$(filter-out $(firstword $1),$1)))
+
 ###############
 # Cache logic #
 ###############
