@@ -22,7 +22,10 @@ apps_pre_base_pkgs := json-glib-tools libjson-perl libncurses5-dev \
 	python3-cryptography python3-openssl \
 	python3-flask python3-requests uwsgi-plugin-python3 \
 	nginx uuid-runtime \
-	openssh-server
+	openssh-server gnutls-bin libglib2.0-0 openssl
+ifdef HCP_APP_UML
+apps_pre_base_pkgs += vde2 kmod isc-dhcp-client
+endif
 $(eval $(call pp_add_layer,\
 	APPS_PRE_BASE,\
 	BASE,\
@@ -37,6 +40,12 @@ $(eval $(call pp_add_layer,\
 # APPS_BASE #
 #############
 
+# NB: the packages "gnutls-bin libglib2.0-0 openssl" were added to
+# apps_pre_base because experience shows that they're needed by the tools
+# below. Doing this minimizes/eliminates package downloads during a rebuild if
+# in-tree soure is modified. That assumption might grow stale, which you'll
+# notice if a change to any of the 'apps_base_pkgs' codebases causes download
+# of upstream packages.
 apps_base_pkgs := hcp swtpm-tools tpm2-tools heimdal safeboot
 
 $(eval $(call pp_add_layer,\
@@ -63,8 +72,10 @@ $(eval APPS_NAMES := $(strip $(APPS_NAMES)))
 APPS := $(foreach i,$(APPS_NAMES),$(HCP_$i_TFILE))
 ALL += $(APPS)
 
+ifdef HCP_APP_UML
 # Create a UMLified (bootable ext4 image) version of caboodle
 $(eval $(call umlify,CABOODLE))
+endif
 
 ###########
 # Wrapper #

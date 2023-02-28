@@ -1,0 +1,26 @@
+{
+    "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
+
+    "id": "uml_runner",
+
+    "services": [
+        "runner"
+    ],
+    "default_targets": [
+        "start-services"
+    ],
+    "args_for": "runner",
+
+    "runner": {
+        "exec": "/hcp/uml/runner.py",
+        "tag": "services",
+        "init_env": {
+            "pathadd": {
+                "PATH": "/bin:/sbin:/usr/bin:/usr/sbin"
+            },
+            "set": {
+                "VERBOSE": "2"
+            }
+        }
+    }
+}

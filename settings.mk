@@ -133,3 +133,7 @@ HCP_UML_KERNEL_URL ?= \
 
 # What size ext4 image(s) to make
 HCP_UML_EXT4_SIZE := 1G
+
+# Do we build application support for UML? (This involves embedding a UML
+# kernel and modules into the caboodle image.)
+HCP_APP_UML := 1

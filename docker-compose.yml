@@ -326,11 +326,12 @@ services:
             timeout: 3s
             interval: 10s
 
-# 'monolith' exists to run all of the instances above, but co-tenant within the
-# same container rather than broken out. (Caboodle implements a
-# "docker-compose" replacement that can be hooked into test scripts, that
-# causes it to invoke launcher.py directly rather than doing so via
-# docker-compose commands into separate containers.)
+# 'monolith' exists to run all of the workloads that the targets above run in
+# separate containers, but running them co-tenant within this single container
+# rather than broken out. (HCP implements a "docker-compose" replacement called
+# "monolith.py" that can be hooked into test scripts, and that causes it to
+# invoke launcher.py directly rather than doing so via docker-compose commands
+# into separate containers.)
     monolith:
         extends: common
         hostname: monolith.hcphacking.xyz
@@ -355,6 +356,30 @@ services:
             test: /bin/true
             timeout: 3s
             interval: 10s
+
+# 'uml_runner' exists as a shim to run an arbitrary workload inside a UML
+# instance. We do _not_ extend 'common', which is the template for a normal HCP
+# workload running in the container, because we aren't that. (We're actually
+# redirecting the intended "normal HCP service" into a VM context.) To wit;
+# - the fqdn-bus and usecase mounts aren't for what's in the container, they're
+#   placed at paths that will mount into the VM.
+# - no 'hostname' property, the workload inside the UML instance should
+#   determine what hostname(s) it advertises.
+    uml_runner:
+        image: ${HCP_IMAGE_caboodle}
+        init: true
+        cap_add:
+          - SYS_ADMIN
+        environment:
+          - HCP_CONFIG_FILE=/hostfs/usecase/uml_runner.json
+        volumes:
+          - fqdn:/hostfs/fqdn-bus:rw
+          - ${HCP_TOP}/usecase:/hostfs/usecase:ro
+          - ${HCP_TOP}/output/uml/converted/caboodle.ext4:/rootfs.ext4:ro
+        tmpfs:
+          - /dev/shm:exec
+        networks:
+          - hcpnetwork
 
     uml1:
         extends: common

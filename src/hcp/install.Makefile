@@ -43,6 +43,9 @@ $(eval $(call hcp_install,policysvc,policysvc,755,))
 $(eval $(call hcp_install,swtpmsvc,swtpmsvc,755,))
 $(eval $(call hcp_install,kdcsvc,kdcsvc,755,))
 $(eval $(call hcp_install,sshsvc,sshsvc,755,))
+$(eval $(call hcp_install,uml,uml,755,))
+hcp_uml_POST_CMD := gcc -Wall -Werror -o $(PREFIX)/uml/myshutdown \
+			uml/myshutdown.c
 
 define install_tgt
 $(eval x := $(strip $1))
