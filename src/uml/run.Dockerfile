@@ -1,5 +1,4 @@
-# TODO: when we learn how to pass build-args down, the image we copy from will
-# be properly parameterised. The hard-coding below is frail.
+# TODO: same note as in src/apps/base.Dockerfile
 COPY /start.sh /start.sh
 COPY --from=hcp_uml_builder:devel /linux /linux
 COPY --from=hcp_uml_builder:devel /lib/modules /lib/modules

@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # This script is used as the "init=" argument to the UML kernel. It's purpose
-# is to run whatever the user had asked for, and trigger the 'myshutdown' tool
-# once that exits. It also takes care of some minimal initialisation;
+# is to run whatever the user had asked for, and to trigger the 'myshutdown'
+# tool once it exits. It also takes care of some minimal initialisation;
 
 trap '/myshutdown' EXIT
 
