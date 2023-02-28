@@ -46,7 +46,7 @@ $(eval $(call pp_add_layer,\
 # in-tree soure is modified. That assumption might grow stale, which you'll
 # notice if a change to any of the 'apps_base_pkgs' codebases causes download
 # of upstream packages.
-apps_base_pkgs := hcp swtpm-tools tpm2-tools heimdal safeboot
+apps_base_pkgs := swtpm-tools tpm2-tools heimdal safeboot
 
 $(eval $(call pp_add_layer,\
 	APPS_BASE,\
@@ -58,34 +58,21 @@ $(eval $(call pp_add_layer,\
 	,\
 	))
 
-# Include the app_image() subroutine
-include $(HCP_APPS_SRC)/Makefile.sub
+############
+# Caboodle #
+############
 
-# hcp_caboodle: at the other extreme, this contains everything. It's an image
-# that can run any of the HCP apps/purposes, because it contains the code for
-# all of it.
-$(eval $(call app_image,caboodle,SYM:APPS_BASE,,,))
-
-# Post-process now that all apps are registered
-$(eval $(call app_image_post,caboodle))
-$(eval APPS_NAMES := $(strip $(APPS_NAMES)))
-APPS := $(foreach i,$(APPS_NAMES),$(HCP_$i_TFILE))
-ALL += $(APPS)
+$(eval $(call pp_add_layer,\
+	CABOODLE,\
+	APPS_BASE,\
+	APPS,\
+	hcp,\
+	,\
+	$(HCP_SRC)/apps/Makefile,\
+	,\
+	))
 
 ifdef HCP_APP_UML
 # Create a UMLified (bootable ext4 image) version of caboodle
 $(eval $(call umlify,CABOODLE))
-endif
-
-###########
-# Wrapper #
-###########
-
-apps: $(APPS)
-
-# Global cleanup
-ifneq (,$(wildcard $(HCP_APPS_OUT)))
-clean_apps:
-	$Qrmdir $(HCP_APPS_OUT)
-clean: clean_apps
 endif
