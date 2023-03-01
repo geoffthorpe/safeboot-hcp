@@ -9,23 +9,14 @@ MDIRS += $(HCP_APPS_OUT)
 #################
 
 # We create this layer with the commonly-required upstream packages _before_
-# creating the APPS_BASE layer with the possibly-locally-built upstream and
-# HCP-specific packages. This is because locally-built packages get (rightly)
-# prioritized over upstream installs - to avoid accidental installation (by
-# dependency) of upstream packages before locally-built equivalents get a
-# chance - and so we don't want local source changes to cause the constant
-# re-downloading and reinstallation of upstream packages. Ie. PRE_BASE forces
-# those upstream packages to go in first, and so docker/buildkit caching takes
-# care of the rest.
+# creating layers with the possibly-locally-built upstream and
+# HCP-specific packages.
 apps_pre_base_pkgs := json-glib-tools libjson-perl libncurses5-dev \
 	python3 python3-yaml python3-netifaces python3-psutil \
 	python3-cryptography python3-openssl \
 	python3-flask python3-requests uwsgi-plugin-python3 \
 	nginx uuid-runtime \
 	openssh-server gnutls-bin libglib2.0-0 openssl
-ifdef HCP_APP_UML
-apps_pre_base_pkgs += vde2 kmod isc-dhcp-client
-endif
 $(eval $(call pp_add_layer,\
 	APPS_PRE_BASE,\
 	BASE,\
@@ -36,20 +27,15 @@ $(eval $(call pp_add_layer,\
 	,\
 	))
 
-#############
-# APPS_BASE #
-#############
-
-# NB: the packages "gnutls-bin libglib2.0-0 openssl" were added to
-# apps_pre_base because experience shows that they're needed by the tools
-# below. Doing this minimizes/eliminates package downloads during a rebuild if
-# in-tree soure is modified. That assumption might grow stale, which you'll
-# notice if a change to any of the 'apps_base_pkgs' codebases causes download
-# of upstream packages.
+# These are the possibly-locally-built upstream packages
 apps_base_pkgs := swtpm-tools tpm2-tools heimdal safeboot
 
+############
+# Caboodle #
+############
+
 $(eval $(call pp_add_layer,\
-	APPS_BASE,\
+	CABOODLE_BASE,\
 	APPS_PRE_BASE,\
 	APPS,\
 	$(apps_base_pkgs),\
@@ -57,14 +43,9 @@ $(eval $(call pp_add_layer,\
 	$(HCP_SRC)/apps/Makefile,\
 	,\
 	))
-
-############
-# Caboodle #
-############
-
 $(eval $(call pp_add_layer,\
 	CABOODLE,\
-	APPS_BASE,\
+	CABOODLE_BASE,\
 	APPS,\
 	hcp,\
 	,\
@@ -72,7 +53,58 @@ $(eval $(call pp_add_layer,\
 	,\
 	))
 
+###############
+# UML version #
+###############
+
 ifdef HCP_APP_UML
-# Create a UMLified (bootable ext4 image) version of caboodle
-$(eval $(call umlify,CABOODLE))
+uml_pre_base_pkgs += vde2 kmod isc-dhcp-client
+$(eval $(call pp_add_layer,\
+	UML_PRE_BASE,\
+	APPS_PRE_BASE,\
+	APPS,\
+	vde2 kmod isc-dhcp-client,\
+	,\
+	$(HCP_SRC)/apps/Makefile,\
+	,\
+	))
+$(eval $(call pp_add_layer,\
+	UML_CABOODLE_BASE,\
+	UML_PRE_BASE,\
+	APPS,\
+	$(apps_base_pkgs),\
+	,\
+	$(HCP_SRC)/apps/Makefile,\
+	,\
+	))
+$(eval $(call pp_add_layer,\
+	UML_CABOODLE,\
+	UML_CABOODLE_BASE,\
+	APPS,\
+	hcp,\
+	$(HCP_UML_SRC)/bootstrapper.Dockerfile,\
+	$(HCP_SRC)/apps/Makefile $(HCP_UML_BUILDER_TFILE),\
+	,\
+	$(HCP_UML_SRC)/init.sh))
+
+$(HCP_APPS_OUT)/uml_caboodle.tar: $(HCP_UML_CABOODLE_TFILE)
+$(HCP_APPS_OUT)/uml_caboodle.tar: $(HCP_UML_SRC)/hcp_mkext4.sh
+$(HCP_APPS_OUT)/uml_caboodle.tar:
+	$Q$(HCP_UML_SRC)/hcp_mkext4.sh \
+		dname2tar $(HCP_UML_CABOODLE_DNAME) $@
+$(HCP_APPS_OUT)/uml_caboodle.ext4: $(HCP_APPS_OUT)/uml_caboodle.tar
+$(HCP_APPS_OUT)/uml_caboodle.ext4: $(HCP_UML_RUN_TFILE)
+$(HCP_APPS_OUT)/uml_caboodle.ext4: $(HCP_UML_BOOTSTRAPPER_PATH)
+$(HCP_APPS_OUT)/uml_caboodle.ext4:
+	$QBOOTSTRAP_IMG="$(HCP_UML_BOOTSTRAPPER_PATH)" \
+		BOOTSTRAP_DNAME="$(HCP_UML_RUN_DNAME)" \
+		$(HCP_UML_SRC)/hcp_mkext4.sh \
+		tar2ext4 $(HCP_APPS_OUT)/uml_caboodle.tar $@ $(HCP_UML_EXT4_SIZE) unused
+HCP_CABOODLE_UML_PATH := $(HCP_APPS_OUT)/uml_caboodle.ext4
+ifneq (,$(wildcard $(HCP_APPS_OUT)/uml_caboodle.tar $(HCP_APPS_OUT)/uml_caboodle.ext4))
+clean_uml_caboodle_pieces:
+	$Qrm -f $(HCP_APPS_OUT)/uml_caboodle.tar $(HCP_APPS_OUT)/uml_caboodle.ext4
+clean_uml_caboodle: clean_uml_caboodle_pieces
+endif
+
 endif
