@@ -15,12 +15,11 @@ function datetime_log {
 
 function pull_updates {
 	(git fetch twin && git fetch origin) || return 1
-	updates=`git log ..origin/master --oneline | wc -l`
+	updates=$(git log ..origin/master --oneline | wc -l)
 	if [[ $updates -eq 0 ]]; then
 		return 0
 	fi
 	datetime_log "merging $updates update(s)"
-	git log ..origin/master --oneline
 	git merge origin/master > /dev/null
 }
 
