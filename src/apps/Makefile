@@ -4,6 +4,12 @@ HCP_APPS_SRC := $(HCP_SRC)/apps
 $(HCP_APPS_OUT): | $(HCP_OUT)
 MDIRS += $(HCP_APPS_OUT)
 
+ifneq (,$(wildcard $(HCP_APPS_OUT)))
+clean_apps:
+	$Qrmdir $(HCP_APPS_OUT)
+clean: clean_apps
+endif
+
 #################
 # APPS_PRE_BASE #
 #################
@@ -16,7 +22,7 @@ apps_pre_base_pkgs := json-glib-tools libjson-perl libncurses5-dev \
 	python3-cryptography python3-openssl \
 	python3-flask python3-requests uwsgi-plugin-python3 \
 	nginx uuid-runtime \
-	openssh-server gnutls-bin libglib2.0-0 openssl
+	openssh-server gnutls-bin libglib2.0-0 openssl vde2
 $(eval $(call pp_add_layer,\
 	APPS_PRE_BASE,\
 	BASE,\
@@ -58,12 +64,12 @@ $(eval $(call pp_add_layer,\
 ###############
 
 ifdef HCP_APP_UML
-uml_pre_base_pkgs += vde2 kmod isc-dhcp-client
+uml_pre_base_pkgs := kmod isc-dhcp-client initramfs-tools
 $(eval $(call pp_add_layer,\
 	UML_PRE_BASE,\
 	APPS_PRE_BASE,\
 	APPS,\
-	vde2 kmod isc-dhcp-client,\
+	$(uml_pre_base_pkgs),\
 	,\
 	$(HCP_SRC)/apps/Makefile,\
 	,\
@@ -85,7 +91,7 @@ $(eval $(call pp_add_layer,\
 	$(HCP_UML_SRC)/bootstrapper.Dockerfile,\
 	$(HCP_SRC)/apps/Makefile $(HCP_UML_BUILDER_TFILE),\
 	,\
-	$(HCP_UML_SRC)/init.sh))
+	$(HCP_UML_SRC)/init.sh $(HCP_UML_SRC)/hcp_mkext4.sh))
 
 $(HCP_APPS_OUT)/uml_caboodle.tar: $(HCP_UML_CABOODLE_TFILE)
 $(HCP_APPS_OUT)/uml_caboodle.tar: $(HCP_UML_SRC)/hcp_mkext4.sh
@@ -101,10 +107,75 @@ $(HCP_APPS_OUT)/uml_caboodle.ext4:
 		$(HCP_UML_SRC)/hcp_mkext4.sh \
 		tar2ext4 $(HCP_APPS_OUT)/uml_caboodle.tar $@ $(HCP_UML_EXT4_SIZE) unused
 HCP_CABOODLE_UML_PATH := $(HCP_APPS_OUT)/uml_caboodle.ext4
+ALL += $(HCP_CABOODLE_UML_PATH)
 ifneq (,$(wildcard $(HCP_APPS_OUT)/uml_caboodle.tar $(HCP_APPS_OUT)/uml_caboodle.ext4))
 clean_uml_caboodle_pieces:
 	$Qrm -f $(HCP_APPS_OUT)/uml_caboodle.tar $(HCP_APPS_OUT)/uml_caboodle.ext4
 clean_uml_caboodle: clean_uml_caboodle_pieces
 endif
 
+endif # HCP_APP_UML
+
+################
+# QEMU version #
+################
+
+ifdef HCP_APP_QEMU
+qemu_pre_base_pkgs := $(uml_pre_base_pkgs)
+# If UML is built too, these docker layers should cache-match
+$(eval $(call pp_add_layer,\
+	QEMU_PRE_BASE,\
+	APPS_PRE_BASE,\
+	APPS,\
+	$(qemu_pre_base_pkgs) linux-image-amd64 systemd-sysv qemu-system-x86,\
+	,\
+	$(HCP_SRC)/apps/Makefile,\
+	,\
+	))
+$(eval $(call pp_add_layer,\
+	QEMU_BASE,\
+	QEMU_PRE_BASE,\
+	APPS,\
+	$(apps_base_pkgs),\
+	,\
+	$(HCP_SRC)/apps/Makefile,\
+	,\
+	))
+$(eval $(call pp_add_layer,\
+	QEMU,\
+	QEMU_BASE,\
+	APPS,\
+	hcp,\
+	$(HCP_APPS_SRC)/qemu_rootfs.Dockerfile,\
+	$(HCP_SRC)/apps/Makefile $(HCP_UML_BUILDER_TFILE),\
+	,\
+	))
+
+$(HCP_APPS_OUT)/qemu_caboodle.tar: $(HCP_QEMU_TFILE)
+$(HCP_APPS_OUT)/qemu_caboodle.tar: $(HCP_UML_SRC)/hcp_mkext4.sh
+$(HCP_APPS_OUT)/qemu_caboodle.tar:
+	$Q$(HCP_UML_SRC)/hcp_mkext4.sh \
+		dname2tar $(HCP_QEMU_DNAME) $@
+HCP_QEMU_IMG := $(HCP_APPS_OUT)/qemu_caboodle_img
+$(HCP_QEMU_IMG): | $(HCP_APPS_OUT)
+MDIRS += $(HCP_QEMU_IMG)
+$(HCP_QEMU_IMG)/disk: | $(HCP_QEMU_IMG)
+$(HCP_QEMU_IMG)/disk: $(HCP_APPS_OUT)/qemu_caboodle.tar
+$(HCP_QEMU_IMG)/disk: $(HCP_UML_RUN_TFILE)
+$(HCP_QEMU_IMG)/disk: $(HCP_UML_BOOTSTRAPPER_PATH)
+$(HCP_QEMU_IMG)/disk:
+	$QBOOTSTRAP_IMG="$(HCP_UML_BOOTSTRAPPER_PATH)" \
+		BOOTSTRAP_DNAME="$(HCP_UML_RUN_DNAME)" \
+		$(HCP_UML_SRC)/hcp_mkext4.sh \
+			tar2img $(HCP_APPS_OUT)/qemu_caboodle.tar \
+				$(HCP_QEMU_IMG) $(HCP_QEMU_DISK_SIZE) unused
+ALL += $(HCP_QEMU_IMG)/disk
+ifneq (,$(wildcard $(HCP_APPS_OUT)/qemu_caboodle.tar $(HCP_QEMU_IMG)))
+clean_qemu_caboodle_pieces:
+	$Qrm -f $(HCP_APPS_OUT)/qemu_caboodle.tar
+	$Qrm -f $(HCP_QEMU_IMG)/{disk,vmlinuz,initrd.img}
+	$Qif test -d $(HCP_QEMU_IMG); then rmdir $(HCP_QEMU_IMG); fi
+clean_qemu_caboodle: clean_qemu_caboodle_pieces
 endif
+
+endif # HCP_APP_QEMU

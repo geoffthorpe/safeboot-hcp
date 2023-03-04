@@ -375,7 +375,7 @@ services:
         volumes:
           - fqdn:/hostfs/fqdn-bus:rw
           - ${HCP_TOP}/usecase:/hostfs/usecase:ro
-          - ${HCP_TOP}/output/uml/converted/caboodle.ext4:/rootfs.ext4:ro
+          - ${HCP_OUT}/uml/converted/caboodle.ext4:/rootfs.ext4:ro
         tmpfs:
           - /dev/shm:exec
         networks:
@@ -390,8 +390,37 @@ services:
         environment:
           - HCP_CONFIG_FILE=/usecase/uml1.json
         volumes:
-          - ${HCP_TOP}/output/uml/uml_bootstrapper.ext4:/rootfs.ext4:ro
+          - ${HCP_OUT}/uml/uml_bootstrapper.ext4:/rootfs.ext4:ro
         tmpfs:
           - /dev/shm:exec
         networks:
           - hcpnetwork
+
+    qemu_runner:
+        image: ${HCP_IMAGE_qemu}
+        init: true
+        cap_add:
+          - SYS_ADMIN
+        environment:
+          - HCP_CONFIG_FILE=/hostfs/usecase/qemu_runner.json
+        volumes:
+          - fqdn:/hostfs/fqdn-bus:rw
+          - attestdb:/hostfs/attestdb:rw
+          - ${HCP_TOP}/usecase:/hostfs/usecase:ro
+          - ${HCP_OUT}/apps/qemu_caboodle_img:/qemu_caboodle_img:ro
+        tmpfs:
+          - /dev/shm:exec
+        networks:
+          - hcpnetwork
+
+    # Use this variant if you want QEMU to launch a VGA window, and if
+    # HCP_APP_QEMU_XFORWARD is enabled in settings.mk, and if you an X
+    # environment to forward!)
+    qemu_runner_x11:
+        extends: qemu_runner
+        environment:
+          - XAUTHORITY=/xauth
+          - DISPLAY=${DISPLAY}
+        volumes:
+          - /tmp/.X11-unix:/tmp/.X11-unix
+          - ${HCP_OUT}/docker-compose.xauth:/xauth:ro

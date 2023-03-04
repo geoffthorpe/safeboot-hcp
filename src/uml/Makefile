@@ -62,11 +62,13 @@ endif
 ### UML_RUN - for running user-mode-linux
 ###########
 
+# TODO: actually, this runs QEMU too. Refactoring and renaming are in order...
+
 $(eval $(call pp_add_layer,\
 	UML_RUN,\
 	BASE,\
 	UML,\
-	vde2,\
+	vde2 qemu-system-x86,\
 	$(HCP_UML_SRC)/run.Dockerfile,\
 	$(HCP_UML_SRC)/Makefile $(HCP_UML_BUILDER_TFILE),\
 	,\
@@ -98,20 +100,17 @@ $(eval $(call pp_add_layer,\
 	UML_BOOTSTRAPPER_ROOTFS,\
 	BASE,\
 	UML,\
-	kmod isc-dhcp-client,\
+	kmod isc-dhcp-client fdisk extlinux initramfs-tools,\
 	$(HCP_UML_SRC)/bootstrapper.Dockerfile,\
 	$(HCP_UML_SRC)/Makefile $(HCP_UML_BUILDER_TFILE),\
 	,\
-	$(HCP_UML_SRC)/init.sh))
+	$(HCP_UML_SRC)/init.sh $(HCP_UML_SRC)/hcp_mkext4.sh))
 
 # The HCP_CACHE_RULE_* output tells us if we have to generate rules to generate
 # the bootstrapper image, and what path it should be generated at. By
 # dependency, this also controls the logic to create the rootfs tarball, the
 # mount directory, etc.
 ifdef HCP_CACHE_RULE_UML_BOOTSTRAPPER
-
-# bootstrapper.Dockerfile pulls files from HCP_UML_BUILDER;
-$(HCP_UML_BOOTSTRAPPER_ROOTFS_TFILE): $(HCP_UML_BUILDER_TFILE)
 
 # - the mount directory for disk image production
 $(HCP_UML_BOOTSTRAPPER_MOUNT): | $(HCP_UML_OUT)

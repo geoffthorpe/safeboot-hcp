@@ -137,3 +137,12 @@ HCP_UML_EXT4_SIZE := 1G
 # Do we build application support for UML? (This involves embedding a UML
 # kernel and modules into the caboodle image.)
 HCP_APP_UML := 1
+
+#################
+# QEMU settings #
+#################
+
+HCP_QEMU_DISK_SIZE := 2G
+HCP_APP_QEMU := 1
+# Define this to give QEMU VMs a VGA device (comes up in an X window)
+#HCP_APP_QEMU_XFORWARD := 1

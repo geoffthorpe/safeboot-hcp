@@ -1,0 +1,11 @@
+[Unit]
+Description=Wrapper around the HCP launcher
+After=network.target
+
+[Service]
+Type=exec
+Restart=no
+ExecStart=/hcp/qemu/init.py
+
+[Install]
+WantedBy=multi-user.target

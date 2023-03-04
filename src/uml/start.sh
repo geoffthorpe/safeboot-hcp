@@ -13,8 +13,6 @@ elif [[ -f /mnt/uml-command/args.json ]]; then
 	rm /mnt/uml-command/args.json
 fi
 
-trap 'rm /mnt/uml-command/args.json' EXIT
-
 if [[ $# -eq 0 || ( $# -eq 1 && ( $1 == "bash" || $1 == "/bin/bash" ) ) ]]; then
 	be_interactive=1
 else
@@ -96,7 +94,7 @@ cmd="$cmd eth0=vde,/vdeswitch"
 if [[ -z $VERBOSE || $VERBOSE == 0 ]]; then
 	cmd="$cmd quiet"
 fi
-cmd="$cmd mem=2G init=/init.sh"
+cmd="$cmd mem=4G init=/init.sh"
 if [[ -n $VERBOSE && $VERBOSE -gt 0 ]]; then
 	echo "About to run: $cmd" >&2
 fi
@@ -105,3 +103,8 @@ if [[ $be_interactive -eq 0 ]]; then
 else
 	$cmd
 fi
+if [[ -f /mnt/uml-command/exitcode ]]; then
+	exitcode=$(cat /mnt/uml-command/exitcode)
+	exit $exitcode
+fi
+exit 0

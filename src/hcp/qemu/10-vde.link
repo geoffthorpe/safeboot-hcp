@@ -1,0 +1,8 @@
+[Match]
+MACAddress=52:54:98:76:54:32
+
+[Link]
+Name=vde0
+
+[Network]
+DHCP=ipv4

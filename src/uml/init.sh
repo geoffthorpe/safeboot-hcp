@@ -1,10 +1,19 @@
 #!/bin/bash
 
 # This script is used as the "init=" argument to the UML kernel. It's purpose
-# is to run whatever the user had asked for, and to trigger the 'myshutdown'
-# tool once it exits. It also takes care of some minimal initialisation;
+# is to handle UML-specific initialization then parse the input arguments, run
+# what the user asked for, then trigger the 'myshutdown' which unceremonially
+# halts the VM.
 
-trap '/myshutdown' EXIT
+set -e
+
+onexit()
+{
+	echo $? > /mnt/uml-command/exitcode
+	/myshutdown
+}
+
+trap 'onexit' EXIT
 
 mount -t proc proc /proc/
 mount -t sysfs sys /sys/

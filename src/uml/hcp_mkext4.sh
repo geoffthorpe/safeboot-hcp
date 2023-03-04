@@ -6,6 +6,8 @@
 # dname2tar - pulling a container image from the docker daemon as a tarball,
 # tar2ext4 - creating a bootable ext4 image from such a tarball (requires sudo
 #            privs for mount/tar/umount).
+# tar2img - creating a bootable disk image from such a tarball (requires sudo
+#            privs for mount/tar/umount).
 #
 # This logic was previously in the Makefile recipes directly, but they have
 # been suctioned out into this script for one reason in particular;
@@ -85,6 +87,90 @@ tar2ext4()
 	)
 }
 
+tar2img()
+{
+	mytar=$1
+	myimg=$2
+	mysz=$3
+	mymount=$4
+	if [[ -n $BOOTSTRAP_IMG ]]; then
+		echo "hcp_mkext4.sh tar2img -> relaying into a QEMU VM" >&2
+		docker run --rm --tmpfs /dev/shm:exec \
+			-v $BOOTSTRAP_IMG:/rootfs.ext4:ro \
+			-v $mytar:/mnt/uml-command/input.tar:ro \
+			-v $myimg:/mnt/uml-command/output_img \
+			$BOOTSTRAP_DNAME \
+			/start.sh \
+			/hcp_mkext4.sh tar2img \
+				/mnt/uml-command/input.tar \
+				/mnt/uml-command/output_img \
+				$mysz \
+				/mnt/foo
+	else
+		echo "Converting tarball to disk image" >&2
+		dodelmount=0
+		dounmount=0
+		dounlosetup=0
+		(
+		onexit()
+		{
+			exitcode=$?
+			if [[ $exitcode -ne 0 ]]; then
+				echo "error cleanup: $myimg" >&2
+				rm -f $myimg/disk $myimg/vmlinuz $myimg/initrd.img
+				rmdir $myimg
+			fi
+			if [[ $dounlosetup -eq 1 ]]; then
+				losetup -d /dev/loop0
+			fi
+			if [[ $dounmount -eq 1 ]]; then
+				umount $mymount
+			fi
+			if [[ $dodelmount -eq 1 ]]; then
+				rmdir $mymount
+			fi
+			exit $exitcode
+		}
+		trap 'onexit' EXIT
+		dd if=/dev/zero of=$myimg/disk bs=$mysz count=1
+		#numbytes=$(wc -c $myimg/disk | awk '{print $1}')
+		#numsectors=$((numbytes/512-2048))
+		sfdisk $myimg/disk <<EOF
+label: dos
+label-id: 0xabbaf00d
+device: wibble.img
+unit: sectors
+
+wibble.img : start=2048, type=83, bootable
+EOF
+		# TODO: we shouldn't even presume to get loop0 in the bootstrap
+		# VM, but definitely shouldn't make such an assumption on the
+		# host.
+		losetup -o 1048576 /dev/loop0 $myimg/disk
+		dounlosetup=1
+		mkfs.ext4 /dev/loop0
+		if [[ ! -d $mymount ]]; then
+			mkdir $mymount
+			dodelmount=1
+		fi
+		mount -t auto /dev/loop0 $mymount
+		dounmount=1
+		tar -xf $mytar -C $mymount
+		extlinux --install $mymount/boot/
+		cat > $mymount/boot/syslinux.cfg <<EOF
+DEFAULT linux
+  SAY Now booting the kernel from SYSLINUX...
+ LABEL linux
+  KERNEL /vmlinuz
+  APPEND ro root=/dev/sda1 initrd=/initrd.img
+EOF
+		dd if=/usr/lib/syslinux/mbr/mbr.bin of=$myimg/disk bs=440 count=1 conv=notrunc
+		cp $mymount/vmlinuz $myimg/vmlinuz
+		cp $mymount/initrd.img $myimg/initrd.img
+		)
+	fi
+}
+
 usage()
 {
 	x=">&2"
@@ -97,6 +183,11 @@ usage()
 	echo "        \$1 - path to tarball" $x
 	echo "        \$2 - output path for the ext4 image" $x
 	echo "        \$3 - size of the ext4 image (in 'dd' language)" $x
+	echo "        \$4 - path to a directory to use for temporary mount" $x
+	echo "    tar2img - convert tarball to bootable disk image" $x
+	echo "        \$1 - path to tarball" $x
+	echo "        \$2 - output path for the disk image" $x
+	echo "        \$3 - size of the disk image (in 'dd' language)" $x
 	echo "        \$4 - path to a directory to use for temporary mount" $x
 	exit -1
 }
@@ -112,6 +203,9 @@ case $cmd in
 		;;
 	tar2ext4)
 		tar2ext4 "$@"
+		;;
+	tar2img)
+		tar2img "$@"
 		;;
 	*)
 		usage
