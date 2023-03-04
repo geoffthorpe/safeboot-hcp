@@ -136,9 +136,7 @@ function normalize_path {
 	echo "$mypath"
 }
 workloadpath=/tmp/workloads
-if [[ -n $HCP_NO_CONFIG ]]; then
-	hlog 1 "hcp_config: HCP_NO_CONFIG"
-elif [[ ! -n $HCP_CONFIG_FILE ]]; then
+if [[ ! -n $HCP_CONFIG_FILE ]]; then
 	if [[ -n $HOME && -d $HOME && -f "$HOME/hcp_config" ]]; then
 		source "$HOME/hcp_config"
 		hlog 2 "hcp_config: loaded from $HOME/hcp_config"
@@ -146,8 +144,7 @@ elif [[ ! -n $HCP_CONFIG_FILE ]]; then
 		source /etc/hcp-monolith-container.env
 		hlog 2 "hcp_config: loaded from /etc/hcp-monolith-container.env"
 	else
-		echo "Error, no HCP_CONFIG_FILE set" >&2
-		exit 1
+		echo "Warning, no HCP_CONFIG_FILE set, use of APIs may 'exit'" >&2
 	fi
 elif [[ $HCP_CONFIG_FILE == ${workloadpath}/* ]]; then
 	hlog 2 "hcp_config: already relocated ($curpath)"
@@ -168,8 +165,8 @@ else
 	fi
 fi
 function hcp_config_scope_set {
-	if [[ -n $HCP_NO_CONFIG ]]; then
-		bail "HCP_NO_CONFIG"
+	if [[ -z $HCP_CONFIG_FILE ]]; then
+		bail "!HCP_CONFIG_FILE"
 	fi
 	mypath=$(normalize_path "$1")
 	hlog 2 "hcp_config_scope_set: $mypath"
@@ -178,8 +175,8 @@ function hcp_config_scope_set {
 	export HCP_CONFIG_SCOPE=$mypath
 }
 function hcp_config_scope_get {
-	if [[ -n $HCP_NO_CONFIG ]]; then
-		bail "HCP_NO_CONFIG"
+	if [[ -z $HCP_CONFIG_FILE ]]; then
+		bail "!HCP_CONFIG_FILE"
 	fi
 	# If HCP_CONFIG_SCOPE isn't set, it's possible we're the first context
 	# started. In which case the world we're given is supposed to be our
@@ -197,8 +194,8 @@ function hcp_config_scope_get {
 # itself, problem self-solved, otherwise we just call it quietly at the start
 # of other APIs to get the desired behavior.
 function hcp_config_scope_shrink {
-	if [[ -n $HCP_NO_CONFIG ]]; then
-		bail "HCP_NO_CONFIG"
+	if [[ -z $HCP_CONFIG_FILE ]]; then
+		bail "!HCP_CONFIG_FILE"
 	fi
 	hcp_config_scope_get > /dev/null
 	mypath=$(normalize_path "$1")
@@ -209,8 +206,8 @@ function hcp_config_scope_shrink {
 	hcp_config_scope_set "$mypath"
 }
 function hcp_config_extract {
-	if [[ -n $HCP_NO_CONFIG ]]; then
-		bail "HCP_NO_CONFIG"
+	if [[ -z $HCP_CONFIG_FILE ]]; then
+		bail "!HCP_CONFIG_FILE"
 	fi
 	hcp_config_scope_get > /dev/null
 	mypath=$(normalize_path "$1")
@@ -219,8 +216,8 @@ function hcp_config_extract {
 	echo "$result"
 }
 function hcp_config_extract_or {
-	if [[ -n $HCP_NO_CONFIG ]]; then
-		bail "HCP_NO_CONFIG"
+	if [[ -z $HCP_CONFIG_FILE ]]; then
+		bail "!HCP_CONFIG_FILE"
 	fi
 	hcp_config_scope_get > /dev/null
 	# We need a string that will never occur and yet contains no odd

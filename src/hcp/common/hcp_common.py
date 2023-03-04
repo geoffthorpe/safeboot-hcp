@@ -94,7 +94,6 @@ def bail(s, exitcode = 1):
 	hlog(0, f"FAIL: {s}")
 	sys.exit(exitcode)
 
-# - HCP_NO_CONFIG, if set, tells us there is no config, ignore everything else.
 # - HCP_CONFIG_FILE is the path to the JSON config file.
 # - HCP_CONFIG_SCOPE is where we are currently 'nested' within that JSON.
 # - hcp_config_extract() pulls fields from the JSON, at the given path, and
@@ -103,14 +102,12 @@ def bail(s, exitcode = 1):
 #   HCP_CONFIG_SCOPE accordingly.
 # Note that hcp_config_*() functions will handle a path that has no leading '.'
 workloadpath = '/tmp/workloads'
-if 'HCP_NO_CONFIG' in os.environ:
-	hlog(1, "hcp_config: HCP_NO_CONFIG set")
-elif 'HCP_CONFIG_FILE' not in os.environ:
+if 'HCP_CONFIG_FILE' not in os.environ:
 	# TODO: hcp.sh handles cases we don't - probably want to change its use
 	# of a bash-sourcible file to something python can consume too. Eg. it
 	# could write env-vars to a JSON file, which both bash(+jq) and python
 	# could handle.
-	bail(f"no HCP_CONFIG_FILE")
+	hlog(1, "Warning, no HCP_CONFIG_FILE, use of APIs may 'exit'")
 else:
 	curpath = os.environ['HCP_CONFIG_FILE']
 	if curpath.startswith(workloadpath) or curpath.startswith('/etc'):
@@ -131,8 +128,8 @@ else:
 				json.dump(world, f)
 			os.environ['HCP_CONFIG_FILE'] = newpath
 def hcp_config_scope_set(path):
-	if 'HCP_NO_CONFIG' in os.environ:
-		raise Exception("HCP_NO_CONFIG")
+	if 'HCP_CONFIG_FILE' not in os.environ:
+		raise Exception("!HCP_CONFIG_FILE")
 	world = json.load(open(os.environ['HCP_CONFIG_FILE'], 'r'))
 	if not path.startswith('.'):
 		path = f".{path}"
@@ -140,8 +137,8 @@ def hcp_config_scope_set(path):
 	_ = HcpJsonPath.extract_path(world, path, must_exist = True)
 	os.environ['HCP_CONFIG_SCOPE'] = path
 def hcp_config_scope_get():
-	if 'HCP_NO_CONFIG' in os.environ:
-		raise Exception("HCP_NO_CONFIG")
+	if 'HCP_CONFIG_FILE' not in os.environ:
+		raise Exception("!HCP_CONFIG_FILE")
 	# If HCP_CONFIG_SCOPE isn't set, it's possible we're the first context
 	# started. In which case the world we're given is supposed to be our
 	# starting context, in which case our initial region is ".".
@@ -187,8 +184,8 @@ def hcp_config_scope_get():
 	hlog(2, f"hcp_config_scope_get: returning {result}")
 	return result
 def hcp_config_scope_shrink(path):
-	if 'HCP_NO_CONFIG' in os.environ:
-		raise Exception("HCP_NO_CONFIG")
+	if 'HCP_CONFIG_FILE' not in os.environ:
+		raise Exception("!HCP_CONFIG_FILE")
 	if not path.startswith('.'):
 		path = f".{path}"
 	hlog(2, f"hcp_config_scope_shrink: {path}")
@@ -208,8 +205,8 @@ def hcp_config_scope_shrink(path):
 # and returns a default value if the path doesn't exist. (The default default
 # (!) is 'None', but this can be altered by specifying 'default=<val>'.)
 def hcp_config_extract(path, **kwargs):
-	if 'HCP_NO_CONFIG' in os.environ:
-		raise Exception("HCP_NO_CONFIG")
+	if 'HCP_CONFIG_FILE' not in os.environ:
+		raise Exception("!HCP_CONFIG_FILE")
 	if not path.startswith('.'):
 		path = f".{path}"
 	hlog(3, f"hcp_config_extract: {path}")
