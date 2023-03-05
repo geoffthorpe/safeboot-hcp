@@ -13,11 +13,6 @@ hostfs_dir = '/hostfs'
 hostfs_config = f"{hostfs_dir}/config.json"
 hostfs_shutdown = "/myshutdown"
 
-# Any directories in the hostfs mount should be symlinked in the root directory
-symdirs = [ x for x in glob.glob(f'{hostfs_dir}/*') if os.path.isdir(x) ]
-for x in symdirs:
-	subprocess.run(['bash', '-c', f'ln -s {x} /{os.path.basename(x)}' ])
-
 # Parse the config
 with open(hostfs_config, 'r') as fp:
 	config = json.load(fp)
@@ -42,6 +37,36 @@ if 'init_env' in config:
 				os.environ[k] = f"{os.environ[k]}:{kv[k]}"
 			else:
 				os.environ[k] = kv[k]
+
+# Mount any "volumes" (docker-compose-speak) that were intended for us.
+if 'mounts' in config:
+	mounts = config['mounts']
+	for tag in mounts:
+		m = mounts[tag]
+		if isinstance(m, str):
+			m = { 'path': m }
+		args = [ 'mount', '-t', '9p' ]
+		if 'guest_options' in m:
+			args += [ '-o', m['guest_options'] ]
+		if 'guest_path' in m:
+			dest = m['guest_path']
+		elif 'path' in m:
+			dest = m['path']
+		else:
+			dest = f"/{tag}"
+		subprocess.run([ "mkdir", "-p", dest ])
+		args += [ tag, dest ]
+		subprocess.run(args)
+
+if 'publish_networks' in config:
+	publish_networks = config['publish_networks']
+	# We're given the path to a periodically-updated JSON file with
+	# networks we should advertise on (typically published to us from our
+	# hypervisor, which knows what addresses we appear on, outside the
+	# private per-VM network which is all we otherwise see). Easiest is to
+	# symlink to that from a well-known path that the fqdn_updater will
+	# look for.
+	os.symlink(publish_networks, '/upstream.networks')
 
 args = config['argv']
 # Run the desired command

@@ -33,6 +33,32 @@ networks:
 
 services:
 
+    qemu_runner:
+        image: ${HCP_IMAGE_qemu}
+        init: true
+        cap_add:
+          - SYS_ADMIN
+        volumes:
+          - fqdn:/fqdn-bus:rw
+          - ${HCP_TOP}/usecase:/usecase:ro
+          - ${HCP_OUT}/apps/qemu_caboodle_img:/qemu_caboodle_img:ro
+        tmpfs:
+          - /dev/shm:exec
+        networks:
+          - hcpnetwork
+
+    # Use this variant if (a) you want QEMU to launch a VGA window, (b)
+    # HCP_APP_QEMU_XFORWARD is enabled in settings.mk, and (c) if you have an X
+    # environment ("make" will populate output/docker-compose.xauth).
+    qemu_runner_x11:
+        extends: qemu_runner
+        environment:
+          - XAUTHORITY=/xauth
+          - DISPLAY=${DISPLAY}
+        volumes:
+          - /tmp/.X11-unix:/tmp/.X11-unix
+          - ${HCP_OUT}/docker-compose.xauth:/xauth:ro
+
     common:
         image: ${HCP_IMAGE_caboodle}
         init: true
@@ -44,9 +70,10 @@ services:
           - HCP_NOTRACEFILE=1
           - VERBOSE=${VERBOSE:-0}
 
-# Enrollment svc, mgmt interface
+# Enrollment svc, mgmt interface - RUN THIS IN A QEMU VM, FOR KICKS
     emgmt:
-        extends: common
+        #extends: common
+        extends: qemu_runner
         hostname: emgmt.hcphacking.xyz
         networks:
           - hcpnetwork
@@ -60,7 +87,8 @@ services:
           - ${HCP_TESTCREDS_ENROLLSERVER}:/enrollserver:ro
           - ${HCP_TOP}/vendors:/vendors:ro
         environment:
-          - HCP_CONFIG_FILE=/usecase/emgmt.json
+          #- HCP_CONFIG_FILE=/usecase/emgmt.json
+          - HCP_CONFIG_FILE=/usecase/emgmt_qemu.json
 #        ports:
 #          - "8443:8443"
         healthcheck:
@@ -395,32 +423,3 @@ services:
           - /dev/shm:exec
         networks:
           - hcpnetwork
-
-    qemu_runner:
-        image: ${HCP_IMAGE_qemu}
-        init: true
-        cap_add:
-          - SYS_ADMIN
-        environment:
-          - HCP_CONFIG_FILE=/hostfs/usecase/qemu_runner.json
-        volumes:
-          - fqdn:/hostfs/fqdn-bus:rw
-          - attestdb:/hostfs/attestdb:rw
-          - ${HCP_TOP}/usecase:/hostfs/usecase:ro
-          - ${HCP_OUT}/apps/qemu_caboodle_img:/qemu_caboodle_img:ro
-        tmpfs:
-          - /dev/shm:exec
-        networks:
-          - hcpnetwork
-
-    # Use this variant if you want QEMU to launch a VGA window, and if
-    # HCP_APP_QEMU_XFORWARD is enabled in settings.mk, and if you an X
-    # environment to forward!)
-    qemu_runner_x11:
-        extends: qemu_runner
-        environment:
-          - XAUTHORITY=/xauth
-          - DISPLAY=${DISPLAY}
-        volumes:
-          - /tmp/.X11-unix:/tmp/.X11-unix
-          - ${HCP_OUT}/docker-compose.xauth:/xauth:ro

@@ -16,10 +16,6 @@ fi
 
 echo "Initializing (persistent) enrollsvc state"
 
-# Create the users, and snapshot their user ids into persistent state (so
-# future (re)creation of the accounts will (re)use the same uids).
-do_enrollsvc_uid_setup
-
 # Write the 'sudoers' file
 echo " - generating '$HCP_ENROLLSVC_STATE/sudoers'"
 cat > "$HCP_ENROLLSVC_STATE/sudoers" <<EOF

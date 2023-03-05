@@ -5,24 +5,22 @@ export HCP_ATTESTSVC_JSON=$(hcp_config_extract ".attestsvc")
 export HCP_ATTESTSVC_STATE=$(echo "$HCP_ATTESTSVC_JSON" | jq -r ".state")
 export HCP_ATTESTSVC_GLOBAL_INIT=$(echo "$HCP_ATTESTSVC_JSON" | jq -r ".setup[0].touchfile")
 export HCP_ATTESTSVC_LOCAL_INIT=$(echo "$HCP_ATTESTSVC_JSON" | jq -r ".setup[1].touchfile")
-export HCP_ATTESTSVC_USER_DB=$(echo "$HCP_ATTESTSVC_JSON" | jq -r ".dbuser.id")
-export HCP_ATTESTSVC_USER_DB_HANDLE=$(echo "$HCP_ATTESTSVC_JSON" | jq -r ".dbuser.handle")
-export HCP_ATTESTSVC_USER_FLASK=$(echo "$HCP_ATTESTSVC_JSON" | jq -r ".webuser.id")
-export HCP_ATTESTSVC_USER_FLASK_HANDLE=$(echo "$HCP_ATTESTSVC_JSON" | jq -r ".webuser.handle")
+export HCP_ATTESTSVC_USER_DB=$(echo "$HCP_ATTESTSVC_JSON" | jq -r ".dbuser // empty")
+if [[ -z $HCP_ATTESTSVC_USER_DB ]]; then
+	export HCP_ATTESTSVC_USER_DB=auser
+fi
+export HCP_ATTESTSVC_USER_FLASK=$(echo "$HCP_ATTESTSVC_JSON" | jq -r ".webuser // empty")
+if [[ -z $HCP_ATTESTSVC_USER_FLASK ]]; then
+	export HCP_ATTESTSVC_USER_FLASK=ahcpflask
+fi
 export HCP_ATTESTSVC_REMOTE_REPO=$(echo "$HCP_ATTESTSVC_JSON" | jq -r ".enrollsvc")
 
 export HCP_ATTESTSVC_DB_DIR="$HCP_ATTESTSVC_STATE/db"
 
-function do_attestsvc_uid_setup {
-	role_account_uid_file \
-		$HCP_ATTESTSVC_USER_DB  \
-		$HCP_ATTESTSVC_USER_DB_HANDLE  \
-		"DB User,,,,"
-	role_account_uid_file \
-		$HCP_ATTESTSVC_USER_FLASK  \
-		$HCP_ATTESTSVC_USER_FLASK_HANDLE  \
-		"Flask User,,,,"
-}
+if [[ $WHOAMI == "root" ]]; then
+	hcp_config_user_init $HCP_ATTESTSVC_USER_DB
+	hcp_config_user_init $HCP_ATTESTSVC_USER_FLASK
+fi
 
 function expect_root {
 	if [[ $WHOAMI != "root" ]]; then

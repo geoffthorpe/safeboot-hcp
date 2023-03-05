@@ -1,0 +1,82 @@
+{
+    "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
+
+    "id": "emgmt_qemu",
+    "hostnames": [ "do-not-contact-me-emgmt_qemu" ],
+    "default_domain": "hcphacking.xyz",
+
+    "services": [
+        "fqdn_updater",
+        "runner"
+    ],
+    "default_targets": [
+        "start-fqdn",
+        "start-services"
+    ],
+    "args_for": "runner",
+
+    "fqdn_updater": {
+        "exec": "/hcp/common/fqdn_updater.py",
+        "until": "/etc/hcp/emgmt_qemu/touch-fqdn-alive",
+        "nowait": 1,
+        "tag": "fqdn",
+        "env": {
+            "unset": { "HCP_NOTRACEFILE": null }
+        },
+        "path": "/fqdn-bus",
+        "refresh": 5,
+        "expiry": 20,
+        "bad_address": "100.100.100.100",
+        "no_publish": null,
+        "no_recolt": null,
+        "publish_networks": "/enrolldb/networks"
+    },
+
+    "runner": {
+        "exec": "/hcp/qemu/runner.py",
+        "tag": "services",
+        "init_env": {
+            "pathadd": {
+                "PATH": "/bin:/sbin:/usr/bin:/usr/sbin"
+            },
+            "set": {
+                "VERBOSE": "2",
+                "HCP_CONFIG_FILE": "/usecase/emgmt.json",
+                "HOME": "/root"
+            }
+        },
+        "mounts": {
+            "fqdn-bus": "/fqdn-bus",
+            "usecase": {
+               "path": "/usecase",
+               "host_options": "readonly=on"
+            },
+            "enrolldb": "/enrolldb",
+            "enrollsigner": {
+               "path": "/enrollsigner",
+               "host_options": "readonly"
+            },
+            "enrollcertissuer": {
+               "path": "/enrollcertissuer",
+               "host_options": "readonly"
+            },
+            "enrollcertchecker": {
+               "path": "/enrollcertchecker",
+               "host_options": "readonly"
+            },
+            "enrollclient": {
+               "path": "/enrollclient",
+               "host_options": "readonly"
+            },
+            "enrollserver": {
+               "path": "/enrollserver",
+               "host_options": "readonly"
+            },
+            "vendors": {
+                "path": "/vendors",
+                "host_options": "readonly"
+            }
+        },
+        "ports": [ 8443 ]
+    }
+}

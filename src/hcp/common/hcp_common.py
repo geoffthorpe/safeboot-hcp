@@ -148,7 +148,7 @@ def hcp_config_scope_get():
 		# explanation is that privileges have been dropped or switched
 		# and we're coming up as a regular user and need to find
 		# context. In this case, we try;
-		# - $HOME/hcp_config_file, see internal_role_account_uid_file().
+		# - $HOME/hcp_config_file.
 		# - /etc/hcp-monolith-container.env, see
 		#   src/hcp/monolith/set_container_env.sh.
 		if 'HCP_CONFIG_FILE' not in os.environ:
@@ -333,50 +333,6 @@ def http2exit(x):
 	return alookup(ahttp2exit, x, 49)
 def exit2http(x):
 	return alookup(aexit2http, x, 500)
-
-# Python version of the bash function of the same name
-def role_account_uid_file(name, uidfile, gecos, maxretries = 5):
-	count = maxretries
-	while True:
-		res = True
-		try:
-			os.mkdir('/var/lock/hcp_uid_creation')
-		except:
-			res = False
-		if res:
-			break
-		count = count - 1
-		if count == 0:
-			raise Exception("Failed to get hcp_uid_creation lock")
-	st = None
-	if os.path.isfile(uidfile):
-		st = os.stat(uidfile)
-	try:
-		pwdentry = pwd.getpwnam(name)
-	except KeyError:
-		# The account doesn't exist. If the uidfile exists, that's the UID
-		# we want the new account to have, otherwise we create the user
-		# and accept the UID we're given.
-		cmd = [ 'adduser',
-			'--disabled-password',
-			'--quiet',
-			'--home', f"/home/{name}",
-			'--gecos', gecos ]
-		if st:
-			cmd += [ '--uid', st.st_uid, name ]
-		else:
-			cmd += [ name ]
-		c = subprocess.run(cmd)
-		if c.returncode != 0:
-			bail(f"'adduser' command (for '{name}') failed")
-		pwdentry = pwd.getpwnam(name)
-	if st:
-		if st.st_uid != pwdentry.pw_uid:
-			bail(f"'{name}' doesn't own '{uidfile}'")
-	else:
-		touch(uidfile)
-		os.chown(uidfile, pwdentry.pw_uid, pwdentry.pw_gid)
-	os.rmdir('/var/lock/hcp_uid_creation')
 
 def add_install_path(d):
 	def _add_path(n, vs):

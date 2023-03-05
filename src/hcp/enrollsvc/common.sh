@@ -6,14 +6,23 @@ export HCP_ENROLLSVC_STATE=$(echo "$HCP_ENROLLSVC_JSON" | jq -r ".state")
 export HCP_ENROLLSVC_GLOBAL_INIT=$(echo "$HCP_ENROLLSVC_JSON" | jq -r ".setup[0].touchfile")
 export HCP_ENROLLSVC_LOCAL_INIT=$(echo "$HCP_ENROLLSVC_JSON" | jq -r ".setup[1].touchfile")
 export HCP_ENROLLSVC_REALM=$(echo "$HCP_ENROLLSVC_JSON" | jq -r ".realm")
-export HCP_ENROLLSVC_USER_DB=$(echo "$HCP_ENROLLSVC_JSON" | jq -r ".dbuser.id")
-export HCP_ENROLLSVC_USER_DB_HANDLE=$(echo "$HCP_ENROLLSVC_JSON" | jq -r ".dbuser.handle")
-export HCP_ENROLLSVC_USER_FLASK=$(echo "$HCP_ENROLLSVC_JSON" | jq -r ".webuser.id")
-export HCP_ENROLLSVC_USER_FLASK_HANDLE=$(echo "$HCP_ENROLLSVC_JSON" | jq -r ".webuser.handle")
+export HCP_ENROLLSVC_USER_DB=$(echo "$HCP_ENROLLSVC_JSON" | jq -r ".dbuser // empty")
+if [[ -z $HCP_ENROLLSVC_USER_DB ]]; then
+	export HCP_ENROLLSVC_USER_DB=emgmtdb
+fi
+export HCP_ENROLLSVC_USER_FLASK=$(echo "$HCP_ENROLLSVC_JSON" | jq -r ".webuser // empty")
+if [[ -z $HCP_ENROLLSVC_USER_FLASK ]]; then
+	export HCP_ENROLLSVC_USER_FLASK=emgmtflask
+fi
 export HCP_ENROLLSVC_POLICYURL=$(echo "$HCP_ENROLLSVC_JSON" | jq -r ".policyurl")
 export HCP_ENROLLSVC_VENDORS=$(echo "$HCP_ENROLLSVC_JSON" | jq -r ".tpm_vendors")
 
 export HCP_DB_DIR=$HCP_ENROLLSVC_STATE/db
+
+if [[ $WHOAMI == "root" ]]; then
+	hcp_config_user_init $HCP_ENROLLSVC_USER_DB
+	hcp_config_user_init $HCP_ENROLLSVC_USER_FLASK
+fi
 
 # Post-setup, includers of common.sh will be expecting the settings that setup
 # produced to 'env';
@@ -35,27 +44,6 @@ fi
 # to (or must) adhere to revised naming conventions, please alter this setting
 # accordingly.
 git config --global init.defaultBranch master
-
-# This function gets called by setup, which is the moment when we need to write
-# a handle file which pins down the uid of the non-root accounts forever.
-# (Well, the 'flask' user could probably vary over time because it's stateless,
-# but certainly the 'emgmtdb' user needs to own most of the persistent data, so
-# we can't have it changing around across reboots/upgrades.) We also have to call
-# these during service startup too, for reasons explained in hcp.sh (where these
-# functions are implemented). So we just make these calls whenever this file is sourced,
-# and rely on it being harmless when the accounts already exist or when we're not
-# running as root.
-
-function do_enrollsvc_uid_setup {
-	role_account_uid_file \
-		$HCP_ENROLLSVC_USER_FLASK  \
-		$HCP_ENROLLSVC_USER_FLASK_HANDLE  \
-		"Flask User,,,,"
-	role_account_uid_file \
-		$HCP_ENROLLSVC_USER_DB \
-		$HCP_ENROLLSVC_USER_DB_HANDLE \
-		"EnrollDB User,,,,"
-}
 
 function expect_root {
 	if [[ $WHOAMI != "root" ]]; then

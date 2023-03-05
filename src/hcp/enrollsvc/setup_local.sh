@@ -16,9 +16,6 @@ fi
 
 echo "Initializing (rootfs-local) enrollsvc state"
 
-# (Re)create the users, pulling their user ids from persistent state.
-do_enrollsvc_uid_setup
-
 # Copy creds to the home dir if we have them and they aren't copied yet
 if [[ -d /enrollsigner && ! -d "$SIGNING_KEY_DIR" ]]; then
 	echo "Copying asset-signing creds to '$SIGNING_KEY_DIR'"

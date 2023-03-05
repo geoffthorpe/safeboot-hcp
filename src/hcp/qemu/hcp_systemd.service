@@ -1,5 +1,5 @@
 [Unit]
-Description=Wrapper around the HCP launcher
+Description=HCP workload launcher
 After=network.target
 
 [Service]

@@ -16,8 +16,5 @@ fi
 
 echo "Initializing (rootfs-local) attestsvc state"
 
-# (Re)create the users, pulling their user ids from persistent state.
-do_attestsvc_uid_setup
-
 # Done!
 touch "$HCP_ATTESTSVC_LOCAL_INIT"

@@ -44,14 +44,6 @@
                 "touchfile": "/etc/hcp/ahcp/touch-attestsvc-local-setup"
             } ],
         "state": "/attestdb",
-        "dbuser": {
-            "handle": "/attestdb/uid-dbuser",
-            "id": "auser"
-        },
-        "webuser": {
-            "handle": "/attestdb/uid-webuser",
-            "id": "ahcpflask"
-        },
         "enrollsvc": "git://erepl.hcphacking.xyz/enrolldb"
     },
 

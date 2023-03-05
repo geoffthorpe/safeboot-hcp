@@ -93,8 +93,8 @@ def pre_monolith(cname):
     try:
         with open(f"/usecase/{cname}.json", 'r') as fp:
             origjson = json.load(fp)
-        # The reason we convert the JSON is to add the 'publish_only' attribute.
-        origjson['publish_only'] = None
+        # The reason we convert the JSON is to add the 'no_recolt' attribute.
+        origjson['no_recolt'] = None
         with open(newenv['HCP_CONFIG_FILE'], 'w') as fp:
             json.dump(origjson, fp)
         os.chmod(converted, 0o644)

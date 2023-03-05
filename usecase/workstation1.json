@@ -4,7 +4,6 @@
     "id": "workstation1",
     "hostnames": [ "workstation1" ],
     "default_domain": "hcphacking.xyz",
-    "users": [ "luser" ],
 
     "env": {
         "set": { "KRB5_CONFIG": "/etc/hcp/workstation1/krb5.conf" }

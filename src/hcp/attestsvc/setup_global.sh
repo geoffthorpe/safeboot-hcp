@@ -23,10 +23,6 @@ if [[ $1 == "--retry" ]]; then
 	retry=1
 fi
 
-# Create the users, and snapshot their user ids into persistent state (so
-# future (re)creation of the accounts will (re)use the same uids).
-do_attestsvc_uid_setup
-
 while :; do
 	# Finally, the main thing: run init_repo as the 'emgmtdb' user. This
 	# sets up a new enrollment database. In the retry case, we start the

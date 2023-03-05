@@ -14,9 +14,6 @@ fi
 
 echo "Initializing (rootfs-local) sshsvc state"
 
-# Make sure accounts are created
-ensure_user_accounts
-
 # sshd expects this directory to exist. TODO: can this be scoped to
 # $HCP_SSHSVC_ETC? If we end up trying to run multiple sshsvc instances
 # co-tenant, we might right into trouble with collisions on this.

@@ -22,25 +22,12 @@ os.environ['PYTHONUNBUFFERED']='yes'
 sys.path.insert(1, '/hcp/common')
 from hcp_common import bail, log, hlog, \
     hcp_config_extract, hcp_config_scope_get, hcp_config_scope_set, \
-    hcp_config_scope_shrink, role_account_uid_file
+    hcp_config_scope_shrink
 
 _id = hcp_config_extract('id', or_default = True, default = 'unknown_id')
 etcpath = f"/etc/hcp/{_id}"
 if not os.path.isdir(etcpath):
     os.makedirs(etcpath, mode = 0o755)
-
-users = hcp_config_extract('users', or_default = True, default = [])
-if not isinstance(users, list):
-    bail(f"'users' field should be a list (not a {type(users)})")
-for i in users:
-    uidfile = f"{etcpath}/uid_{i}"
-    gecos = f"HCP {i},,,,"
-    if not isinstance(i, str):
-        bail(f"'users' should contain only str entries (not {type(i)})")
-    try:
-        role_account_uid_file(i, uidfile, gecos)
-    except:
-        bail(f"creation of '{i}' failed")
 
 services = hcp_config_extract('services', or_default = True, default = [])
 if not isinstance(services, list):

@@ -44,15 +44,7 @@
                 "touchfile": "/etc/hcp/erepl/touch-enrollsvc-local-setup"
             } ],
         "state": "/enrolldb",
-        "realm": "HCPHACKING.XYZ",
-        "dbuser": {
-            "handle": "/enrolldb/uid-dbuser",
-            "id": "emgmtdb"
-        },
-        "webuser": {
-            "handle": "/enrolldb/uid-webuser",
-            "id": "emgmtflask"
-        }
+        "realm": "HCPHACKING.XYZ"
     },
 
     "git-daemon": {

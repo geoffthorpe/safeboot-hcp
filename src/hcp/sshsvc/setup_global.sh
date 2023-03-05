@@ -42,9 +42,6 @@ for t in $ssh_algos; do
 	echo "HostKey $HCP_SSHSVC_ETC/hostkey_$t" >> "$HCP_SSHSVC_ETC/config"
 done
 
-# Make sure accounts are created
-ensure_user_accounts
-
 # Mark it all as done (services may be polling on the existence of this file).
 touch "$HCP_SSHSVC_GLOBAL_INIT"
 echo "State now initialized"

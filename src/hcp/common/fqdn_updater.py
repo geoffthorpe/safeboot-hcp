@@ -136,13 +136,13 @@
 # co-tenant workloads ... indeed!
 #
 # The trick is that all but one of the workloads should have the
-# ".fqdn_updater.publish_only" attribute set in their JSON config. (It doesn't
+# ".fqdn_updater.no_recolt" attribute set in their JSON config. (It doesn't
 # matter what the value is, only that the attribute be there - feel free to set
 # it to null.) In the 'monolith' case, the container itself (which runs
 # launcher.py as the entrypoint) is started up with an instance of fqdn_updater
 # that owns and will continue to own /etc/hosts - in other words, it's the only
 # one that will run the recolt() function. All subsequent workloads started in
-# the container will dynamically insert that "publish_only" attribute, meaning
+# the container will dynamically insert that "no_recolt" attribute, meaning
 # they bypass recolt() and only do the publish() step.
 
 import os
@@ -193,9 +193,15 @@ if 'extra_fqdns' in myconfig:
 mybad = '100.100.100.100'
 if 'bad_address' in myconfig:
     mybad = myconfig['bad_address']
-mypublishonly = False
-if 'publish_only' in myconfig:
-    mypublishonly = True
+mynopublish = False
+if 'no_publish' in myconfig:
+    mynopublish = True
+mynorecolt = False
+if 'no_recolt' in myconfig:
+    mynorecolt = True
+mypublishnetworks = False
+if 'publish_networks' in myconfig:
+    mypublishnetworks = myconfig['publish_networks']
 
 summary = '''
     until={_until}
@@ -233,6 +239,10 @@ def our_networks():
             continue
         ip4s = addrs[net.AF_INET]
         result += ip4s
+    if os.path.isfile('/upstream.networks'):
+        with open('/upstream.networks', 'r') as fp:
+            upstream_networks = json.load(fp)
+        result += upstream_networks
     return result
 
 # Given another host's JSON and the list returned from our_networks(), find one of
@@ -278,7 +288,7 @@ def hosts_filter(hostline, networks):
             return True
     return False
 
-def publish():
+def publish(networks):
     forjson = {}
     forjson['FQDNs'] = []
     for h in myhostnames:
@@ -291,21 +301,20 @@ def publish():
             for line in fp:
                 forjson['FQDNs'] += [ line.strip() ]
     forjson['bad'] = f"{myhostname}"
-    forjson['networks'] = our_networks()
+    forjson['networks'] = networks
     src = f"{mydir}/.new.fqdn-{myhostname}.json"
     dst = f"{mydir}/fqdn-{myhostname}.json"
     with open(src, 'w') as fp:
         json.dump(forjson, fp)
     os.replace(src, dst)
 
-def recolt():
+def recolt(networks):
     debug("start recolt")
     peers = glob.glob(f"{mydir}/fqdn-*.json")
     debug(f"peers={peers}")
     if len(peers) == 0:
         log(f"strange: recolt() bailing out, found no JSONs")
         return
-    networks = our_networks()
     basehosts = open('/etc/hosts', 'r').readlines()
     lines = []
     for l in basehosts:
@@ -347,9 +356,16 @@ def loop():
             if not os.path.isdir(mydir):
                 log(f"Warning, fqdn_updater path doesn't exist: {mydir}")
                 raise Exception()
-            publish()
-            if not mypublishonly:
-                recolt()
+            networks = our_networks()
+            if mypublishnetworks:
+                src = f"{mypublishnetworks}.new"
+                with open(src, 'w') as fp:
+                    json.dump(networks, fp)
+                os.replace(src, mypublishnetworks)
+            if not mynopublish:
+                publish(networks)
+            if not mynorecolt:
+                recolt(networks)
             if myuntil:
                 touch (myuntil)
             log(f"Updated, sleeping for {myrefresh} seconds")

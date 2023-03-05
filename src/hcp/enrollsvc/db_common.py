@@ -11,8 +11,12 @@ from hcp_common import log, bail, env_get, env_get_or_none, http2exit, \
 enrollsvc_ctx = hcp_config_extract('.enrollsvc', must_exist = True)
 
 # The two non-root users we may be acting on behalf of
-dbuser = enrollsvc_ctx['dbuser']['id']
-webuser = enrollsvc_ctx['webuser']['id']
+dbuser = 'emgmtdb'
+if 'dbuser' in enrollsvc_ctx:
+	dbuser = enrollsvc_ctx['dbuser']
+webuser = 'emgmtflask'
+if 'emgmtflask' in enrollsvc_ctx:
+	webuser = enrollsvc_ctx['webuser']
 
 # The following environment elements are required by all db ops
 enrollsvc_state = enrollsvc_ctx['state']
