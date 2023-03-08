@@ -23,6 +23,9 @@ dhclient eth0
 mkdir -p /mnt/uml-command
 mount -t hostfs none /mnt/uml-command
 
+mkswap /dev/ubdb
+swapon /dev/ubdb
+
 numargs=$(cat /mnt/uml-command/args.json | jq -r '. | length')
 if [[ $numargs -eq 0 ]]; then
 	cmd=/bin/bash

@@ -89,7 +89,9 @@ suppress_reboot_output()
 		lastline=$REPLY
 	done
 }
-cmd="/linux ubd0=/foo.ext4 root=/dev/ubda rw hostfs=/mnt/uml-command"
+# Create a throw-away swap file
+dd if=/dev/zero of=/tmp.swapfile count=4 bs=1G
+cmd="/linux ubd0=/foo.ext4 ubd1=/tmp.swapfile root=/dev/ubda rw hostfs=/mnt/uml-command"
 cmd="$cmd eth0=vde,/vdeswitch"
 if [[ -z $VERBOSE || $VERBOSE == 0 ]]; then
 	cmd="$cmd quiet"

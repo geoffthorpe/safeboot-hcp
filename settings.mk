@@ -104,15 +104,22 @@ HCP_BUILDER_MAKE_PARALLEL := -j 16
 # Cache settings #
 ##################
 
-# Certain assets (like linux kernel source code, a bootstrap ext4 file system
-# image, ...) do not need to be downloaded or generated if a cached copy can be
-# found. If HCP_CACHE is given, then the path it specifies will be consulted
-# for such artifacts, and dependencies will be generated accordingly. If
-# HCP_CACHE_READONLY is set, this cache will not be created if it doesn't
-# exist, and assets will not be stored in the cache if they are downloaded or
-# generated. The cache directory is never cleaned out by any HCP dependencies.
+# There are certain assets that the HCP build _can_ download and/or construct but
+# that you may wish to bypass through caching. Eg.
+# - pulling a tarball of linux kernel source code, from a local cache, rather
+#   than downloading it.
+# - using a preexisting bootstrap ext4 filesystem for building other
+#   filesystems, including (possibly) rebuilding itself. In this case, caching
+#   is to avoid the need to invoke mount/losetup/etc natively on the host,
+#   which requires root/sudo privileges on the host. (Once you have a bootstrap
+#   filesystem, you can launch a UML VM with it and do "root" activities in
+#   there, without requiring any permission from the host).
+# - [... TBD ...]
+# If HCP_CACHE is given, then it must point to a directory where cache
+# activities can be coordinated (and may well point to an existing cache,
+# though if it points to an empty directory then the structure will be created
+# lazily).
 HCP_CACHE := $(TOP)/cache
-#HCP_CACHE_READONLY := 1
 
 ##################################
 # UML (User Mode Linux) settings #

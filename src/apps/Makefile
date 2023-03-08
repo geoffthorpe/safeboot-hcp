@@ -88,7 +88,7 @@ $(eval $(call pp_add_layer,\
 	UML_CABOODLE_BASE,\
 	APPS,\
 	hcp,\
-	$(HCP_UML_SRC)/bootstrapper.Dockerfile,\
+	$(HCP_UML_SRC)/imager.Dockerfile,\
 	$(HCP_SRC)/apps/Makefile $(HCP_UML_BUILDER_TFILE),\
 	,\
 	$(HCP_UML_SRC)/init.sh $(HCP_UML_SRC)/hcp_mkext4.sh))
@@ -100,9 +100,9 @@ $(HCP_APPS_OUT)/uml_caboodle.tar:
 		dname2tar $(HCP_UML_CABOODLE_DNAME) $@
 $(HCP_APPS_OUT)/uml_caboodle.ext4: $(HCP_APPS_OUT)/uml_caboodle.tar
 $(HCP_APPS_OUT)/uml_caboodle.ext4: $(HCP_UML_RUN_TFILE)
-$(HCP_APPS_OUT)/uml_caboodle.ext4: $(HCP_UML_BOOTSTRAPPER_PATH)
+$(HCP_APPS_OUT)/uml_caboodle.ext4: $(HCP_UML_IMAGER_PATH)
 $(HCP_APPS_OUT)/uml_caboodle.ext4:
-	$QBOOTSTRAP_IMG="$(HCP_UML_BOOTSTRAPPER_PATH)" \
+	$QBOOTSTRAP_IMG="$(HCP_UML_IMAGER_PATH)" \
 		BOOTSTRAP_DNAME="$(HCP_UML_RUN_DNAME)" \
 		$(HCP_UML_SRC)/hcp_mkext4.sh \
 		tar2ext4 $(HCP_APPS_OUT)/uml_caboodle.tar $@ $(HCP_UML_EXT4_SIZE) unused
@@ -162,9 +162,9 @@ MDIRS += $(HCP_QEMU_IMG)
 $(HCP_QEMU_IMG)/disk: | $(HCP_QEMU_IMG)
 $(HCP_QEMU_IMG)/disk: $(HCP_APPS_OUT)/qemu_caboodle.tar
 $(HCP_QEMU_IMG)/disk: $(HCP_UML_RUN_TFILE)
-$(HCP_QEMU_IMG)/disk: $(HCP_UML_BOOTSTRAPPER_PATH)
+$(HCP_QEMU_IMG)/disk: $(HCP_UML_IMAGER_PATH)
 $(HCP_QEMU_IMG)/disk:
-	$QBOOTSTRAP_IMG="$(HCP_UML_BOOTSTRAPPER_PATH)" \
+	$QBOOTSTRAP_IMG="$(HCP_UML_IMAGER_PATH)" \
 		BOOTSTRAP_DNAME="$(HCP_UML_RUN_DNAME)" \
 		$(HCP_UML_SRC)/hcp_mkext4.sh \
 			tar2img $(HCP_APPS_OUT)/qemu_caboodle.tar \

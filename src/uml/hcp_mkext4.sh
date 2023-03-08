@@ -64,12 +64,12 @@ tar2ext4()
 	trap 'rm -f $myext4' ERR
 	dd if=/dev/zero of=$myext4 bs=$mysz count=1
 	/sbin/mkfs.ext4 -F $myext4
-	if [[ -n $BOOTSTRAP_IMG ]]; then
+	if [[ -f $BOOTSTRAP_IMG ]]; then
 		img_dir=$(dirname "$myext4")
 		img_name=$(basename "$myext4")
 		cmd="mkdir /wibble && "
 		cmd+="mount -t auto /mnt/uml-command/output_ext4/$img_name /wibble && "
-		cmd+="tar -xf /mnt/uml-command/input.tar -C /wibble && "
+		cmd+="tar -xf /mnt/uml-command/input.tar -C /wibble > /dev/null 2>&1 && "
 		cmd+="umount /wibble"
 		docker run --rm --tmpfs /dev/shm:exec \
 			-v $BOOTSTRAP_IMG:/rootfs.ext4:ro \
@@ -80,7 +80,7 @@ tar2ext4()
 			bash -c "$cmd"
 	else
 		cmd="mount -t auto $myext4 $mymount && "
-		cmd+="tar -xf $mytar -C $mymount && "
+		cmd+="tar -xf $mytar -C $mymount > /dev/null 2>&1 && "
 		cmd+="umount $mymount"
 		sudo bash -c "$cmd"
 	fi
@@ -133,8 +133,6 @@ tar2img()
 		}
 		trap 'onexit' EXIT
 		dd if=/dev/zero of=$myimg/disk bs=$mysz count=1
-		#numbytes=$(wc -c $myimg/disk | awk '{print $1}')
-		#numsectors=$((numbytes/512-2048))
 		sfdisk $myimg/disk <<EOF
 label: dos
 label-id: 0xabbaf00d
@@ -155,8 +153,8 @@ EOF
 		fi
 		mount -t auto /dev/loop0 $mymount
 		dounmount=1
-		tar -xf $mytar -C $mymount
-		extlinux --install $mymount/boot/
+		tar -xf $mytar -C $mymount > /dev/null 2>&1
+		extlinux --install $mymount/boot/ > /dev/null 2>&1
 		cat > $mymount/boot/syslinux.cfg <<EOF
 DEFAULT linux
   SAY Now booting the kernel from SYSLINUX...
