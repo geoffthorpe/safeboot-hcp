@@ -126,7 +126,7 @@ $(HCP_UML_IMAGER_PATH):
 			tar2ext4 \
 				$(HCP_UML_IMAGER_TAR) \
 				$(HCP_UML_IMAGER_PATH) \
-				$(HCP_UML_EXT4_SIZE) \
+				$(HCP_UML_EXT4_MB) \
 				$(HCP_UML_IMAGER_MOUNT)
 
 # This pushes the resulting uml_imager.ext4 into the cache, but as

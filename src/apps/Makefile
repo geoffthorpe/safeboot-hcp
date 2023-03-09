@@ -105,7 +105,7 @@ $(HCP_APPS_OUT)/uml_caboodle.ext4:
 	$QBOOTSTRAP_IMG="$(HCP_UML_IMAGER_PATH)" \
 		BOOTSTRAP_DNAME="$(HCP_UML_RUN_DNAME)" \
 		$(HCP_UML_SRC)/hcp_mkext4.sh \
-		tar2ext4 $(HCP_APPS_OUT)/uml_caboodle.tar $@ $(HCP_UML_EXT4_SIZE) unused
+		tar2ext4 $(HCP_APPS_OUT)/uml_caboodle.tar $@ $(HCP_UML_EXT4_MB) unused
 HCP_CABOODLE_UML_PATH := $(HCP_APPS_OUT)/uml_caboodle.ext4
 ALL += $(HCP_CABOODLE_UML_PATH)
 ifneq (,$(wildcard $(HCP_APPS_OUT)/uml_caboodle.tar $(HCP_APPS_OUT)/uml_caboodle.ext4))
@@ -168,7 +168,7 @@ $(HCP_QEMU_IMG)/disk:
 		BOOTSTRAP_DNAME="$(HCP_UML_RUN_DNAME)" \
 		$(HCP_UML_SRC)/hcp_mkext4.sh \
 			tar2img $(HCP_APPS_OUT)/qemu_caboodle.tar \
-				$(HCP_QEMU_IMG) $(HCP_QEMU_DISK_SIZE) unused
+				$(HCP_QEMU_IMG) $(HCP_QEMU_DISK_MB) unused
 ALL += $(HCP_QEMU_IMG)/disk
 ifneq (,$(wildcard $(HCP_APPS_OUT)/qemu_caboodle.tar $(HCP_QEMU_IMG)))
 clean_qemu_caboodle_pieces:

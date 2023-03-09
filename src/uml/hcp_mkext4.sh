@@ -57,12 +57,12 @@ tar2ext4()
 {
 	mytar=$1
 	myext4=$2
-	mysz=$3
+	mymegs=$3
 	mymount=$4
 	echo "Converting tarball to ext4 image" >&2
 	(
 	trap 'rm -f $myext4' ERR
-	dd if=/dev/zero of=$myext4 bs=$mysz count=1
+	dd if=/dev/zero of=$myext4 bs=1048576 count=$mymegs
 	/sbin/mkfs.ext4 -F $myext4
 	if [[ -f $BOOTSTRAP_IMG ]]; then
 		img_dir=$(dirname "$myext4")
@@ -91,10 +91,10 @@ tar2img()
 {
 	mytar=$1
 	myimg=$2
-	mysz=$3
+	mymegs=$3
 	mymount=$4
 	if [[ -n $BOOTSTRAP_IMG ]]; then
-		echo "hcp_mkext4.sh tar2img -> relaying into a QEMU VM" >&2
+		echo "hcp_mkext4.sh tar2img -> relaying into a UML VM" >&2
 		docker run --rm --tmpfs /dev/shm:exec \
 			-v $BOOTSTRAP_IMG:/rootfs.ext4:ro \
 			-v $mytar:/mnt/uml-command/input.tar:ro \
@@ -104,7 +104,7 @@ tar2img()
 			/hcp_mkext4.sh tar2img \
 				/mnt/uml-command/input.tar \
 				/mnt/uml-command/output_img \
-				$mysz \
+				$mymegs \
 				/mnt/foo
 	else
 		echo "Converting tarball to disk image" >&2
@@ -132,7 +132,7 @@ tar2img()
 			exit $exitcode
 		}
 		trap 'onexit' EXIT
-		dd if=/dev/zero of=$myimg/disk bs=$mysz count=1
+		dd if=/dev/zero of=$myimg/disk bs=1048576 count=$mymegs
 		sfdisk $myimg/disk <<EOF
 label: dos
 label-id: 0xabbaf00d
