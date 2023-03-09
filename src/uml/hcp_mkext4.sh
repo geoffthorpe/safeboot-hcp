@@ -117,8 +117,6 @@ tar2img()
 			exitcode=$?
 			if [[ $exitcode -ne 0 ]]; then
 				echo "error cleanup: $myimg" >&2
-				rm -f $myimg/disk $myimg/vmlinuz $myimg/initrd.img
-				rmdir $myimg
 			fi
 			if [[ $dounlosetup -eq 1 ]]; then
 				losetup -d /dev/loop0
@@ -128,6 +126,9 @@ tar2img()
 			fi
 			if [[ $dodelmount -eq 1 ]]; then
 				rmdir $mymount
+			fi
+			if [[ $exitcode -ne 0 ]]; then
+				rm -f $myimg/disk $myimg/vmlinuz $myimg/initrd.img
 			fi
 			exit $exitcode
 		}
