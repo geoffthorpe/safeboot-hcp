@@ -89,8 +89,10 @@ suppress_reboot_output()
 		lastline=$REPLY
 	done
 }
-# Create a throw-away swap file
+# Create a throw-away 4G swap file
 dd if=/dev/zero of=/tmp.swapfile count=4 bs=1G
+# Prepare to launch the UML kernel with the rootfs, swapfile, hostfs mount, VDE
+# ethernet, and 4G of RAM.
 cmd="/linux ubd0=/foo.ext4 ubd1=/tmp.swapfile root=/dev/ubda rw hostfs=/mnt/uml-command"
 cmd="$cmd eth0=vde,/vdeswitch"
 if [[ -z $VERBOSE || $VERBOSE == 0 ]]; then
