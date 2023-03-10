@@ -42,7 +42,8 @@
             "set": {
                 "VERBOSE": "2",
                 "HCP_CONFIG_FILE": "/usecase/emgmt.json",
-                "HOME": "/root"
+                "HOME": "/root",
+                "HCP_NOTRACEFILE": "1"
             }
         },
         "mounts": {
