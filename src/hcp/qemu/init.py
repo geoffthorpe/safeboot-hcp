@@ -45,9 +45,11 @@ if 'mounts' in config:
 		m = mounts[tag]
 		if isinstance(m, str):
 			m = { 'path': m }
-		args = [ 'mount', '-t', '9p' ]
-		if 'guest_options' in m:
-			args += [ '-o', m['guest_options'] ]
+		# See note about 'msize' in src/apps/qemu_rootfs.Dockerfile,
+		# the other source of 'mount' commands inside the VM.
+		if 'guest_options' not in m:
+			m['guest_options'] = 'msize=10485760'
+		args = [ 'mount', '-t', '9p', '-o', m['guest_options'] ]
 		if 'guest_path' in m:
 			dest = m['guest_path']
 		elif 'path' in m:

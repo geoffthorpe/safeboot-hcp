@@ -7,7 +7,9 @@ COPY --from=hcp_uml_builder:devel /myshutdown /myshutdown
 RUN echo "9p" > /etc/modules-load.d/hcp.conf
 RUN echo "9pnet_virtio" >> /etc/modules-load.d/hcp.conf
 
-# Set up fstab
+# Set up fstab. Note, recent kernels cap the msize at 512KB, even though docs
+# still seem to suggest you can (and might want to) set it way higher. Here we
+# try for 10MB, but in practice it seems to get pinned at 512KB.
 RUN echo "/dev/sda1 / ext4 defaults 0 1" > /etc/fstab
 RUN echo "hcphostfs /hostfs 9p trans=virtio,msize=10485760 0 0" >> /etc/fstab
 
