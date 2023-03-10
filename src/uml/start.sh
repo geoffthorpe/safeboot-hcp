@@ -55,10 +55,6 @@ vde_switch -d -s /vdeswitch -M /vdeswitch_mgmt
 
 # Plug a 'slirpvde' into the switch, it will provide DHCP, DNS, and act as
 # a gateway to host networking.
-# TODO: need to make this configurable;
-# - "--host" argument to stipulate what network addresses to use (to avoid
-#   conflicting with other networks the host cares about).
-# - "-L/-U" for opening access to the VM (like "--publish" for docker)
 slirpvde --daemon --dhcp /vdeswitch
 
 # TODO: there is currently no stdout/stderr - all the console output goes to
