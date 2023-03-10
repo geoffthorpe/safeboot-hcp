@@ -173,7 +173,9 @@ ALL += $(HCP_QEMU_IMG)/disk
 ifneq (,$(wildcard $(HCP_APPS_OUT)/qemu_caboodle.tar $(HCP_QEMU_IMG)))
 clean_qemu_caboodle_pieces:
 	$Qrm -f $(HCP_APPS_OUT)/qemu_caboodle.tar
-	$Qrm -f $(HCP_QEMU_IMG)/{disk,vmlinuz,initrd.img}
+	$Qrm -f $(HCP_QEMU_IMG)/disk
+	$Qrm -f $(HCP_QEMU_IMG)/vmlinuz
+	$Qrm -f $(HCP_QEMU_IMG)/initrd.img
 	$Qif test -d $(HCP_QEMU_IMG); then rmdir $(HCP_QEMU_IMG); fi
 clean_qemu_caboodle: clean_qemu_caboodle_pieces
 endif
