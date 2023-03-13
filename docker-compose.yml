@@ -93,8 +93,8 @@ services:
 #          - "8443:8443"
         healthcheck:
             test: /hcp/common/webapi.sh healthcheck
-            timeout: 3s
-            interval: 10s
+            timeout: 30s
+            interval: 60s
     emgmt_pol:
         extends: common
         hostname: emgmt_pol.hcphacking.xyz
