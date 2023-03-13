@@ -6,6 +6,7 @@ JSONPATH=$(hcp_config_extract ".orchestrator.fleet")
 
 retries=0
 pause=1
+timeout=600
 option_create=
 option_destroy=
 option_enroll=
@@ -54,6 +55,8 @@ Usage: $PROG [OPTIONS] [names ...]
         (default: $retries)
     -P <seconds>     Time between retries
         (default: $pause)
+    -T <seconds>     Timeout
+        (default: $timeout)
     -U <url>         Fallback URL if none specified in 'fleet.json'
         (default: $(test -n "$URL" && echo "$URL" || echo "None"))
     -J <jsonpath>    Path to 'fleet.json' file
@@ -62,10 +65,11 @@ EOF
 	exit "${1:-1}"
 }
 
-while getopts +:R:P:U:J:hvcderuj opt; do
+while getopts +:R:P:T:U:J:hvcderuj opt; do
 case "$opt" in
 R)	retries="$OPTARG";;
 P)	pause="$OPTARG";;
+T)	timeout="$OPTARG";;
 U)	URL="$OPTARG";;
 J)	JSONPATH="$OPTARG";;
 h)	usage 0;;
@@ -92,6 +96,7 @@ cat >$out1 <<EOF
 Starting $PROG:
  - retries=$retries
  - pause=$pause
+ - timeout=$timeout
  - option_create=$option_create
  - option_destroy=$option_destroy
  - option_enroll=$option_enroll
@@ -250,6 +255,7 @@ api_prerequisites()
 	api_cmd="python3 /hcp/tools/enroll_api.py --api $enroll_api"
 	api_cmd="$api_cmd --retries $retries"
 	api_cmd="$api_cmd --pause $pause"
+	api_cmd="$api_cmd --timeout $timeout"
 	((VERBOSE > 0)) &&
 		api_cmd="$api_cmd --verbosity 2" ||
 		api_cmd="$api_cmd --verbosity 0"

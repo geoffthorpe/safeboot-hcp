@@ -116,7 +116,8 @@ def enroll_add(args):
                              files=form_data,
                              auth=auth,
                              verify=args.requests_verify,
-                             cert=args.requests_cert)
+                             cert=args.requests_cert,
+                             timeout=args.timeout)
     response = requester_loop(args, myrequest)
     debug(f" - response: {response}")
     debug(f" - response.content: {response.content}")
@@ -140,7 +141,8 @@ def enroll_reenroll(args):
                              files=form_data,
                              auth=auth,
                              verify=args.requests_verify,
-                             cert=args.requests_cert)
+                             cert=args.requests_cert,
+                             timeout=args.timeout)
     response = requester_loop(args, myrequest)
     debug(f" - response: {response}")
     debug(f" - response.content: {response.content}")
@@ -167,7 +169,8 @@ def do_query_or_delete(args, is_delete):
                                  files=form_data,
                                  auth=auth,
                                  verify=args.requests_verify,
-                                 cert=args.requests_cert)
+                                 cert=args.requests_cert,
+                                 timeout=args.timeout)
         response = requester_loop(args, myrequest)
     else:
         form_data = { 'ekpubhash': args.ekpubhash }
@@ -180,7 +183,8 @@ def do_query_or_delete(args, is_delete):
                                 params=form_data,
                                 auth=auth,
                                 verify=args.requests_verify,
-                                cert=args.requests_cert)
+                                cert=args.requests_cert,
+                                timeout=args.timeout)
         response = requester_loop(args, myrequest)
     debug(f" - response: {response}")
     debug(f" - response.content: {response.content}")
@@ -210,7 +214,8 @@ def enroll_find(args):
                             params=form_data,
                             auth=auth,
                             verify=args.requests_verify,
-                            cert=args.requests_cert)
+                            cert=args.requests_cert,
+                            timeout=args.timeout)
     response = requester_loop(args, myrequest)
     debug(f" - response: {response}")
     debug(f" - response.content: {response.content}")
@@ -231,7 +236,8 @@ def enroll_janitor(args):
     myrequest = lambda: requests.get(args.api + '/v1/janitor',
                             auth=auth,
                             verify=args.requests_verify,
-                            cert=args.requests_cert)
+                            cert=args.requests_cert,
+                            timeout=args.timeout)
     response = requester_loop(args, myrequest)
     debug(f" - response: {response}")
     debug(f" - response.content: {response.content}")
@@ -252,7 +258,8 @@ def enroll_getAssetSigner(args):
     myrequest = lambda: requests.get(args.api + '/v1/get-asset-signer',
                             auth=auth,
                             verify=args.requests_verify,
-                            cert=args.requests_cert)
+                            cert=args.requests_cert,
+                            timeout=args.timeout)
     response = requester_loop(args, myrequest)
     debug(f" - response: {response}")
     debug(f" - response.content: {response.content}")
@@ -293,6 +300,7 @@ if __name__ == '__main__':
     enroll_help_clientkey = 'path to client key (if not included with --clientcert)'
     enroll_help_retries = 'max number of API retries'
     enroll_help_pause = 'number of seconds between retries'
+    enroll_help_timeout = 'number of seconds to allow before giving up'
     parser = argparse.ArgumentParser(description=enroll_desc,
                                      epilog=enroll_epilog)
     parser.add_argument('--api', metavar='<URL>',
@@ -315,6 +323,8 @@ if __name__ == '__main__':
                         default=0, help=enroll_help_retries)
     parser.add_argument('--pause', type=int, metavar='<secs>',
                         default=0, help=enroll_help_pause)
+    parser.add_argument('--timeout', type=int, metavar='<secs>',
+                        default=600, help=enroll_help_timeout)
 
     subparsers = parser.add_subparsers()
 

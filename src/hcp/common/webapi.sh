@@ -8,6 +8,8 @@ myservername=$(hcp_config_extract ".webapi.servername")
 myport=$(hcp_config_extract ".webapi.port")
 myhttps=$(hcp_config_extract_or ".webapi.https" "")
 myapp=$(hcp_config_extract ".webapi.app")
+myharakiri=$(hcp_config_extract_or ".webapi.harakiri" "600")
+myclienttimeout=$(hcp_config_extract_or ".webapi.clienttimeout" "600")
 myenv=$(hcp_config_extract_or ".webapi.uwsgi_env" "{}")
 myuid=$(hcp_config_extract ".webapi.uwsgi_uid")
 mygid=$(hcp_config_extract ".webapi.uwsgi_gid")
@@ -185,8 +187,12 @@ server {
 	ssl_verify_client      on;
 
 	location / {
-		# Pass the standard stuff along that the distro nginx likes to pass
+		# Pass the standard stuff along that the distro's default nginx
+		# install likes to pass along.
 		include        uwsgi_params;
+		uwsgi_read_timeout ${myclienttimeout}s;
+		uwsgi_send_timeout ${myclienttimeout}s;
+
 		# This is where uwsgi will be expecting us
 		uwsgi_pass     unix:$myuwsgisock;
 		# Pass the extra stuff that _we_ want the flask app to get
@@ -272,6 +278,7 @@ wsgi-file = $myapp
 callable = app
 die-on-term = true
 route-if = equal:\${PATH_INFO};/healthcheck donotlog:
+harakiri = $myharakiri
 EOF
 myenvkeys=($(echo "$myenv" | jq -r "keys[] // empty"))
 for keyname in ${myenvkeys[@]}; do
@@ -281,6 +288,7 @@ done
 if [[ -n $myhttps ]]; then
 	cat - >> "$etcuwsgi" <<EOF
 socket = $myuwsgisock
+socket-timeout = $myclienttimeout
 chmod-socket = 660
 vacuum = true
 EOF
@@ -288,6 +296,7 @@ else
 	cat - >> "$etcuwsgi" <<EOF
 plugin = http
 http = :$myport
+http-timeout = $myclienttimeout
 stats = :$((myport+1))
 EOF
 fi
