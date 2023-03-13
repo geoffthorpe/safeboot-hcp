@@ -54,8 +54,8 @@
             "unset": { "HCP_NOTRACEFILE": null }
         },
         "path": "/fqdn-bus",
-        "refresh": 5,
-        "expiry": 20,
+        "refresh": 60,
+        "expiry": 300,
         "extra_fqdns": [ "useless.alias.forfun.zyx", "why.not.this.wuntu.huh" ],
         "bad_address": "100.100.100.100"
     },
