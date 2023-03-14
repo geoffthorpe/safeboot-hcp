@@ -91,10 +91,10 @@ services:
           - HCP_CONFIG_FILE=/usecase/emgmt_qemu.json
 #        ports:
 #          - "8443:8443"
-        healthcheck:
-            test: /hcp/common/webapi.sh healthcheck
-            timeout: 30s
-            interval: 60s
+#        healthcheck:
+#            test: /hcp/common/webapi.sh healthcheck
+#            timeout: 30s
+#            interval: 60s
     emgmt_pol:
         extends: common
         hostname: emgmt_pol.hcphacking.xyz
