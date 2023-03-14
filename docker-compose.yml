@@ -102,10 +102,10 @@ services:
           - emgmt_private
         environment:
           - HCP_CONFIG_FILE=/usecase/emgmt_pol.json
-        healthcheck:
-            test: /hcp/common/webapi.sh healthcheck
-            timeout: 3s
-            interval: 10s
+#        healthcheck:
+#            test: /hcp/common/webapi.sh healthcheck
+#            timeout: 3s
+#            interval: 10s
 
 # Enrollment svc, replication interface
     erepl:
@@ -119,10 +119,10 @@ services:
           - HCP_CONFIG_FILE=/usecase/erepl.json
 #        ports:
 #          - "9418:9418"
-        healthcheck:
-            test: /hcp/enrollsvc/repl_healthcheck.sh
-            timeout: 3s
-            interval: 10s
+#        healthcheck:
+#            test: /hcp/enrollsvc/repl_healthcheck.sh
+#            timeout: 3s
+#            interval: 10s
 
 # Attestation svc, replication client
     arepl:
@@ -134,10 +134,10 @@ services:
           - attestdb:/attestdb:rw
         environment:
           - HCP_CONFIG_FILE=/usecase/arepl.json
-        healthcheck:
-            test: test -f /attestdb/initialized && ! test -f /attestdb/hcp/transient-failure
-            timeout: 3s
-            interval: 10s
+#        healthcheck:
+#            test: test -f /attestdb/initialized && ! test -f /attestdb/hcp/transient-failure
+#            timeout: 3s
+#            interval: 10s
 
 # Attestation svc, attestation interface
     ahcp:
@@ -149,10 +149,10 @@ services:
           - attestdb:/attestdb:ro
         environment:
           - HCP_CONFIG_FILE=/usecase/ahcp.json
-        healthcheck:
-            test: /hcp/common/webapi.sh healthcheck
-            timeout: 3s
-            interval: 10s
+#        healthcheck:
+#            test: /hcp/common/webapi.sh healthcheck
+#            timeout: 3s
+#            interval: 10s
 
 # Orchestrator client (create and/or enroll TPMs). You'll typically want to
 # pass "-c -e" to this to make it do something.
@@ -192,10 +192,10 @@ services:
           - tpmsocket_aclient:/tpm_socket_aclient
         environment:
           - HCP_CONFIG_FILE=/usecase/aclient_tpm.json
-        healthcheck:
-            test: /hcp/swtpmsvc/healthcheck.sh
-            timeout: 3s
-            interval: 10s
+#        healthcheck:
+#            test: /hcp/swtpmsvc/healthcheck.sh
+#            timeout: 3s
+#            interval: 10s
 
 # Kerberos Domain Controller - Primary
     kdc_primary:
@@ -214,10 +214,10 @@ services:
           - HCP_CONFIG_FILE=/usecase/kdc_primary.json
         ports:
           - "9090:9090"
-        healthcheck:
-            test: /hcp/common/webapi.sh healthcheck
-            timeout: 3s
-            interval: 10s
+#        healthcheck:
+#            test: /hcp/common/webapi.sh healthcheck
+#            timeout: 3s
+#            interval: 10s
     kdc_primary_tpm:
         extends: common
         hostname: kdc_primary_tpm.hcphacking.xyz
@@ -227,10 +227,10 @@ services:
           - tpmsocket_kdc_primary:/tpm_socket_kdc_primary
         environment:
           - HCP_CONFIG_FILE=/usecase/kdc_primary_tpm.json
-        healthcheck:
-            test: /hcp/swtpmsvc/healthcheck.sh
-            timeout: 3s
-            interval: 10s
+#        healthcheck:
+#            test: /hcp/swtpmsvc/healthcheck.sh
+#            timeout: 3s
+#            interval: 10s
     kdc_primary_pol:
         extends: common
         hostname: kdc_primary_pol.hcphacking.xyz
@@ -238,10 +238,10 @@ services:
           - kdc_primary_private
         environment:
           - HCP_CONFIG_FILE=/usecase/kdc_primary_pol.json
-        healthcheck:
-            test: /hcp/common/webapi.sh healthcheck
-            timeout: 3s
-            interval: 10s
+#        healthcheck:
+#            test: /hcp/common/webapi.sh healthcheck
+#            timeout: 3s
+#            interval: 10s
 
 # Kerberos Domain Controller - Secondary
     kdc_secondary:
@@ -258,10 +258,10 @@ services:
           - kdc_secondary_private
         environment:
           - HCP_CONFIG_FILE=/usecase/kdc_secondary.json
-        healthcheck:
-            test: /hcp/common/webapi.sh healthcheck
-            timeout: 3s
-            interval: 10s
+#        healthcheck:
+#            test: /hcp/common/webapi.sh healthcheck
+#            timeout: 3s
+#            interval: 10s
     kdc_secondary_tpm:
         extends: common
         hostname: kdc_secondary_tpm.hcphacking.xyz
@@ -271,10 +271,10 @@ services:
           - tpmsocket_kdc_secondary:/tpm_socket_kdc_secondary
         environment:
           - HCP_CONFIG_FILE=/usecase/kdc_secondary_tpm.json
-        healthcheck:
-            test: /hcp/swtpmsvc/healthcheck.sh
-            timeout: 3s
-            interval: 10s
+#        healthcheck:
+#            test: /hcp/swtpmsvc/healthcheck.sh
+#            timeout: 3s
+#            interval: 10s
     kdc_secondary_pol:
         extends: common
         hostname: kdc_secondary_pol.hcphacking.xyz
@@ -282,10 +282,10 @@ services:
           - kdc_secondary_private
         environment:
           - HCP_CONFIG_FILE=/usecase/kdc_secondary_pol.json
-        healthcheck:
-            test: /hcp/common/webapi.sh healthcheck
-            timeout: 3s
-            interval: 10s
+#        healthcheck:
+#            test: /hcp/common/webapi.sh healthcheck
+#            timeout: 3s
+#            interval: 10s
 
 # SSH host
     sherver:
@@ -299,10 +299,10 @@ services:
           - hcpnetwork
         environment:
           - HCP_CONFIG_FILE=/usecase/sherver.json
-        healthcheck:
-            test: /hcp/sshsvc/healthcheck.sh
-            timeout: 3s
-            interval: 10s
+#        healthcheck:
+#            test: /hcp/sshsvc/healthcheck.sh
+#            timeout: 3s
+#            interval: 10s
     sherver_tpm:
         extends: common
         hostname: sherver_tpm.hcphacking.xyz
@@ -312,10 +312,10 @@ services:
           - tpmsocket_sherver:/tpm_socket_sherver
         environment:
           - HCP_CONFIG_FILE=/usecase/sherver_tpm.json
-        healthcheck:
-            test: /hcp/swtpmsvc/healthcheck.sh
-            timeout: 3s
-            interval: 10s
+#        healthcheck:
+#            test: /hcp/swtpmsvc/healthcheck.sh
+#            timeout: 3s
+#            interval: 10s
 
 # 'workstation1' represents an architypal machine that is bootstrapped by the
 # HCP infrastructure. It gets provisioned with host and user credentials, and
@@ -336,10 +336,10 @@ services:
           - hcpnetwork
         ports:
           - "3000:3000"
-        healthcheck:
-            test: /hcp/caboodle/networked_healthcheck.sh
-            timeout: 3s
-            interval: 10s
+#        healthcheck:
+#            test: /hcp/caboodle/networked_healthcheck.sh
+#            timeout: 3s
+#            interval: 10s
     workstation1_tpm:
         extends: common
         hostname: workstation1_tpm.hcphacking.xyz
@@ -349,10 +349,10 @@ services:
           - tpmsocket_workstation1:/tpm_socket_workstation1
         environment:
           - HCP_CONFIG_FILE=/usecase/workstation1_tpm.json
-        healthcheck:
-            test: /hcp/swtpmsvc/healthcheck.sh
-            timeout: 3s
-            interval: 10s
+#        healthcheck:
+#            test: /hcp/swtpmsvc/healthcheck.sh
+#            timeout: 3s
+#            interval: 10s
 
 # 'monolith' exists to run all of the workloads that the targets above run in
 # separate containers, but running them co-tenant within this single container
@@ -380,10 +380,10 @@ services:
           - hcpnetwork
         ports:
           - "3001:3000"
-        healthcheck:
-            test: /bin/true
-            timeout: 3s
-            interval: 10s
+#        healthcheck:
+#            test: /bin/true
+#            timeout: 3s
+#            interval: 10s
 
 # 'uml_runner' exists as a shim to run an arbitrary workload inside a UML
 # instance. We do _not_ extend 'common', which is the template for a normal HCP
