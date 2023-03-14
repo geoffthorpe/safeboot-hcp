@@ -3,6 +3,7 @@ import sys
 import subprocess
 import re
 import json
+import time
 
 sys.path.insert(1, '/hcp/common')
 from hcp_common import log, bail, env_get, env_get_or_none, http2exit, \
@@ -77,8 +78,8 @@ def repo_lock():
 	# repo. We use directory-creation as a mutex. I know, this isn't
 	# perfect. But it's pretty stable, doesn't add dependencies, and if
 	# something catastrophic happens, it's easy for an admin to figure out.
-	# (I kill -9'd the service, restarted, it's not accepting enrollments,
-	# and there's a weird "lock" directory ...)
+	# ("I kill -9'd the service, restarted, and now it's not accepting
+	# enrollments, plus there's a weird "lock" directory in the repo...")
 	while True:
 		try:
 			os.mkdir(repo_lockdir)

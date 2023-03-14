@@ -74,15 +74,6 @@ if [[ -z "$DIAGNOSTICS" ]]; then
 	export DIAGNOSTICS="false"
 fi
 
-function repo_cmd_lock {
-	[[ -f $REPO_LOCKPATH ]] && echo "Warning, lockfile contention" >&2
-	lockfile -1 -r 5 -l 30 -s 5 $REPO_LOCKPATH
-}
-
-function repo_cmd_unlock {
-	rm -f $REPO_LOCKPATH
-}
-
 # The remaining functions are used for navigating and manipulating the
 # enrollment database.
 
