@@ -86,15 +86,15 @@ suppress_reboot_output()
 	done
 }
 # Create a throw-away 4G swap file
-dd if=/dev/zero of=/tmp.swapfile count=4 bs=1G
+dd if=/dev/zero of=/tmp.swapfile count=0 bs=1 seek=${SWAPSIZE:-4G}
 # Prepare to launch the UML kernel with the rootfs, swapfile, hostfs mount, VDE
-# ethernet, and 4G of RAM.
+# ethernet, and RAM.
 cmd="/linux ubd0=/foo.ext4 ubd1=/tmp.swapfile root=/dev/ubda rw hostfs=/mnt/uml-command"
 cmd="$cmd eth0=vde,/vdeswitch"
 if [[ -z $VERBOSE || $VERBOSE == 0 ]]; then
 	cmd="$cmd quiet"
 fi
-cmd="$cmd mem=4G init=/init.sh"
+cmd="$cmd mem=${RAMSIZE:-4G} init=/init.sh"
 if [[ -n $VERBOSE && $VERBOSE -gt 0 ]]; then
 	echo "About to run: $cmd" >&2
 fi
