@@ -78,8 +78,8 @@ services:
 
 # Enrollment svc, mgmt interface - RUN THIS IN A QEMU VM, FOR KICKS
     emgmt:
-        #extends: common
-        extends: qemu_runner
+        extends: common
+        #extends: qemu_runner
         hostname: emgmt.hcphacking.xyz
         networks:
           - hcpnetwork
@@ -93,8 +93,8 @@ services:
           - ${HCP_TESTCREDS_ENROLLSERVER}:/enrollserver:ro
           - ${HCP_TOP}/vendors:/vendors:ro
         environment:
-          #- HCP_CONFIG_FILE=/usecase/emgmt.json
-          - HCP_CONFIG_FILE=/usecase/emgmt_qemu.json
+          - HCP_CONFIG_FILE=/usecase/emgmt.json
+          #- HCP_CONFIG_FILE=/usecase/emgmt_qemu.json
 #        ports:
 #          - "8443:8443"
 #        healthcheck:
@@ -102,14 +102,14 @@ services:
 #            timeout: 30s
 #            interval: 60s
     emgmt_pol:
-        #extends: common
-        extends: qemu_runner
+        extends: common
+        #extends: qemu_runner
         hostname: emgmt_pol.hcphacking.xyz
         networks:
           - emgmt_private
         environment:
-          #- HCP_CONFIG_FILE=/usecase/emgmt_pol.json
-          - HCP_CONFIG_FILE=/usecase/emgmt_pol_qemu.json
+          - HCP_CONFIG_FILE=/usecase/emgmt_pol.json
+          #- HCP_CONFIG_FILE=/usecase/emgmt_pol_qemu.json
 #        healthcheck:
 #            test: /hcp/common/webapi.sh healthcheck
 #            timeout: 3s
