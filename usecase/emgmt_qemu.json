@@ -27,9 +27,9 @@
         "refresh": 60,
         "expiry": 300,
         "bad_address": "100.100.100.100",
-        "no_publish": null,
-        "no_recolt": null,
-        "publish_networks": "/enrolldb/networks"
+        "no_publish": true,
+        "no_recolt": true,
+        "pass_networks": true
     },
 
     "runner": {
@@ -50,6 +50,10 @@
             "fqdn-bus": "/fqdn-bus",
             "usecase": {
                "path": "/usecase",
+               "host_options": "readonly=on"
+            },
+            "upstream.networks": {
+               "path": "/upstream.networks",
                "host_options": "readonly=on"
             },
             "enrolldb": "/enrolldb",

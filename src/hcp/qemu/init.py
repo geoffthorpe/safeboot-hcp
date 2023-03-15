@@ -60,16 +60,6 @@ if 'mounts' in config:
 		args += [ tag, dest ]
 		subprocess.run(args)
 
-if 'publish_networks' in config:
-	publish_networks = config['publish_networks']
-	# We're given the path to a periodically-updated JSON file with
-	# networks we should advertise on (typically published to us from our
-	# hypervisor, which knows what addresses we appear on, outside the
-	# private per-VM network which is all we otherwise see). Easiest is to
-	# symlink to that from a well-known path that the fqdn_updater will
-	# look for.
-	os.symlink(publish_networks, '/upstream.networks')
-
 args = config['argv']
 # Run the desired command
 if len(args) == 0 or args[0] == '--':

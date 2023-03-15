@@ -171,6 +171,7 @@ _myhostname = hcp_config_extract('.id', must_exist = True)
 myhostname = f"{_myhostname}.{mydomain}"
 myhostnames = hcp_config_extract('.hostnames', or_default = True, default = [])
 #myhostnames = [ f"{h}.{mydomain}" for h in _myhostnames ]
+mypassednetworks = '/upstream.networks/json'
 
 # We pull our config structure as a whole, once, then dig into it locally. I.e.
 # we don't pull each attribute via hcp_config_extract()
@@ -194,14 +195,14 @@ mybad = '100.100.100.100'
 if 'bad_address' in myconfig:
     mybad = myconfig['bad_address']
 mynopublish = False
-if 'no_publish' in myconfig:
+if 'no_publish' in myconfig and myconfig['no_publish']:
     mynopublish = True
 mynorecolt = False
-if 'no_recolt' in myconfig:
+if 'no_recolt' in myconfig and myconfig['no_recolt']:
     mynorecolt = True
 mypublishnetworks = False
-if 'publish_networks' in myconfig:
-    mypublishnetworks = myconfig['publish_networks']
+if 'pass_networks' in myconfig and myconfig['pass_networks']:
+    mypublishnetworks = True
 
 summary = '''
     until={_until}
@@ -214,9 +215,13 @@ summary = '''
     extra={_extra}
     bad={_bad}
     hostname={_hostname}
+    nopublish={_nopublish}
+    norecolt={_norecolt}
+    publishnetworks={_publishnetworks}
 '''.format(_until = myuntil, _dir = mydir, _refresh = myrefresh,
     _retry = myretry, _expiry = myexpiry, _hostnames = myhostnames,
     _domain = mydomain, _extra = myextra, _bad = mybad,
+    _nopublish = mynopublish, _norecolt = mynorecolt, _publishnetworks = mypublishnetworks,
     _hostname = myhostname)
 
 log(f"Summary;\n{summary}")
@@ -229,6 +234,10 @@ def debug(s):
 # Return a list of dicts detailing each of our (non-localhost) IPv4 addresses
 # and corresponding netmask.
 def our_networks():
+    if os.path.isfile(mypassednetworks):
+        with open(mypassednetworks, 'r') as fp:
+            upstream_networks = json.load(fp)
+        return upstream_networks
     result = []
     ifaces = net.interfaces()
     for i in ifaces:
@@ -239,10 +248,6 @@ def our_networks():
             continue
         ip4s = addrs[net.AF_INET]
         result += ip4s
-    if os.path.isfile('/upstream.networks'):
-        with open('/upstream.networks', 'r') as fp:
-            upstream_networks = json.load(fp)
-        result += upstream_networks
     return result
 
 # Given another host's JSON and the list returned from our_networks(), find one of
@@ -358,10 +363,13 @@ def loop():
                 raise Exception()
             networks = our_networks()
             if mypublishnetworks:
-                src = f"{mypublishnetworks}.new"
+                src = f"{mypassednetworks}.new"
+                d = os.path.dirname(src)
+                if not os.path.isdir(d):
+                    os.makedirs(d, mode = 0o755)
                 with open(src, 'w') as fp:
                     json.dump(networks, fp)
-                os.replace(src, mypublishnetworks)
+                os.replace(src, mypassednetworks)
             if not mynopublish:
                 publish(networks)
             if not mynorecolt:
