@@ -42,6 +42,12 @@ services:
           - fqdn:/fqdn-bus:rw
           - ${HCP_TOP}/usecase:/usecase:ro
           - ${HCP_OUT}/apps/qemu_caboodle_img:/qemu_caboodle_img:ro
+        environment:
+          - HCP_LAUNCHER_TGTS=${HCP_LAUNCHER_TGTS:-}
+          - HCP_NOTRACEFILE=1
+          - VERBOSE=${VERBOSE:-0}
+        devices:
+          - /dev/kvm:/dev/kvm
         tmpfs:
           - /dev/shm:exec
         networks:

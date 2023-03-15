@@ -122,12 +122,14 @@ endif # HCP_APP_UML
 
 ifdef HCP_APP_QEMU
 qemu_pre_base_pkgs := $(uml_pre_base_pkgs)
+qemu_pre_base_pkgs += linux-image-amd64 systemd-sysv qemu-system-x86
+qemu_pre_base_pkgs += qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
 # If UML is built too, these docker layers should cache-match
 $(eval $(call pp_add_layer,\
 	QEMU_PRE_BASE,\
 	APPS_PRE_BASE,\
 	APPS,\
-	$(qemu_pre_base_pkgs) linux-image-amd64 systemd-sysv qemu-system-x86,\
+	$(qemu_pre_base_pkgs),\
 	,\
 	$(HCP_SRC)/apps/Makefile,\
 	,\

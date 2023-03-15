@@ -103,7 +103,7 @@ run("qemu-img create -f qcow2 -F raw -b /qemu_caboodle_img/disk /tmp.qcow2".spli
 # Run the VM
 cmd = [ "qemu-system-x86_64",
 	"-drive", "file=/tmp.qcow2",
-	"-m", "4096", "-smp", "4",
+	"-m", "4096", "-smp", "4", "-enable-kvm",
 	"-kernel", "/qemu_caboodle_img/vmlinuz",
 	"-initrd", "/qemu_caboodle_img/initrd.img",
 	"-virtfs", f"local,path={hostfs_dir},security_model=passthrough,mount_tag=hcphostfs",
