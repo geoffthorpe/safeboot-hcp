@@ -98,7 +98,7 @@ if ports:
 run(slirpcmd)
 
 # Create a copy-on-write layer on the (read-only) disk image
-run("qemu-img create -b /qemu_caboodle_img/disk -f qcow2 /tmp.qcow2".split())
+run("qemu-img create -f qcow2 -F raw -b /qemu_caboodle_img/disk /tmp.qcow2".split())
 
 # Run the VM
 cmd = [ "qemu-system-x86_64",
