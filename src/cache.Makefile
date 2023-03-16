@@ -38,9 +38,7 @@ $(eval cachepath := $(HCP_CACHE)/$(strip $3)/$(fname))
 $(eval $(call __cache_test_enable,$(upper_name)))
 $(eval HCP_CACHE_$(upper_name)_FILE :=)
 ifdef HCP_CACHE_(upper_name)_ISENABLED
-ifneq (,$(cachepath))
-$(eval HCP_CACHE_$(upper_name)_FILE := $(cachepath))
-endif
+$(if $(wildcard $(cachepath)),$(eval HCP_CACHE_$(upper_name)_FILE := $(cachepath)))
 endif
 endef
 
@@ -54,6 +52,19 @@ endef
 # - $(HCP_CACHE)/$(cachedir)/$(fname) depends on $(outpath), from which it will
 #   be updated.
 # - $(HCP_CACHE)/$(cachedir)/$(fname) is made a dependency of 'cache_update'.
+# Note, we resist the temptation to create a dependency of $(cachedir)/$(fname)
+# on $(outpath) in order to only update the cache copy if the locally-built
+# copy is newer. Reason: lots of things will declare dependencies on (and use)
+# $(cachedir)/$(fname) because that's what <pkg>_LOCAL_PATH gets pointed to by
+# the cache_file_get() call --> we'll hardly ever use (benefit from) the cache
+# copy without first regenerating and updating it! Instead, we make
+# 'cache_update' always do work (rather than basing itself off dependencies)
+# and we update the cache based on file contents rather than modification times
+# (which is arguably better, seeing as we're avoiding dependencies anyway).  So
+# .. instead, we make the symbolic target (cache_update_<pkg>) depend on the
+# built packages, so that if the build is out of date, it rebuilds _here_
+# rather than in other contexts, where the cache'd package should be used and
+# rebuilding shouldn't happen.
 define cache_file_update
 $(eval upper_name := $(strip $1))
 $(eval fname := $(strip $2))
@@ -61,11 +72,15 @@ $(eval cachedir := $(HCP_CACHE)/$(strip $3))
 $(eval outpath := $(strip $4))
 $(eval $(call __cache_test_enable,$(upper_name)))
 ifdef HCP_CACHE_$(upper_name)_ISENABLED
-$(cachedir)/$(fname): $(outpath)
-	$Qecho "$(upper_name): storing to cache"
-	$Qmkdir -p $(cachedir)
-	$Qcp $(outpath) $(cachedir)/$(fname)
-cache_update: $(cachedir)/$(fname)
+cache_update_$(upper_name): $(outpath)
+	$Qif cmp "$(cachedir)/$(fname)" "$(outpath)" > /dev/null 2>&1; then \
+		echo "$(upper_name): cache copy is already up-to-date"; \
+	else \
+		echo "$(upper_name): storing to cache"; \
+		mkdir -p $(cachedir); \
+		cp "$(outpath)" "$(cachedir)/$(fname)"; \
+	fi
+cache_update: cache_update_$(upper_name)
 endif
 endef
 cache_update:

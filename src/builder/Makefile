@@ -51,16 +51,6 @@ $(eval $(call pp_add_layer,\
 	,\
 	))
 
-# TODO: see if we are able to have a 'builder'-produced package (tarball) store
-# (and therefore install) an artifact at some /etc/whatever.d/ path that will
-# plug the apt package-manager. Ie. if my Dockerfile installs a tarball, and
-# later on (in a derived image) 'apt' is instructed to install an upstream
-# debian package that is equivalent to some or all of that tarball, what to do?
-# The 'apt' system won't know about that tarball we installed, and there are
-# cases where you'd want apt to install its own package and have it coexist
-# with the tarball-based installation, and other cases where you'd want 'apt'
-# to consider the package(s) "already installed", even if that breaks
-# something.
 # $1 = package name, used in naming the build layer, dependency targets, etc.
 # $2 = path to source
 # $3 = packages that build dependencies.
@@ -71,7 +61,10 @@ $(eval $(call pp_add_layer,\
 # $8 = command line to install the codebase
 # $9 = extra option arguments to 'docker run' (eg. mounts)
 # Once builder_add() is run;
-# - $1_LOCAL_PATH is the path to the resulting tarball.
+# - $1_BUILT_PATH is the path to the resulting tarball.
+# - If a cached package is available, $1_LOCAL_PATH points to that, otherwise
+#   it points to $1_BUILT_PATH. Dependencies should use $1_LOCAL_PATH in order
+#   to respect the configured cache options.
 # - HCP_BUILD_DEP_<pkg>_<state> targets are defined for each <state> as one of
 #   {"BOOTSTRAPPED", "CONFIGURED", "COMPILED", "INSTALLED"}, and these targets
 #   are actual touchfiles. As such, the caller can declare dependencies in
@@ -112,7 +105,18 @@ $(eval HCP_BUILD_DEP_$N_COMPILED := $(HCP_BUILD_$N_OUT)/$(N_lower).compiled)
 
 $(eval $(N_lower)_PKG_FORMAT := builder)
 $(eval $(N_lower)_LOCAL_FILE := package_$(N_lower).tar.gz)
-$(eval $(N_lower)_LOCAL_PATH := $(HCP_BUILD_$N_OUT)/$($(N_lower)_LOCAL_FILE))
+$(eval $(N_lower)_BUILT_PATH := $(HCP_BUILD_$N_OUT)/$($(N_lower)_LOCAL_FILE))
+$(eval $(call cache_file_get,\
+	$(N_lower),\
+	$($(N_lower)_LOCAL_FILE),\
+	builder))
+$(eval $(call cache_file_update,\
+	$(N_lower),\
+	$($(N_lower)_LOCAL_FILE),\
+	builder,\
+	$($(N_lower)_BUILT_PATH)))
+$(if $($(N_lower)_LOCAL_PATH),,$(eval $(N_lower)_LOCAL_PATH := $(HCP_CACHE_$(N_lower)_FILE)))
+$(if $($(N_lower)_LOCAL_PATH),,$(eval $(N_lower)_LOCAL_PATH := $($(N_lower)_BUILT_PATH)))
 
 $(HCP_BUILD_$N_OUT): | $(HCP_BUILDER_OUT)
 MDIRS += $(HCP_BUILD_$N_OUT)
@@ -154,16 +158,14 @@ $(HCP_BUILD_DEP_$N_COMPILED):
 $(eval local_install := export DESTDIR=/destdir && \
 	$(local_install) && \
 	tar zcf /builder-output/$($(N_lower)_LOCAL_FILE) -C /destdir .)
-$($(N_lower)_LOCAL_PATH): $(HCP_BUILD_DEP_$N_COMPILED)
-$($(N_lower)_LOCAL_PATH):
+$($(N_lower)_BUILT_PATH): $(HCP_BUILD_DEP_$N_COMPILED)
+$($(N_lower)_BUILT_PATH):
 	$Qecho "[Packaging] $N"
 	$Q$(local_docker_run) "$(local_run) && $(local_install)"
 
-$(N_lower): $($(N_lower)_LOCAL_PATH)
-
 ifneq (,$(wildcard $(HCP_BUILD_$N_OUT)))
 clean_$(N_lower):
-	$Qrm -f $($(N_lower)_LOCAL_PATH) \
+	$Qrm -f $($(N_lower)_BUILT_PATH) \
 		$(HCP_BUILD_DEP_$N_BOOTSTRAPPED) \
 		$(HCP_BUILD_DEP_$N_CONFIGURED) \
 		$(HCP_BUILD_DEP_$N_COMPILED)
@@ -189,5 +191,5 @@ $(eval N_lower := $(strip $1))
 $(eval N := $(shell echo "$(N_lower)" | tr '[:lower:]' '[:upper:]'))
 $(eval LOCAL_SRCPATH := $(HCP_BUILD_SRC_$N))
 $(eval LOCAL_nfile := $(shell find $(LOCAL_SRCPATH) -type f -printf '%T@ %p\n' | sort -n | tail -1 | cut -f2- -d" "))
-$($(N_lower)_LOCAL_PATH): $(LOCAL_nfile)
+$($(N_lower)_BUILT_PATH): $(LOCAL_nfile)
 endef

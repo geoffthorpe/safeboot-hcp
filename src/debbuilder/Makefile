@@ -117,17 +117,6 @@ $(dbo_out_dir): | $(dbo_parent_dir)
 $(dbo_mount_dir): | $(dbo_out_dir)
 $(eval MDIRS += $(dbo_out_dir) $(dbo_mount_dir))
 
-# Expected outputs
-$(eval HCP_DBB_LIST += $($(dbo_name_lower)_PKGS))
-$(eval dbo_local_paths := )
-$(foreach p,$($(dbo_name_lower)_PKGS),\
-	$(eval $p_PKG_FORMAT := debbuilder)\
-	$(if $($p_LOCAL_FILE),,$(eval $p_LOCAL_FILE := $p$(dbo_suffix)))\
-	$(eval $p_LOCAL_PATH := $(dbo_out_dir)/$($p_LOCAL_FILE))\
-	$(eval dbo_local_paths += $($p_LOCAL_PATH)))
-deb_$(dbo_name_lower): $(dbo_local_paths)
-$(eval ALL += deb_$(dbo_name_lower))
-
 # How to launch the image layer
 $(if $(dbo_debian_src_dir),\
 	$(eval debian_xtra := \
@@ -152,7 +141,7 @@ $(dbo_tfile_bootstrapped):
 	$Qtouch $$@
 
 # Packaging target. This gets set when the packaging is run. This is an
-# internal target only, however.  Immediately after this, we create
+# internal target only, however. Immediately after this, we create
 # dependencies on this packaging target by the package files themselves, which
 # is what other code should depend on.
 # NB: we add a dependency on the most recent file in the codebase, hence the
@@ -164,16 +153,41 @@ $(dbo_tfile_packaged):
 	$Q$(docker_run) "$(docker_cmd) ; $(dbo_cmd_package)"
 	$Qtouch $$@
 
-# Make the debian package files depend on the packaging target that produces
-# them. (We confirm that the packaging process produced the expected package,
-# then we touch that package so that the dependency won't re-trigger.)
+# Expected outputs
+$(eval HCP_DBB_LIST += $($(dbo_name_lower)_PKGS))
+$(eval dbo_local_paths := )
+$(foreach p,$($(dbo_name_lower)_PKGS),\
+	$(eval $p_PKG_FORMAT := debbuilder)\
+	$(if $($p_LOCAL_FILE),,$(eval $p_LOCAL_FILE := $p$(dbo_suffix)))\
+	$(eval $p_BUILT_PATH := $(dbo_out_dir)/$($p_LOCAL_FILE))\
+	$(eval $(call cache_file_get,\
+		$p,\
+		$($p_LOCAL_FILE),\
+		debbuilder))\
+	$(eval $(call cache_file_update,\
+		$p,\
+		$($p_LOCAL_FILE),\
+		debbuilder,
+		$($p_BUILT_PATH)))\
+	$(if $($p_LOCAL_PATH),,$(eval $p_LOCAL_PATH := $(HCP_CACHE_$p_FILE)))\
+	$(if $($p_LOCAL_PATH),,$(eval $p_LOCAL_PATH := $($p_BUILT_PATH)))\
+	$(eval dbo_local_paths += $($p_LOCAL_PATH)))
+
+# Make the _built_ debian package files depend on the packaging target that
+# produces them. (We confirm that the packaging process produced the expected
+# package, then we touch that package so that the dependency won't re-trigger.)
+# NB, we use _BUILT_PATH rather than _LOCAL_PATH, because the latter might
+# point to a prebuilt package in the cache, and that shouldn't depend on the
+# source code. (If you build the "cache_update" target, it will make the
+# cache'd package depend on this "built" one, which will trigger the build and
+# for the updated package to go into the cache.)
 $(foreach p,$($(dbo_name_lower)_PKGS),
-$($p_LOCAL_PATH): $(dbo_tfile_packaged)
-	$Qif ! test -f $($p_LOCAL_PATH); then \
-		echo "Error, package file missing: $($p_LOCAL_PATH)" >&2; \
+$($p_BUILT_PATH): $(dbo_tfile_packaged)
+	$Qif ! test -f $($p_BUILT_PATH); then \
+		echo "Error, package file missing: $($p_BUILT_PATH)" >&2; \
 		exit 1; \
 	fi
-	$Qtouch $($p_LOCAL_PATH)
+	$Qtouch $($p_BUILT_PATH)
 )
 
 $(if $(wildcard $(dbo_out_dir)),
