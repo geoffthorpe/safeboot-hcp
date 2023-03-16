@@ -20,7 +20,7 @@ endif # !HCP_CACHE_DEFAULT_DISABLE
 endif # HCP_CACHE
 endef
 
-# cache_file() - use a cached file, no update to the cache
+# cache_file_get() - use a cached file, no update to the cache
 # $1 - upper_name - symbolic name.
 # $2 - fname - just the asset filename, without any path or URL components
 # $3 - cachedir - dirpath relative to $(HCP_CACHE) for caching the file
@@ -31,7 +31,7 @@ endef
 #     - HCP_CACHE_$(upper_name)_FILE is set empty
 # If rule is disabled;
 # - HCP_CACHE_$(upper_name)_FILE is set empty
-define cache_file
+define cache_file_get
 $(eval upper_name := $(strip $1))
 $(eval fname := $(strip $2))
 $(eval cachepath := $(HCP_CACHE)/$(strip $3)/$(fname))

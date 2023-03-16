@@ -72,15 +72,15 @@ $(eval $(call pp_add_layer,\
 # locally on the host using sudo, meaning the user will probably be prompted
 # for a password.
 #
-# Note about caching - we use cache_file() to declare a read/inbound use of the
-# cache for the 'bootstrapper' image, if it has one. Then, we use
+# Note about caching - we use cache_file_get() to declare a read/inbound use of
+# the cache for the 'bootstrapper' image, if it has one. Then, we use
 # cache_file_update() to declare a write/outbound use of the cache for the
 # resulting 'imager' image (so that gets invoked when running 'make
 # cache_update'). Interestingly, we write the imager out as ...
 # 'bootstrapper'!
 
 HCP_UML_BOOTSTRAPPER_FNAME := uml_bootstrapper.ext4
-$(eval $(call cache_file,\
+$(eval $(call cache_file_get,\
 	BOOTSTRAPPER_IMG,\
 	$(HCP_UML_BOOTSTRAPPER_FNAME),\
 	rootfs))
@@ -130,10 +130,10 @@ $(HCP_UML_IMAGER_PATH):
 				$(HCP_UML_IMAGER_MOUNT)
 
 # This pushes the resulting uml_imager.ext4 into the cache, but as
-# uml_bootstrapper.ext4!! This is why we use an empty output from cache_file()
-# to handle the case where uml_bootstrapper.ext4 doesn't exist, because if we
-# instead declared a dependency on the bootstrapper image, the dependencies
-# would go circular.
+# uml_bootstrapper.ext4!! This is why we use an empty output from
+# cache_file_get() to handle the case where uml_bootstrapper.ext4 doesn't
+# exist, because if we instead declared a dependency on the bootstrapper image,
+# the dependencies would go circular.
 $(eval $(call cache_file_update,\
 	IMAGER,\
 	$(HCP_UML_BOOTSTRAPPER_FNAME),\
