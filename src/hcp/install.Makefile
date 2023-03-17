@@ -44,8 +44,6 @@ $(eval $(call hcp_install,swtpmsvc,swtpmsvc,755,))
 $(eval $(call hcp_install,kdcsvc,kdcsvc,755,))
 $(eval $(call hcp_install,sshsvc,sshsvc,755,))
 $(eval $(call hcp_install,uml,uml,755,))
-hcp_uml_POST_CMD := gcc -Wall -Werror -o $(PREFIX)/uml/myshutdown \
-			uml/myshutdown.c
 $(eval $(call hcp_install,qemu,qemu,755,ls -1 *))
 
 define install_tgt

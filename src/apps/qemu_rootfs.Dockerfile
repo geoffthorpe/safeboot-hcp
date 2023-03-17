@@ -1,6 +1,3 @@
-# TODO: same note as in src/uml/run.Dockerfile
-COPY --from=hcp_uml_builder:devel /myshutdown /myshutdown
-
 # The hostfs entry in fstab seems to load the '9p' module automatically but not
 # the virtio transport that it depends on. Strangely, a second attempt to do
 # the mount seems to work. Anyway, this forces things;

@@ -65,7 +65,7 @@ ALL += $(HCP_CABOODLE_TFILE)
 ###############
 
 ifdef HCP_APP_UML
-uml_pre_base_pkgs := kmod isc-dhcp-client initramfs-tools
+uml_pre_base_pkgs := kmod isc-dhcp-client initramfs-tools uml-kbuild
 $(eval $(call pp_add_layer,\
 	UML_PRE_BASE,\
 	APPS_PRE_BASE,\

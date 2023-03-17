@@ -7,12 +7,6 @@ RUN echo "source /hcp/common/hcp.sh" > /root/.bashrc
 # instances, so this global path suggests this is probably detritus.
 RUN rm /etc/nginx/sites-enabled/default
 
-# TODO: horrendous - convert the uml kernel and modules into an installable
-# package, so we don't need to do this. Same problem in src/uml/run.Dockerfile
-COPY --from=hcp_uml_builder:devel /linux /linux
-COPY --from=hcp_uml_builder:devel /lib/modules /lib/modules
-RUN chmod 755 /linux
-
 # Create all the HCP-expected accounts by baking them into the container image.
 # TODO: there should be a JSON file to summarize the uid/gid mappings that get
 # created by the following. So that, later on, if a different version or

@@ -9,9 +9,6 @@ include $(HCP_SRC)/preproc.Makefile
 #   and utilities that constitue HCP.
 include $(HCP_SRC)/base/Makefile
 
-# Build user-mode-linux support
-include $(HCP_SRC)/uml/Makefile
-
 # A "debbuilder" docker image specifically for building debian packages from
 # source.
 include $(HCP_SRC)/debbuilder/Makefile
@@ -21,6 +18,9 @@ include $(HCP_SRC)/ext/tpmware-deb.Makefile
 
 # A "builder" docker image for building a low-brow, "tarball"-style package.
 include $(HCP_SRC)/builder/Makefile
+
+# Build user-mode-linux support
+include $(HCP_SRC)/uml/Makefile
 
 # HCP app code (using "debbuilder" -> *.deb)
 include $(HCP_SRC)/hcp/Makefile

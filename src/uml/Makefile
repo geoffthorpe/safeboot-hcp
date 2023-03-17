@@ -15,28 +15,66 @@ uml_builder_packages := gcc make xz-utils flex bison bc kmod libvdeplug-dev
 
 $(eval $(call pp_add_layer,\
 	UML_BUILDER,\
-	BASE,\
+	BUILDER,\
 	UML,\
 	$(uml_builder_packages),\
-	$(HCP_UML_SRC)/builder.Dockerfile,\
+	$(HCP_UML_SRC)/kbuild.Dockerfile,\
 	$(HCP_UML_SRC)/Makefile,\
 	,\
-	$(HCP_UML_SRC)/uml.kconfig $(HCP_UML_SRC)/myshutdown.c))
+	$(HCP_UML_SRC)/uml.kconfig $(HCP_UML_SRC)/myshutdown.c\
+		$(HCP_UML_SRC)/kbuild.sh))
+
+####################################
+# Build the UML kernel and modules #
+####################################
+
+HCP_UML_KBUILD_OUT := $(HCP_UML_OUT)/kbuild
+$(HCP_UML_KBUILD_OUT): | $(HCP_UML_OUT)
+MDIRS += $(HCP_UML_KBUILD_OUT)
 
 $(eval $(call cache_file_download,\
 	KERNEL_SRC,\
 	$(HCP_UML_KERNEL_FNAME),\
 	kernel_src,\
-	$(HCP_UML_BUILDER_OUT),\
+	$(HCP_UML_KBUILD_OUT),\
 	$(HCP_UML_KERNEL_URL)))
 
-$(HCP_UML_BUILDER_TFILE): $(HCP_UML_BUILDER_OUT)/$(HCP_UML_KERNEL_FNAME)
-$(HCP_UML_BUILDER_OUT)/$(HCP_UML_KERNEL_FNAME): | $(HCP_UML_BUILDER_OUT)
+# Add a builder target, and use our "UML_BUILDER" layer to build it (it's
+# derived from the default "BUILDER").
+uml-kbuild_BUILDER := UML_BUILDER
+# And prep the env-vars that /kbuild.sh will expect
+uml-kbuild_env := KERNEL_DIR=linux-$(HCP_UML_KERNEL_VERSION)
+uml-kbuild_env += KERNEL_BALL=$(HCP_UML_KERNEL_FNAME)
+uml-kbuild_env += KERNEL_CONF=/uml.kconfig
+# Note, we do all the work in the install step primarily to avoid having the
+# kernel expanded into persistent storage, and pay the costs of each
+# container-exit doing a "chowner" run as the bootsrap, configure, compile, and
+# install steps run. It's just one run, and the source is extracted and deleted
+# in that run, so no need to fix FS ownerships.
+$(eval $(call builder_add,\
+	uml-kbuild,\
+	$(HCP_UML_KBUILD_OUT),\
+	,\
+	,\
+	,\
+	,\
+	,\
+	$(uml-kbuild_env) /kbuild.sh,\
+	))
 
-ifneq (,$(wildcard $(HCP_UML_BUILDER_OUT)/$(HCP_UML_KERNEL_FNAME)))
-clean_uml_builder_kernelsrc:
-	$Qrm $(HCP_UML_BUILDER_OUT)/$(HCP_UML_KERNEL_FNAME)
-clean_uml_builder: clean_uml_builder_kernelsrc
+# Make sure our persistent directory exists and contains the kernel source
+# before the bootstrap step runs (ie. the first attempt to mount the
+# directory). (Use a hard link rather than cp, saves disk.)
+$(HCP_BUILD_DEP_UML-KBUILD_BOOTSTRAPPED): | $(HCP_UML_KBUILD_OUT)/$(HCP_UML_KERNEL_FNAME)
+$(HCP_UML_KBUILD_OUT)/$(HCP_UML_KERNEL_FNAME): | $(HCP_UML_KBUILD_OUT)
+
+# And disappear before the parent directory does. (Note, we can't use
+# "clean_uml-kbuild", the builder_add() call already defines that for something
+# else.)
+ifneq (,$(wildcard $(HCP_UML_KBUILD_OUT)))
+clean_uml-kbuild_dir:
+	$Qrm -rf $(HCP_UML_KBUILD_OUT)/
+clean_uml: clean_uml-kbuild_dir
 endif
 
 ###########
@@ -51,7 +89,7 @@ $(eval $(call pp_add_layer,\
 	UML_RUN,\
 	BASE,\
 	UML,\
-	vde2 qemu-system-x86,\
+	vde2 qemu-system-x86 uml-kbuild,\
 	$(HCP_UML_SRC)/run.Dockerfile,\
 	$(HCP_UML_SRC)/Makefile $(HCP_UML_BUILDER_TFILE),\
 	,\
@@ -99,7 +137,7 @@ $(eval $(call pp_add_layer,\
 	UML_IMAGER_ROOTFS,\
 	BASE,\
 	UML,\
-	kmod isc-dhcp-client fdisk extlinux initramfs-tools,\
+	kmod isc-dhcp-client fdisk extlinux initramfs-tools uml-kbuild,\
 	$(HCP_UML_SRC)/imager.Dockerfile,\
 	$(HCP_UML_SRC)/Makefile $(HCP_UML_BUILDER_TFILE),\
 	,\
