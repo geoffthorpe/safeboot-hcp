@@ -37,7 +37,7 @@ $(eval fname := $(strip $2))
 $(eval cachepath := $(HCP_CACHE)/$(strip $3)/$(fname))
 $(eval $(call __cache_test_enable,$(upper_name)))
 $(eval HCP_CACHE_$(upper_name)_FILE :=)
-ifdef HCP_CACHE_(upper_name)_ISENABLED
+ifdef HCP_CACHE_$(upper_name)_ISENABLED
 $(if $(wildcard $(cachepath)),$(eval HCP_CACHE_$(upper_name)_FILE := $(cachepath)))
 endif
 endef
@@ -93,12 +93,12 @@ cache_update:
 #               inside $(HCP_OUT)).
 # $5 - url - the URL the file can be downloaded from.
 # If rule is enabled;
-# - a rule is provided for $(HCP_CACHE)/$(cachedir)/$(fname) that will download
+# - HCP_CACHE_$(upper_name)_FILE := $(HCP_CACHE)/$(cachedir)/$(fname)
+# - a rule is provided for $(HCP_CACHE_$(upper_name)_FILE that will download
 #   the file from the given URL.
-# - $(outdir)/$(fname) depends on $(HCP_CACHE)/$(cachedir)/$(fname), the latter
-#   is copied to the former if the latter is newer.
 # If the rule is disabled;
-# - a rule is provided for $(outdir)/$(fname) that downloads the file from
+# - HCP_CACHE_$(upper_name)_FILE is set empty
+# - a rule is provided for $(outdir)/$(fname) that will download the file from
 #   the given URL.
 define cache_file_download
 $(eval upper_name := $(strip $1))
@@ -107,17 +107,19 @@ $(eval cachedir := $(HCP_CACHE)/$(strip $3))
 $(eval outdir := $(strip $4))
 $(eval url := $(strip $5))
 $(eval $(call __cache_test_enable,$(upper_name)))
-ifdef HCP_CACHE
-$(cachedir)/$(fname):
+ifdef HCP_CACHE_$(upper_name)_ISENABLED
+$(eval HCP_CACHE_$(upper_name)_FILE := $(HCP_CACHE)/$(cachedir)/$(fname))
+$(HCP_CACHE)/$(cachedir)/$(fname):
 	$Qecho "$(upper_name): downloading to cache"
-	$Qmkdir -p $(cachedir)
-	$Qwget -O $(cachedir)/$(fname) $(url)
-$(outdir)/$(fname): $(cachedir)/$(fname)
-	$Qecho "$(upper_name): copying from cache"
-	$Qcp $(cachedir)/$(fname) $(outdir)/$(fname)
+	$Qmkdir -p $(HCP_CACHE)/$(cachedir)
+	$Qwget -O $(HCP_CACHE)/$(cachedir)/$(fname) $(url)
+$(outdir)/$(fname): | $(HCP_CACHE)/$(cachedir)/$(fname)
+	$Qcp $(HCP_CACHE)/$(cachedir)/$(fname) $(outdir)/$(fname)
+cache_update: $(HCP_CACHE)/$(cachedir)/$(fname)
 else
+$(eval HCP_CACHE_$(upper_name)_FILE := $(outdir)/$(fname))
 $(outdir)/$(fname):
-	$Qecho "$(upper_name): downloading"
+	$Qecho "$(upper_name): downloading (not to cache)"
 	$Qmkdir -p $(outdir)
 	$Qwget -O $(outdir)/$(fname) $(url)
 endif
