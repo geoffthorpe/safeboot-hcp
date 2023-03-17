@@ -128,7 +128,6 @@ $(eval MDIRS += $(ppa_out_dir))
 
 # A wrapper target to build the "$(ppa_name_lower)" image
 $(ppa_name_lower): $(ppa_out_dir)/built
-$(eval ALL += $(ppa_out_dir)/built)
 
 # Symbolic handles this layer should define
 $(eval HCP_$(ppa_name_upper)_DNAME := $(ppa_out_dname))

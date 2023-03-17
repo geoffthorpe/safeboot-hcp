@@ -58,6 +58,7 @@ $(eval $(call pp_add_layer,\
 	$(HCP_SRC)/apps/Makefile,\
 	,\
 	))
+ALL += $(HCP_CABOODLE_TFILE)
 
 ###############
 # UML version #

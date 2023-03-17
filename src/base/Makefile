@@ -151,4 +151,3 @@ $(eval $(call pp_add_layer,\
 
 # A wrapper target to build the "base platform" image
 base: $(HCP_BASE_TFILE)
-ALL += $(HCP_BASE_TFILE)
