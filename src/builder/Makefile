@@ -53,13 +53,15 @@ $(eval $(call pp_add_layer,\
 
 # $1 = package name, used in naming the build layer, dependency targets, etc.
 # $2 = path to source
-# $3 = packages that build dependencies.
+# $3 = packages that are build dependencies.
 # $4 = packages that are run-time dependencies.
 # $5 = command line to bootstrap the codebase
 # $6 = command line to configure the codebase
 # $7 = command line to compile the codebase
 # $8 = command line to install the codebase
 # $9 = extra option arguments to 'docker run' (eg. mounts)
+# $1_BUILDER = alternative builder layer to the default; "BUILDER". If specified
+#              it should probably be a derivative of "BUILDER".
 # Once builder_add() is run;
 # - $1_BUILT_PATH is the path to the resulting tarball.
 # - If a cached package is available, $1_LOCAL_PATH points to that, otherwise
@@ -81,10 +83,11 @@ $(eval local_configure := $(strip $6))
 $(eval local_compile := $(strip $7))
 $(eval local_install := $(strip $8))
 $(eval local_docker_xtra := $(strip $9))
+$(if $($(N_lower)_BUILDER),,$(eval $(N_lower)_BUILDER := BUILDER))
 
 $(eval $(call pp_add_layer,
 	LAYER_$N,
-	BUILDER,
+	$($(N_lower)_BUILDER),
 	BUILDER,
 	$(call uniq,$(HCP_BUILD_DEPS_$N) $($(N_lower)_DEPENDS)),
 	,
