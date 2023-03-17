@@ -5,6 +5,5 @@
 RUN apt-get install -y openssl xxd procps iproute2 iputils-ping curl wget acl \
 	lsof git jq procmail file time sudo dnsutils
 
-RUN mkdir -p /hcp/base
-COPY chowner.sh /hcp/base/
-RUN chmod 755 /hcp/base/chowner.sh
+COPY chowner.sh /
+RUN chmod 755 /chowner.sh

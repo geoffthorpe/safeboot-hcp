@@ -130,7 +130,7 @@ $(eval docker_run := docker run --rm -v $(dbo_out_dir):/empty \
 			bash -c)
 # and common preamble to what we run in the container
 $(if $(dbo_cmd_env),$(eval dbo_cmd_env += ;))
-$(eval docker_cmd := trap '/hcp/base/chowner.sh /reffile/reffile ..' EXIT ; \
+$(eval docker_cmd := trap '/chowner.sh /reffile/reffile ..' EXIT ; \
 			$(dbo_cmd_env) cd /empty/$(dbo_name_lower))
 
 # Bootstrap target

@@ -135,7 +135,7 @@ $(eval local_docker_run := docker run --rm --init --label $(HCP_IMAGE_PREFIX)all
 	--mount type=bind,source=$(HCP_BUILD_$N_OUT),destination=/builder-output \
 	--mount type=bind,source=$(HCP_SRC)/reffile,destination=/reffile,readonly \
 	$(local_docker_xtra) $(HCP_LAYER_$N_DNAME) bash -c)
-$(eval local_trap := /hcp/base/chowner.sh /reffile/reffile \
+$(eval local_trap := /chowner.sh /reffile/reffile \
 			/builder-src /builder-output)
 $(eval local_run := trap '$(local_trap)' EXIT && cd /builder-src)
 

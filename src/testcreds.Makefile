@@ -12,7 +12,7 @@ HCP_TESTCREDS_DOCKER_RUN := \
 	$(call HCP_IMAGE,caboodle) \
 	bash -c
 
-CMD_CREDS_CHOWN := /hcp/base/chowner.sh /reffile/reffile .
+CMD_CREDS_CHOWN := /chowner.sh /reffile/reffile .
 
 # "enrollsigner" This signs enrollments so that attesting clients can verify
 # them. Note that this is not acting as a credential issuer, e.g. if an
