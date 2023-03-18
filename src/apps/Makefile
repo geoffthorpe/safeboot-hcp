@@ -145,7 +145,7 @@ $(eval $(call pp_add_layer,\
 	,\
 	))
 $(eval $(call pp_add_layer,\
-	QEMU,\
+	QEMU_CABOODLE,\
 	QEMU_BASE,\
 	APPS,\
 	hcp,\
@@ -154,33 +154,33 @@ $(eval $(call pp_add_layer,\
 	,\
 	))
 
-$(HCP_APPS_OUT)/qemu_caboodle.tar: $(HCP_QEMU_TFILE)
+$(HCP_APPS_OUT)/qemu_caboodle.tar: $(HCP_QEMU_CABOODLE_TFILE)
 $(HCP_APPS_OUT)/qemu_caboodle.tar: $(HCP_UML_SRC)/hcp_mkext4.sh
 $(HCP_APPS_OUT)/qemu_caboodle.tar:
 	$Q$(HCP_UML_SRC)/hcp_mkext4.sh \
-		dname2tar $(HCP_QEMU_DNAME) $@
-HCP_QEMU_IMG := $(HCP_APPS_OUT)/qemu_caboodle_img
-$(HCP_QEMU_IMG): | $(HCP_APPS_OUT)
-MDIRS += $(HCP_QEMU_IMG)
-$(HCP_QEMU_IMG)/disk: | $(HCP_QEMU_IMG)
-$(HCP_QEMU_IMG)/disk: $(HCP_APPS_OUT)/qemu_caboodle.tar
-$(HCP_QEMU_IMG)/disk: $(HCP_UML_RUN_TFILE)
-$(HCP_QEMU_IMG)/disk: $(HCP_UML_IMAGER_PATH)
-$(HCP_QEMU_IMG)/disk:
+		dname2tar $(HCP_QEMU_CABOODLE_DNAME) $@
+HCP_QEMU_CABOODLE_IMG := $(HCP_APPS_OUT)/qemu_caboodle_img
+$(HCP_QEMU_CABOODLE_IMG): | $(HCP_APPS_OUT)
+MDIRS += $(HCP_QEMU_CABOODLE_IMG)
+$(HCP_QEMU_CABOODLE_IMG)/disk: | $(HCP_QEMU_CABOODLE_IMG)
+$(HCP_QEMU_CABOODLE_IMG)/disk: $(HCP_APPS_OUT)/qemu_caboodle.tar
+$(HCP_QEMU_CABOODLE_IMG)/disk: $(HCP_UML_RUN_TFILE)
+$(HCP_QEMU_CABOODLE_IMG)/disk: $(HCP_UML_IMAGER_PATH)
+$(HCP_QEMU_CABOODLE_IMG)/disk:
 	$QBOOTSTRAP_IMG="$(HCP_UML_IMAGER_PATH)" \
 		BOOTSTRAP_DNAME="$(HCP_UML_RUN_DNAME)" \
 		$(HCP_UML_SRC)/hcp_mkext4.sh \
 			tar2img $(HCP_APPS_OUT)/qemu_caboodle.tar \
-				$(HCP_QEMU_IMG) $(HCP_QEMU_DISK_MB) unused
-ALL += $(HCP_QEMU_IMG)/disk
-ifneq (,$(wildcard $(HCP_APPS_OUT)/qemu_caboodle.tar $(HCP_QEMU_IMG)))
-clean_qemu_pieces:
+				$(HCP_QEMU_CABOODLE_IMG) $(HCP_QEMU_DISK_MB) unused
+ALL += $(HCP_QEMU_CABOODLE_IMG)/disk
+ifneq (,$(wildcard $(HCP_APPS_OUT)/qemu_caboodle.tar $(HCP_QEMU_CABOODLE_IMG)))
+clean_qemu_caboodle_pieces:
 	$Qrm -f $(HCP_APPS_OUT)/qemu_caboodle.tar
-	$Qrm -f $(HCP_QEMU_IMG)/disk
-	$Qrm -f $(HCP_QEMU_IMG)/vmlinuz
-	$Qrm -f $(HCP_QEMU_IMG)/initrd.img
-	$Qif test -d $(HCP_QEMU_IMG); then rmdir $(HCP_QEMU_IMG); fi
-clean_qemu: clean_qemu_pieces
+	$Qrm -f $(HCP_QEMU_CABOODLE_IMG)/disk
+	$Qrm -f $(HCP_QEMU_CABOODLE_IMG)/vmlinuz
+	$Qrm -f $(HCP_QEMU_CABOODLE_IMG)/initrd.img
+	$Qif test -d $(HCP_QEMU_CABOODLE_IMG); then rmdir $(HCP_QEMU_CABOODLE_IMG); fi
+clean_qemu_caboodle: clean_qemu_caboodle_pieces
 endif
 
 endif # HCP_APP_QEMU

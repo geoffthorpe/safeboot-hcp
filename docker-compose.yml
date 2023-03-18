@@ -34,7 +34,7 @@ networks:
 services:
 
     qemu_runner:
-        image: ${HCP_IMAGE_qemu}
+        image: ${HCP_IMAGE_qemu_caboodle}
         init: true
         cap_add:
           - SYS_ADMIN
