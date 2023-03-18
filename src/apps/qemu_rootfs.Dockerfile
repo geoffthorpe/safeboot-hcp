@@ -24,4 +24,4 @@ RUN cp /hcp/qemu/hcp_systemd.service /etc/systemd/system/
 RUN chmod 644 /etc/systemd/system/hcp_systemd.service
 RUN systemctl enable hcp_systemd.service
 
-RUN echo "root:123456" | chpasswd 
+RUN echo "root:123456" | chpasswd
