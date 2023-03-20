@@ -157,7 +157,7 @@ else
 		hlog 2 "hcp_config: relocating"
 		hlog 2 "- from: $HCP_CONFIG_FILE"
 		hlog 2 "-   to: $newpath"
-		mkdir -p -m 755 workloadpath
+		mkdir -p -m 755 $workloadpath
 		cat "$HCP_CONFIG_FILE" | jq > "$newpath.tmp"
 		chmod 444 "$newpath.tmp"
 		mv "$newpath.tmp" "$newpath"

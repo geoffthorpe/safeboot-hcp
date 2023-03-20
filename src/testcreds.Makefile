@@ -3,11 +3,16 @@ HCP_TESTCREDS_OUT := $(HCP_OUT)/testcreds
 $(HCP_TESTCREDS_OUT): | $(HCP_OUT)
 MDIRS += $(HCP_TESTCREDS_OUT)
 
+ifdef HCP_MOUNT
+FOO_HCP_MOUNT := --mount type=bind,source=$(HCP_SRC)/hcp,destination=/hcp,readonly
+else
+FOO_HCP_MOUNT :=
+endif
 HCP_TESTCREDS_DOCKER_RUN := \
 	docker run -i --rm --init --label $(HCP_IMAGE_PREFIX)all=1 \
 	--mount type=bind,source=$(HCP_TESTCREDS_OUT),destination=/testcreds \
 	--mount type=bind,source=$(HCP_SRC)/reffile,destination=/reffile,readonly \
-	--env HCP_NO_CONFIG=1 \
+	$(FOO_HCP_MOUNT) --env HCP_NO_CONFIG=1 \
 	--entrypoint="" \
 	$(call HCP_IMAGE,caboodle) \
 	bash -c

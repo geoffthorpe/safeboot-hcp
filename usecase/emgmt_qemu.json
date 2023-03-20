@@ -52,6 +52,10 @@
                "path": "/usecase",
                "host_options": "readonly=on"
             },
+            "hcp": {
+               "path": "/hcp",
+               "host_options": "readonly=on"
+            },
             "upstream.networks": {
                "path": "/upstream.networks",
                "host_options": "readonly=on"

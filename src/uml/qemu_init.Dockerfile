@@ -15,12 +15,17 @@ RUN echo "RESUME=none" > /etc/initramfs-tools/conf.d/resume
 RUN update-initramfs -u
 
 # Coax systemd into (a) calling our VDE interface 'vde0', and (b) using DHCP
-RUN cp /hcp/qemu/10-vde.link /hcp/qemu/25-vde.network /etc/systemd/network/
+COPY 10-vde.link 25-vde.network /etc/systemd/network/
 RUN chmod 644 /etc/systemd/network/10-vde.link /etc/systemd/network/25-vde.network
 RUN systemctl enable systemd-networkd
 
-# Add a systemd unit to do our HCP bidding
-RUN cp /hcp/qemu/hcp_systemd.service /etc/systemd/system/
+# Add the script that mounts, loads, and executes the workload passed in from
+# the runner container (the one creating the VM we're running in).
+COPY qemu_init.py /
+RUN chmod 755 /qemu_init.py
+
+# Add a systemd unit to start that qemu_init.py script when the OS is ready.
+COPY hcp_systemd.service /etc/systemd/system/
 RUN chmod 644 /etc/systemd/system/hcp_systemd.service
 RUN systemctl enable hcp_systemd.service
 

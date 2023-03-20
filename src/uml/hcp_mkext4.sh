@@ -36,6 +36,10 @@
 # an output file if something goes wrong, because a subsequent run of "make"
 # may skip the step that failed if it sees the presence of an output file with
 # a recent timestamp.
+#
+# TODO: we shouldn't even presume to get loop0 in the bootstrap VM, but
+# definitely shouldn't make such an assumption on the host. Fix the losetup
+# handling!
 
 dname2tar()
 {
@@ -58,19 +62,20 @@ tar2ext4()
 	mytar=$1
 	myext4=$2
 	mymegs=$3
-	mymount=$4
-	echo "Converting tarball to ext4 image" >&2
 	(
-	trap 'rm -f $myext4' ERR
+	trap 'rm -f "$myext4" "$myext4.isok"' ERR
 	dd if=/dev/zero of=$myext4 bs=1048576 count=$mymegs
 	/sbin/mkfs.ext4 -F $myext4
 	if [[ -f $BOOTSTRAP_IMG ]]; then
+		echo "hcp_mkext4.sh tar2img -> relaying into a UML VM" >&2
 		img_dir=$(dirname "$myext4")
 		img_name=$(basename "$myext4")
+		rm -f "$myext4.isok"
 		cmd="mkdir /wibble && "
 		cmd+="mount -t auto /mnt/uml-command/output_ext4/$img_name /wibble && "
 		cmd+="tar -xf /mnt/uml-command/input.tar -C /wibble > /dev/null 2>&1 && "
-		cmd+="umount /wibble"
+		cmd+="umount /wibble && "
+		cmd+="touch /mnt/uml-command/output_ext4/$img_name.isok"
 		docker run --rm --tmpfs /dev/shm:exec \
 			-v $BOOTSTRAP_IMG:/rootfs.ext4:ro \
 			-v $mytar:/mnt/uml-command/input.tar:ro \
@@ -78,11 +83,21 @@ tar2ext4()
 			$BOOTSTRAP_DNAME \
 			/start.sh \
 			bash -c "$cmd"
+		if [[ ! -f "$myext4.isok" ]]; then
+			echo "Error, invoking UML to build ext4 failed" >&2
+			exit 1
+		fi
+		rm -f "$myext4.isok"
 	else
+		echo "Converting tarball to ext4 image" >&2
+		(
+		mymount=$(mktemp -d)
+		trap 'umount $mymount > /dev/null 2>&1 || true; rm -rf $mymount' EXIT
 		cmd="mount -t auto $myext4 $mymount && "
 		cmd+="tar -xf $mytar -C $mymount > /dev/null 2>&1 && "
 		cmd+="umount $mymount"
 		sudo bash -c "$cmd"
+		)
 	fi
 	)
 }
@@ -92,7 +107,8 @@ tar2img()
 	mytar=$1
 	myimg=$2
 	mymegs=$3
-	mymount=$4
+	(
+	trap 'rm -f $myimg' ERR
 	if [[ -n $BOOTSTRAP_IMG ]]; then
 		echo "hcp_mkext4.sh tar2img -> relaying into a UML VM" >&2
 		docker run --rm --tmpfs /dev/shm:exec \
@@ -108,31 +124,11 @@ tar2img()
 				/mnt/foo
 	else
 		echo "Converting tarball to disk image" >&2
-		dodelmount=0
-		dounmount=0
-		dounlosetup=0
 		(
-		onexit()
-		{
-			exitcode=$?
-			if [[ $exitcode -ne 0 ]]; then
-				echo "error cleanup: $myimg" >&2
-			fi
-			if [[ $dounlosetup -eq 1 ]]; then
-				losetup -d /dev/loop0
-			fi
-			if [[ $dounmount -eq 1 ]]; then
-				umount $mymount
-			fi
-			if [[ $dodelmount -eq 1 ]]; then
-				rmdir $mymount
-			fi
-			if [[ $exitcode -ne 0 ]]; then
-				rm -f $myimg/disk $myimg/vmlinuz $myimg/initrd.img
-			fi
-			exit $exitcode
-		}
-		trap 'onexit' EXIT
+		mymount=$(mktemp -d)
+		trap '[[ $done_losetup -eq 0 ]] || losetup -d /dev/loop;
+			umount $mymount > /dev/null 2>&1 || true;
+			rmdir $mymount > /dev/null 2>&1 || true' EXIT
 		dd if=/dev/zero of=$myimg/disk bs=1048576 count=$mymegs
 		sfdisk $myimg/disk <<EOF
 label: dos
@@ -142,18 +138,9 @@ unit: sectors
 
 wibble.img : start=2048, type=83, bootable
 EOF
-		# TODO: we shouldn't even presume to get loop0 in the bootstrap
-		# VM, but definitely shouldn't make such an assumption on the
-		# host.
 		losetup -o 1048576 /dev/loop0 $myimg/disk
-		dounlosetup=1
 		mkfs.ext4 /dev/loop0
-		if [[ ! -d $mymount ]]; then
-			mkdir $mymount
-			dodelmount=1
-		fi
 		mount -t auto /dev/loop0 $mymount
-		dounmount=1
 		tar -xf $mytar -C $mymount > /dev/null 2>&1
 		extlinux --install $mymount/boot/ > /dev/null 2>&1
 		cat > $mymount/boot/syslinux.cfg <<EOF
@@ -168,6 +155,7 @@ EOF
 		cp $mymount/initrd.img $myimg/initrd.img
 		)
 	fi
+	)
 }
 
 usage()

@@ -95,9 +95,9 @@ $(eval $(call pp_add_layer,\
 	,\
 	$(HCP_UML_SRC)/start.sh))
 
-##############
-### UML_IMAGER - for making filesystem and disk images
-##############
+###########################
+### UML_BOOTSTRAPPER_ROOTFS - for making filesystem and disk images
+###########################
 
 # To support workflows where there shouldn't be _any_ privilege requirements,
 # not even as a first-time thing, then we'll need a premade bootable image, at
@@ -109,83 +109,87 @@ $(eval $(call pp_add_layer,\
 # image is _not_ available, hcp_mkext4.sh will instead try to execute the steps
 # locally on the host using sudo, meaning the user will probably be prompted
 # for a password.
-#
-# Note about caching - we use cache_file_get() to declare a read/inbound use of
-# the cache for the 'bootstrapper' image, if it has one. Then, we use
-# cache_file_update() to declare a write/outbound use of the cache for the
-# resulting 'imager' image (so that gets invoked when running 'make
-# cache_update'). Interestingly, we write the imager out as ...
-# 'bootstrapper'!
-
-HCP_UML_BOOTSTRAPPER_FNAME := uml_bootstrapper.ext4
-$(eval $(call cache_file_get,\
-	BOOTSTRAPPER_IMG,\
-	$(HCP_UML_BOOTSTRAPPER_FNAME),\
-	rootfs))
-
-HCP_UML_IMAGER_FNAME := uml_imager.ext4
-HCP_UML_IMAGER_PATH := $(HCP_UML_OUT)/$(HCP_UML_IMAGER_FNAME)
-HCP_UML_IMAGER_MOUNT := $(HCP_UML_OUT)/uml_imager.mount
-$(HCP_UML_IMAGER_PATH): | $(HCP_UML_OUT)
-MDIRS += $(HCP_UML_IMAGER_MOUNT)
-$(HCP_UML_IMAGER_MOUNT): | $(HCP_UML_OUT)
-HCP_UML_IMAGER_TAR := $(HCP_UML_OUT)/uml_imager.tar
-$(HCP_UML_IMAGER_TAR): | $(HCP_UML_OUT)
 
 # The docker-generated rootfs used to create the imager image.
 $(eval $(call pp_add_layer,\
-	UML_IMAGER_ROOTFS,\
+	UML_BOOTSTRAPPER_ROOTFS,\
 	BASE,\
 	UML,\
 	kmod isc-dhcp-client fdisk extlinux initramfs-tools uml-kbuild,\
-	$(HCP_UML_SRC)/imager.Dockerfile,\
+	$(HCP_UML_SRC)/bootstrapper.Dockerfile,\
 	$(HCP_UML_SRC)/Makefile $(HCP_UML_BUILDER_TFILE),\
 	,\
-	$(HCP_UML_SRC)/init.sh $(HCP_UML_SRC)/hcp_mkext4.sh))
+	$(HCP_UML_SRC)/bootstrapper_init.sh $(HCP_UML_SRC)/hcp_mkext4.sh))
+
+HCP_UML_BOOTSTRAPPER_FNAME := uml_bootstrapper.ext4
+HCP_UML_BOOTSTRAPPER_BUILT_PATH := $(HCP_UML_OUT)/$(HCP_UML_BOOTSTRAPPER_FNAME)
+$(HCP_UML_BOOTSTRAPPER_BUILT_PATH): | $(HCP_UML_OUT)
+HCP_UML_BOOTSTRAPPER_TAR := $(HCP_UML_OUT)/uml_bootstrapper.tar
+$(HCP_UML_BOOTSTRAPPER_TAR): | $(HCP_UML_OUT)
+
+$(eval $(call cache_file_get,\
+	BOOTSTRAPPER_EXT4,\
+	$(HCP_UML_BOOTSTRAPPER_FNAME),\
+	rootfs))
+$(eval $(call cache_file_update,\
+	BOOTSTRAPPER_EXT4,\
+	$(HCP_UML_BOOTSTRAPPER_FNAME),\
+	rootfs,\
+	$(HCP_UML_BOOTSTRAPPER_BUILT_PATH)))
+$(if $(HCP_UML_BOOTSTRAPPER_LOCAL_PATH),,\
+	$(eval HCP_UML_BOOTSTRAPPER_LOCAL_PATH := $(HCP_CACHE_BOOTSTRAPPER_EXT4_FILE)))
+$(if $(HCP_UML_BOOTSTRAPPER_LOCAL_PATH),,\
+	$(eval HCP_UML_BOOTSTRAPPER_LOCAL_PATH := $(HCP_UML_BOOTSTRAPPER_EXT4_BUILT_PATH)))
 
 # - the rootfs tarball pulled from the docker daemon
-$(HCP_UML_IMAGER_TAR): $(HCP_UML_IMAGER_ROOTFS_TFILE)
-$(HCP_UML_IMAGER_TAR): $(HCP_UML_SRC)/hcp_mkext4.sh
-$(HCP_UML_IMAGER_TAR):
+$(HCP_UML_BOOTSTRAPPER_TAR): $(HCP_UML_BOOTSTRAPPER_ROOTFS_TFILE)
+$(HCP_UML_BOOTSTRAPPER_TAR): $(HCP_UML_SRC)/hcp_mkext4.sh
+$(HCP_UML_BOOTSTRAPPER_TAR):
 	$Q$(HCP_UML_SRC)/hcp_mkext4.sh \
 		dname2tar \
-			$(HCP_UML_IMAGER_ROOTFS_DNAME) \
-			$(HCP_UML_IMAGER_TAR)
+			$(HCP_UML_BOOTSTRAPPER_ROOTFS_DNAME) \
+			$(HCP_UML_BOOTSTRAPPER_TAR)
 
-$(HCP_UML_IMAGER_PATH): | $(HCP_UML_IMAGER_MOUNT)
-$(HCP_UML_IMAGER_PATH): $(HCP_UML_IMAGER_TAR)
-ifneq (,$(HCP_CACHE_BOOTSTRAPPER_IMG_FILE))
-$(HCP_UML_IMAGER_PATH): $(HCP_UML_RUN_TFILE)
+$(HCP_UML_BOOTSTRAPPER_BUILT_PATH): $(HCP_UML_BOOTSTRAPPER_TAR)
+ifneq (,$(HCP_CACHE_BOOTSTRAPPER_EXT4_FILE))
+# If you have a bootstrapper fs image in your cache, you can boot it with UML
+# and (because you are superuser in the ficitious VFS that results) use that to
+# generate a newer bootstrapper fs image (ie. from source), without requiring
+# special privs on the host. But if you don't have a prior bootstrapper image,
+# hcp_mkext4.sh tries to generate the fs image by issuing 'sudo
+# {mount,losetup,etc}' commands directly in the host environment (ie. as a
+# subprocess of "make"). Note that, in the UML case, you need the UML_RUN
+# container image to handle booting up the UML instance, whereas the fallback
+# case runs directly on the host (running 'sudo mount' from a container seems
+# problematic than hoping the host has usable tools installed and that the user
+# has the necessary sudo privs).
+$(HCP_UML_BOOTSTRAPPER_BUILT_PATH): $(HCP_UML_RUN_TFILE)
 endif
-$(HCP_UML_IMAGER_PATH):
-	$QBOOTSTRAP_IMG="$(HCP_CACHE_BOOTSTRAPPER_IMG_FILE)" \
+$(HCP_UML_BOOTSTRAPPER_BUILT_PATH):
+	$QBOOTSTRAP_IMG="$(HCP_CACHE_BOOTSTRAPPER_EXT4_FILE)" \
 			BOOTSTRAP_DNAME="$(HCP_UML_RUN_DNAME)" \
 		$(HCP_UML_SRC)/hcp_mkext4.sh \
 			tar2ext4 \
-				$(HCP_UML_IMAGER_TAR) \
-				$(HCP_UML_IMAGER_PATH) \
-				$(HCP_UML_EXT4_MB) \
-				$(HCP_UML_IMAGER_MOUNT)
+				$(HCP_UML_BOOTSTRAPPER_TAR) \
+				$(HCP_UML_BOOTSTRAPPER_BUILT_PATH) \
+				$(HCP_UML_EXT4_MB)
 
-# This pushes the resulting uml_imager.ext4 into the cache, but as
-# uml_bootstrapper.ext4!! This is why we use an empty output from
-# cache_file_get() to handle the case where uml_bootstrapper.ext4 doesn't
-# exist, because if we instead declared a dependency on the bootstrapper image,
-# the dependencies would go circular.
-$(eval $(call cache_file_update,\
-	IMAGER,\
-	$(HCP_UML_BOOTSTRAPPER_FNAME),\
-	rootfs,\
-	$(HCP_UML_OUT)/$(HCP_UML_IMAGER_FNAME)))
+# Other image-producing rules should use this command and append their
+# arguments to it.
+$(eval HCP_BOOTSTRAP_CMD := \
+	BOOTSTRAP_IMG="$(HCP_UML_BOOTSTRAPPER_BUILT_PATH)" \
+	BOOTSTRAP_DNAME="$(HCP_UML_RUN_DNAME)" \
+	$(HCP_UML_SRC)/hcp_mkext4.sh)
+
+# And they should declare dependencies on this;
+$(eval HCP_BOOTSTRAP_CMD_DEPS := $(HCP_UML_BOOTSTRAPPER_BUILT_PATH) \
+				$(HCP_UML_RUN_TFILE))
 
 # Parent-level cleanup
 ifneq (,$(wildcard $(HCP_UML_OUT)))
 clean_uml:
-	$Qrm -f $(HCP_UML_IMAGER_PATH)
-	$Qif test -d $(HCP_UML_IMAGER_MOUNT); then \
-		rmdir $(HCP_UML_IMAGER_MOUNT); \
-	fi
-	$Qrm -f $(HCP_UML_IMAGER_TAR)
+	$Qrm -f $(HCP_UML_BOOTSTRAPPER_BUILT_PATH)
+	$Qrm -f $(HCP_UML_BOOTSTRAPPER_TAR)
 	$Qrmdir $(HCP_UML_OUT)
 clean: clean_uml
 endif

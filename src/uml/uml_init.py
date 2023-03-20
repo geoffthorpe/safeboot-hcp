@@ -5,7 +5,7 @@ import sys
 import json
 import subprocess
 
-# This needs to be kept consistent with runner.py
+# This needs to be kept consistent with uml/runner.py
 
 # Paths in /hostfs (in the container and UML instance)
 hostfs_dir = '/hostfs'
@@ -17,11 +17,10 @@ hostfs_shutdown = f"{hostfs_dir}/myshutdown"
 shp = [
 	'mount -t proc proc /proc/',
 	'mount -t sysfs sys /sys/',
+	'mount -t tmpfs tmpfs /tmp/',
 	'dhclient eth0',
 	f'mkdir -p {hostfs_dir}',
-	f'mount -t hostfs none {hostfs_dir}',
-	f'ln -s {hostfs_dir}/usecase /usecase',
-	f'ln -s {hostfs_dir}/fqdn-bus /fqdn-bus'
+	f'mount -t hostfs none {hostfs_dir}'
 ]
 for i in shp:
 	subprocess.run(['bash', '-c', i])
@@ -50,6 +49,26 @@ if 'init_env' in config:
 				os.environ[k] = f"{os.environ[k]}:{kv[k]}"
 			else:
 				os.environ[k] = kv[k]
+
+# Make any requested "mounts". For UML we are not really mounting anything. The
+# runner put hardlinks from the hostfs tree to the intended directories and we
+# create hardlinks from the intended paths back to those links in hostfs.
+if 'mounts' in config:
+	mounts = config['mounts']
+	for tag in mounts:
+		m = mounts[tag]
+		if isinstance(m, str):
+			m = { 'path': m }
+		if not isinstance(m, dict):
+			h.bail(f"mounts[{m}] should be str or dict (not {type(m)})")
+		# TODO: as per uml/runner.py, we should support the different
+		# attribute types than just "path".
+		path = m['path']
+		if not path.startswith('/'):
+			h.bail(f"mounts[{m}] ({path}) must be an absolute path")
+		if not os.path.isdir(f"{hostfs_dir}/mounts{path}"):
+			h.bail(f"mounts[{m}] ({hostfs_dir}/mounts{path}) doesn't exist")
+		os.symlink(f"{hostfs_dir}/mounts{path}", path)
 
 args = config['argv']
 # Run the desired command

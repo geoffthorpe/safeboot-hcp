@@ -1,8 +1,8 @@
 {
     "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
 
-    "id": "emgmt_pol_qemu",
-    "hostnames": [ "do-not-contact-me-emgmt_pol_qemu" ],
+    "id": "emgmt_pol_uml",
+    "hostnames": [ "do-not-contact-me-emgmt_pol_uml" ],
     "default_domain": "hcphacking.xyz",
 
     "services": [
@@ -17,7 +17,7 @@
 
     "fqdn_updater": {
         "exec": "/hcp/common/fqdn_updater.py",
-        "until": "/etc/hcp/emgmt_pol_qemu/touch-fqdn-alive",
+        "until": "/etc/hcp/emgmt_pol_uml/touch-fqdn-alive",
         "nowait": 1,
         "tag": "fqdn",
         "env": {
@@ -33,7 +33,7 @@
     },
 
     "runner": {
-        "exec": "/hcp/qemu/runner.py",
+        "exec": "/hcp/uml/runner.py",
         "tag": "services",
         "init_env": {
             "pathadd": {

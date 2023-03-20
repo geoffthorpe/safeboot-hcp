@@ -6,7 +6,7 @@ import json
 import subprocess
 import glob
 
-# This needs to be kept consistent with runner.py
+# This needs to be kept consistent with qemu/runner.py
 
 # Paths in /hostfs (in the container and UML instance)
 hostfs_dir = '/hostfs'

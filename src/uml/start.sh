@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# This script exists to handle the launching of UML in such a way that;
-# (a) the "/init.sh" script runs in the VM
+# This script exists to launch a UML VM in such a way that;
+# (a) the "/bootstrapper_init.sh" script runs in the VM
 # (b) arguments to this script become arguments to that script
 #
 # Perhaps overkill, but I'll encode the arguments as a JSON list into a
@@ -59,12 +59,12 @@ slirpvde --daemon --dhcp /vdeswitch
 
 # TODO: there is currently no stdout/stderr - all the console output goes to
 # stdout for this command. So for the UML container tool to be usable for
-# running commands and capturing output (from /init.sh and whatever it spawns),
-# we need to ensure stdout/stderr are split, or stderr suppressed entirely. By
-# passing "quiet" we get rid of nearly everything, all that remains is the
-# "reboot: System halted" message at the end. But this is fragile, some other
-# spurious bad luck or corner case might trigger stderr output that would slip
-# through.
+# running commands and capturing output (from /bootstrapper_init.sh and
+# whatever it spawns), we need to ensure stdout/stderr are split, or stderr
+# suppressed entirely. By passing "quiet" we get rid of nearly everything, all
+# that remains is the "reboot: System halted" message at the end. But this is
+# fragile, some other spurious bad luck or corner case might trigger stderr
+# output that would slip through.
 suppress_reboot_output()
 {
 	haveline=0
@@ -94,7 +94,7 @@ cmd="$cmd eth0=vde,/vdeswitch"
 if [[ -z $VERBOSE || $VERBOSE == 0 ]]; then
 	cmd="$cmd quiet"
 fi
-cmd="$cmd mem=${RAMSIZE:-4G} init=/init.sh"
+cmd="$cmd mem=${RAMSIZE:-4G} init=/bootstrapper_init.sh"
 if [[ -n $VERBOSE && $VERBOSE -gt 0 ]]; then
 	echo "About to run: $cmd" >&2
 fi

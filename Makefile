@@ -66,6 +66,7 @@ $(HCP_OUT)/docker-compose.env:
 	$Qecho "# Variables produced by the build environment;" >> $@
 	$Qecho "HCP_IMAGE_caboodle=$(call HCP_IMAGE,caboodle)" >> $@
 	$Qecho "HCP_IMAGE_qemu_caboodle=$(call HCP_IMAGE,qemu_caboodle)" >> $@
+	$Qecho "HCP_IMAGE_uml_caboodle=$(call HCP_IMAGE,uml_caboodle)" >> $@
 	$Qecho "HCP_TESTCREDS_ENROLLCERTISSUER=$(HCP_TESTCREDS_ENROLLCERTISSUER)" >> $@
 	$Qecho "HCP_TESTCREDS_ENROLLCERTCHECKER=$(HCP_TESTCREDS_ENROLLCERTCHECKER)" >> $@
 	$Qecho "HCP_TESTCREDS_ENROLLSIGNER=$(HCP_TESTCREDS_ENROLLSIGNER)" >> $@

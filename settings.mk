@@ -26,6 +26,10 @@ HCP_ORIGIN_DNAME ?= debian:bullseye
 # settings file.
 HCP_RELAX := 1
 
+# Define this to have the src/hcp tree read-only mounted into containers (and
+# VMs) rather than packaged and installed into the images.
+HCP_MOUNT := 1
+
 # If defined, the "1apt-source" layer in hcp/base will be used, allowing apt to
 # use an alternative source of debian packages, trust different package signing
 # keys, etc.

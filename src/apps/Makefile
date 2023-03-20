@@ -36,6 +36,14 @@ $(eval $(call pp_add_layer,\
 # These are the possibly-locally-built upstream packages
 apps_base_pkgs := swtpm-tools tpm2-tools heimdal safeboot
 
+# And our in-tree source comes last. And if HCP_MOUNT is defined, then we don't
+# install 'hcp' into container images at all.
+ifdef HCP_MOUNT
+hcp_pkg :=
+else
+hcp_pkg := hcp
+endif
+
 ############
 # Caboodle #
 ############
@@ -53,7 +61,7 @@ $(eval $(call pp_add_layer,\
 	CABOODLE,\
 	CABOODLE_BASE,\
 	APPS,\
-	hcp,\
+	$(hcp_pkg),\
 	,\
 	$(HCP_SRC)/apps/Makefile,\
 	,\
@@ -64,22 +72,16 @@ ALL += $(HCP_CABOODLE_TFILE)
 # UML version #
 ###############
 
+# For now, we arrange for the UML_CABOODLE container image to be usable, (a)
+# for the container that launches the UML VM (the "runner"), and (b) the basis
+# for a bootable image to run workloads.
 ifdef HCP_APP_UML
-uml_pre_base_pkgs := kmod isc-dhcp-client initramfs-tools uml-kbuild
-$(eval $(call pp_add_layer,\
-	UML_PRE_BASE,\
-	APPS_PRE_BASE,\
-	APPS,\
-	$(uml_pre_base_pkgs),\
-	,\
-	$(HCP_SRC)/apps/Makefile,\
-	,\
-	))
+uml_base_pkgs := kmod isc-dhcp-client initramfs-tools uml-kbuild
 $(eval $(call pp_add_layer,\
 	UML_CABOODLE_BASE,\
-	UML_PRE_BASE,\
+	CABOODLE_BASE,\
 	APPS,\
-	$(apps_base_pkgs),\
+	$(uml_base_pkgs),\
 	,\
 	$(HCP_SRC)/apps/Makefile,\
 	,\
@@ -88,30 +90,27 @@ $(eval $(call pp_add_layer,\
 	UML_CABOODLE,\
 	UML_CABOODLE_BASE,\
 	APPS,\
-	hcp,\
-	$(HCP_UML_SRC)/imager.Dockerfile,\
-	$(HCP_SRC)/apps/Makefile $(HCP_UML_BUILDER_TFILE),\
+	$(hcp_pkg),\
+	$(HCP_UML_SRC)/uml_init.Dockerfile,\
+	$(HCP_SRC)/apps/Makefile,\
 	,\
-	$(HCP_UML_SRC)/init.sh $(HCP_UML_SRC)/hcp_mkext4.sh))
+	$(HCP_UML_SRC)/uml_init.py))
 
 $(HCP_APPS_OUT)/uml_caboodle.tar: $(HCP_UML_CABOODLE_TFILE)
 $(HCP_APPS_OUT)/uml_caboodle.tar: $(HCP_UML_SRC)/hcp_mkext4.sh
+$(HCP_APPS_OUT)/uml_caboodle.tar: $(HCP_BOOTSTRAP_CMD_DEPS)
 $(HCP_APPS_OUT)/uml_caboodle.tar:
-	$Q$(HCP_UML_SRC)/hcp_mkext4.sh \
-		dname2tar $(HCP_UML_CABOODLE_DNAME) $@
-$(HCP_APPS_OUT)/uml_caboodle.ext4: $(HCP_APPS_OUT)/uml_caboodle.tar
-$(HCP_APPS_OUT)/uml_caboodle.ext4: $(HCP_UML_RUN_TFILE)
-$(HCP_APPS_OUT)/uml_caboodle.ext4: $(HCP_UML_IMAGER_PATH)
-$(HCP_APPS_OUT)/uml_caboodle.ext4:
-	$QBOOTSTRAP_IMG="$(HCP_UML_IMAGER_PATH)" \
-		BOOTSTRAP_DNAME="$(HCP_UML_RUN_DNAME)" \
-		$(HCP_UML_SRC)/hcp_mkext4.sh \
-		tar2ext4 $(HCP_APPS_OUT)/uml_caboodle.tar $@ $(HCP_UML_EXT4_MB) unused
+	$Q$(HCP_BOOTSTRAP_CMD) dname2tar \
+		$(HCP_UML_CABOODLE_DNAME) $@
 HCP_CABOODLE_UML_PATH := $(HCP_APPS_OUT)/uml_caboodle.ext4
+$(HCP_CABOODLE_UML_PATH): $(HCP_APPS_OUT)/uml_caboodle.tar
+$(HCP_CABOODLE_UML_PATH):
+	$Q$(HCP_BOOTSTRAP_CMD) tar2ext4 \
+		$(HCP_APPS_OUT)/uml_caboodle.tar $@ $(HCP_UML_EXT4_MB) unused
 ALL += $(HCP_CABOODLE_UML_PATH)
-ifneq (,$(wildcard $(HCP_APPS_OUT)/uml_caboodle.tar $(HCP_APPS_OUT)/uml_caboodle.ext4))
+ifneq (,$(wildcard $(HCP_APPS_OUT)/uml_caboodle.tar $(HCP_CABOODLE_UML_PATH)))
 clean_uml_caboodle_pieces:
-	$Qrm -f $(HCP_APPS_OUT)/uml_caboodle.tar $(HCP_APPS_OUT)/uml_caboodle.ext4
+	$Qrm -f $(HCP_APPS_OUT)/uml_caboodle.tar $(HCP_CABOODLE_UML_PATH)
 clean_uml_caboodle: clean_uml_caboodle_pieces
 endif
 
@@ -122,56 +121,46 @@ endif # HCP_APP_UML
 ################
 
 ifdef HCP_APP_QEMU
-qemu_pre_base_pkgs := $(uml_pre_base_pkgs)
-qemu_pre_base_pkgs += linux-image-amd64 systemd-sysv qemu-system-x86
-qemu_pre_base_pkgs += qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
-# If UML is built too, these docker layers should cache-match
+qemu_base_pkgs := $(uml_base_pkgs)
+qemu_base_pkgs += linux-image-amd64 systemd-sysv qemu-system-x86
+qemu_base_pkgs += qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
 $(eval $(call pp_add_layer,\
-	QEMU_PRE_BASE,\
-	APPS_PRE_BASE,\
+	QEMU_CABOODLE_BASE,\
+	CABOODLE_BASE,\
 	APPS,\
-	$(qemu_pre_base_pkgs),\
-	,\
-	$(HCP_SRC)/apps/Makefile,\
-	,\
-	))
-$(eval $(call pp_add_layer,\
-	QEMU_BASE,\
-	QEMU_PRE_BASE,\
-	APPS,\
-	$(apps_base_pkgs),\
+	$(qemu_base_pkgs),\
 	,\
 	$(HCP_SRC)/apps/Makefile,\
 	,\
 	))
 $(eval $(call pp_add_layer,\
 	QEMU_CABOODLE,\
-	QEMU_BASE,\
+	QEMU_CABOODLE_BASE,\
 	APPS,\
-	hcp,\
-	$(HCP_APPS_SRC)/qemu_rootfs.Dockerfile,\
-	$(HCP_SRC)/apps/Makefile $(HCP_UML_BUILDER_TFILE),\
+	$(hcp_pkg),\
+	$(HCP_UML_SRC)/qemu_init.Dockerfile,\
+	$(HCP_SRC)/apps/Makefile,\
 	,\
-	))
+	$(HCP_UML_SRC)/qemu_init.py \
+		$(HCP_UML_SRC)/10-vde.link \
+		$(HCP_UML_SRC)/25-vde.network \
+		$(HCP_UML_SRC)/hcp_systemd.service))
 
 $(HCP_APPS_OUT)/qemu_caboodle.tar: $(HCP_QEMU_CABOODLE_TFILE)
 $(HCP_APPS_OUT)/qemu_caboodle.tar: $(HCP_UML_SRC)/hcp_mkext4.sh
+$(HCP_APPS_OUT)/qemu_caboodle.tar: $(HCP_BOOTSTRAP_CMD_DEPS)
 $(HCP_APPS_OUT)/qemu_caboodle.tar:
-	$Q$(HCP_UML_SRC)/hcp_mkext4.sh \
-		dname2tar $(HCP_QEMU_CABOODLE_DNAME) $@
+	$Q$(HCP_BOOTSTRAP_CMD) dname2tar \
+		$(HCP_QEMU_CABOODLE_DNAME) $@
 HCP_QEMU_CABOODLE_IMG := $(HCP_APPS_OUT)/qemu_caboodle_img
 $(HCP_QEMU_CABOODLE_IMG): | $(HCP_APPS_OUT)
 MDIRS += $(HCP_QEMU_CABOODLE_IMG)
 $(HCP_QEMU_CABOODLE_IMG)/disk: | $(HCP_QEMU_CABOODLE_IMG)
 $(HCP_QEMU_CABOODLE_IMG)/disk: $(HCP_APPS_OUT)/qemu_caboodle.tar
-$(HCP_QEMU_CABOODLE_IMG)/disk: $(HCP_UML_RUN_TFILE)
-$(HCP_QEMU_CABOODLE_IMG)/disk: $(HCP_UML_IMAGER_PATH)
 $(HCP_QEMU_CABOODLE_IMG)/disk:
-	$QBOOTSTRAP_IMG="$(HCP_UML_IMAGER_PATH)" \
-		BOOTSTRAP_DNAME="$(HCP_UML_RUN_DNAME)" \
-		$(HCP_UML_SRC)/hcp_mkext4.sh \
-			tar2img $(HCP_APPS_OUT)/qemu_caboodle.tar \
-				$(HCP_QEMU_CABOODLE_IMG) $(HCP_QEMU_DISK_MB) unused
+	$Q$(HCP_BOOTSTRAP_CMD) tar2img \
+		$(HCP_APPS_OUT)/qemu_caboodle.tar $(HCP_QEMU_CABOODLE_IMG) \
+		$(HCP_QEMU_DISK_MB) unused
 ALL += $(HCP_QEMU_CABOODLE_IMG)/disk
 ifneq (,$(wildcard $(HCP_APPS_OUT)/qemu_caboodle.tar $(HCP_QEMU_CABOODLE_IMG)))
 clean_qemu_caboodle_pieces:

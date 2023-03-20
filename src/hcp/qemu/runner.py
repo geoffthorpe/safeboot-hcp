@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+### Initial code is common between qemu/runner.py and uml/runner.py
+
 # Usage: runner.py <workload> [args...]
 
 # This script runs inside the 'qemu_runner' container and takes care of running
@@ -15,7 +17,8 @@
 #       {
 #         "HCP_CONFIG_FILE": "/hostfs/usecase/{workload}.json",
 #         "argv": [ args... ],
-#         "init_env": { ... }
+#         "init_env": { ... },
+#         "mounts": { ... }
 #       }
 #     - 'HCP_CONFIG_FILE' points to the usecase corresponding to <workload>,
 #     - 'argv' contains any remaining cmd-line "args...",
@@ -42,7 +45,7 @@ if len(sys.argv) > 1:
 	workload = sys.argv.pop(0)
 print(f"qemu runner launching workload: {workload}", file=sys.stderr)
 
-# Paths in /hostfs (in the container and the VM)
+# Get a temporary directory for our /hostfs mount
 hostfs_dir = tempfile.mkdtemp()
 
 # Prepare the JSON-encoded config
@@ -61,7 +64,7 @@ ports = h.hcp_config_extract('runner.ports', or_default = True)
 # This one is interesting, because we're taking a prop from fqdn_updater,
 # rather than runner. This avoids us having to tweak and relocate the 'usecase'
 # JSON to inject the container networks into the fqdn_updater that will run
-# inside the VM. We simply embed it in the config JSON here, and that
+# inside the VM. We simply embed it in the config JSON here, and the
 # fqdn_updater instance in the VM will look out for it.
 publish_networks = h.hcp_config_extract('fqdn_updater.publish_networks',
 					or_default = True)
@@ -85,7 +88,6 @@ run("vde_switch -d -s /vdeswitch -M /vdeswitch_mgmt".split())
 # TODO: need to make this configurable;
 # - "--host" argument to stipulate what network addresses to use (to avoid
 #   conflicting with other networks the host cares about).
-# - "-L/-U" for opening access to the VM (like "--publish" for docker)
 slirpcmd = "slirpvde --daemon --dhcp /vdeswitch".split()
 if ports:
 	# TODO: it's not clear how to be certain of the address the VM will
@@ -96,6 +98,8 @@ if ports:
 	for p in ports:
 		slirpcmd += [ '-L', f"{p}:{vdehost}:{p}" ]
 run(slirpcmd)
+
+## End of common-code. The remainder of the code is QEMU-specific.
 
 # Create a copy-on-write layer on the (read-only) disk image
 run("qemu-img create -f qcow2 -F raw -b /qemu_caboodle_img/disk /tmp.qcow2".split())

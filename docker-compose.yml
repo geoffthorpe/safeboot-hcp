@@ -33,25 +33,39 @@ networks:
 
 services:
 
-    qemu_runner:
-        image: ${HCP_IMAGE_qemu_caboodle}
+    common:
+        image: ${HCP_IMAGE_caboodle}
         init: true
-        cap_add:
-          - SYS_ADMIN
         volumes:
           - fqdn:/fqdn-bus:rw
           - ${HCP_TOP}/usecase:/usecase:ro
-          - ${HCP_OUT}/apps/qemu_caboodle_img:/qemu_caboodle_img:ro
+          - ${HCP_TOP}/src/hcp:/hcp:ro
         environment:
           - HCP_LAUNCHER_TGTS=${HCP_LAUNCHER_TGTS:-}
           - HCP_NOTRACEFILE=1
           - VERBOSE=${VERBOSE:-0}
+
+    uml_runner:
+        extends: common
+        image: ${HCP_IMAGE_uml_caboodle}
+        cap_add:
+          - SYS_ADMIN
+        volumes:
+          - ${HCP_OUT}/apps/uml_caboodle.ext4:/uml_caboodle.ext4:ro
+        tmpfs:
+          - /dev/shm:exec
+
+    qemu_runner:
+        extends: common
+        image: ${HCP_IMAGE_qemu_caboodle}
+        cap_add:
+          - SYS_ADMIN
+        volumes:
+          - ${HCP_OUT}/apps/qemu_caboodle_img:/qemu_caboodle_img:ro
         devices:
           - /dev/kvm:/dev/kvm
         tmpfs:
           - /dev/shm:exec
-        networks:
-          - hcpnetwork
 
     # Use this variant if (a) you want QEMU to launch a VGA window, (b)
     # HCP_APP_QEMU_XFORWARD is enabled in settings.mk, and (c) if you have an X
@@ -64,17 +78,6 @@ services:
         volumes:
           - /tmp/.X11-unix:/tmp/.X11-unix
           - ${HCP_OUT}/docker-compose.xauth:/xauth:ro
-
-    common:
-        image: ${HCP_IMAGE_caboodle}
-        init: true
-        volumes:
-          - fqdn:/fqdn-bus:rw
-          - ${HCP_TOP}/usecase:/usecase:ro
-        environment:
-          - HCP_LAUNCHER_TGTS=${HCP_LAUNCHER_TGTS:-}
-          - HCP_NOTRACEFILE=1
-          - VERBOSE=${VERBOSE:-0}
 
 # Enrollment svc, mgmt interface - RUN THIS IN A QEMU VM, FOR KICKS
     emgmt:
@@ -104,12 +107,14 @@ services:
     emgmt_pol:
         extends: common
         #extends: qemu_runner
+        #extends: uml_runner
         hostname: emgmt_pol.hcphacking.xyz
         networks:
           - emgmt_private
         environment:
           - HCP_CONFIG_FILE=/usecase/emgmt_pol.json
           #- HCP_CONFIG_FILE=/usecase/emgmt_pol_qemu.json
+          #- HCP_CONFIG_FILE=/usecase/emgmt_pol_uml.json
 #        healthcheck:
 #            test: /hcp/common/webapi.sh healthcheck
 #            timeout: 3s
@@ -392,42 +397,3 @@ services:
 #            test: /bin/true
 #            timeout: 3s
 #            interval: 10s
-
-# 'uml_runner' exists as a shim to run an arbitrary workload inside a UML
-# instance. We do _not_ extend 'common', which is the template for a normal HCP
-# workload running in the container, because we aren't that. (We're actually
-# redirecting the intended "normal HCP service" into a VM context.) To wit;
-# - the fqdn-bus and usecase mounts aren't for what's in the container, they're
-#   placed at paths that will mount into the VM.
-# - no 'hostname' property, the workload inside the UML instance should
-#   determine what hostname(s) it advertises.
-    uml_runner:
-        image: ${HCP_IMAGE_caboodle}
-        init: true
-        cap_add:
-          - SYS_ADMIN
-        environment:
-          - HCP_CONFIG_FILE=/hostfs/usecase/uml_runner.json
-        volumes:
-          - fqdn:/hostfs/fqdn-bus:rw
-          - ${HCP_TOP}/usecase:/hostfs/usecase:ro
-          - ${HCP_OUT}/uml/converted/caboodle.ext4:/rootfs.ext4:ro
-        tmpfs:
-          - /dev/shm:exec
-        networks:
-          - hcpnetwork
-
-    uml1:
-        extends: common
-        image: hcp_uml_run:devel
-        hostname: uml1.hcphacking.xyz
-        cap_add:
-          - SYS_ADMIN
-        environment:
-          - HCP_CONFIG_FILE=/usecase/uml1.json
-        volumes:
-          - ${HCP_OUT}/uml/uml_bootstrapper.ext4:/rootfs.ext4:ro
-        tmpfs:
-          - /dev/shm:exec
-        networks:
-          - hcpnetwork
