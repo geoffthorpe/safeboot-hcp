@@ -103,19 +103,19 @@ cache_update:
 define cache_file_download
 $(eval upper_name := $(strip $1))
 $(eval fname := $(strip $2))
-$(eval cachedir := $(HCP_CACHE)/$(strip $3))
+$(eval cachepath := $(HCP_CACHE)/$(strip $3))
 $(eval outdir := $(strip $4))
 $(eval url := $(strip $5))
 $(eval $(call __cache_test_enable,$(upper_name)))
 ifdef HCP_CACHE_$(upper_name)_ISENABLED
-$(eval HCP_CACHE_$(upper_name)_FILE := $(HCP_CACHE)/$(cachedir)/$(fname))
-$(HCP_CACHE)/$(cachedir)/$(fname):
+$(eval HCP_CACHE_$(upper_name)_FILE := $(cachepath)/$(fname))
+$(cachepath)/$(fname):
 	$Qecho "$(upper_name): downloading to cache"
-	$Qmkdir -p $(HCP_CACHE)/$(cachedir)
-	$Qwget -O $(HCP_CACHE)/$(cachedir)/$(fname) $(url)
-$(outdir)/$(fname): | $(HCP_CACHE)/$(cachedir)/$(fname)
-	$Qcp $(HCP_CACHE)/$(cachedir)/$(fname) $(outdir)/$(fname)
-cache_update: $(HCP_CACHE)/$(cachedir)/$(fname)
+	$Qmkdir -p $(cachepath)
+	$Qwget -O $(cachepath)/$(fname) $(url)
+$(outdir)/$(fname): | $(cachepath)/$(fname)
+	$Qcp $(cachepath)/$(fname) $(outdir)/$(fname)
+cache_update: $(cachepath)/$(fname)
 else
 $(eval HCP_CACHE_$(upper_name)_FILE := $(outdir)/$(fname))
 $(outdir)/$(fname):
