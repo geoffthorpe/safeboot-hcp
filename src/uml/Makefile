@@ -38,6 +38,11 @@ $(eval $(call cache_file_download,\
 	kernel_src,\
 	$(HCP_UML_KBUILD_OUT),\
 	$(HCP_UML_KERNEL_URL)))
+$(eval $(call cache_file_update,\
+	KERNEL_SRC,\
+	$(HCP_UML_KERNEL_FNAME),\
+	kernel_src,\
+	$(HCP_UML_KBUILD_OUT)/$(HCP_UML_KERNEL_FNAME)))
 
 # Add a builder target, and use our "UML_BUILDER" layer to build it (it's
 # derived from the default "BUILDER").
