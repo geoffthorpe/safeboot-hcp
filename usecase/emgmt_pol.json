@@ -36,7 +36,7 @@
         "config": "/usecase/emgmt_pol.policy.json",
         "uwsgi_env": {
             "HCP_TRACEFILE": "/tmp",
-            "HCP_POLICYSVC_DEBUG": "1"
+            "__uncomment_HCP_POLICYSVC_DEBUG": "1"
         },
         "uwsgi_uid": "www-data",
         "uwsgi_gid": "www-data"

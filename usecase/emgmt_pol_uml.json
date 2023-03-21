@@ -40,7 +40,7 @@
                 "PATH": "/bin:/sbin:/usr/bin:/usr/sbin"
             },
             "set": {
-                "VERBOSE": "2",
+                "__uncomment_VERBOSE": "2",
                 "HCP_CONFIG_FILE": "/usecase/emgmt_pol.json",
                 "HOME": "/root",
                 "HCP_NOTRACEFILE": "1"
