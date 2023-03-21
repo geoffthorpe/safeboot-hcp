@@ -2,7 +2,6 @@
     "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
 
     "id": "aclient",
-    "hostnames": [ "do-not-contact-me-aclient" ],
     "default_domain": "hcphacking.xyz",
 
     "services": [
@@ -25,8 +24,7 @@
         },
         "path": "/fqdn-bus",
         "refresh": 60,
-        "expiry": 300,
-        "bad_address": "100.100.100.100"
+        "expiry": 300
     },
 
     "client": {

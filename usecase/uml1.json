@@ -25,8 +25,7 @@
         },
         "path": "/fqdn-bus",
         "refresh": 60,
-        "expiry": 300,
-        "bad_address": "100.100.100.100"
+        "expiry": 300
     },
 
     "uml": {

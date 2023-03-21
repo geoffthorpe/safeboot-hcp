@@ -2,7 +2,6 @@
     "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
 
     "id": "tpm.secondary.kdc",
-    "hostnames": [ "do-not-contact-me-kdcsecondarytpm" ],
     "default_domain": "hcphacking.xyz",
 
     "services": [

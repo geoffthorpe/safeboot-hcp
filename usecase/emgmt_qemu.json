@@ -2,7 +2,6 @@
     "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
 
     "id": "emgmt_qemu",
-    "hostnames": [ "do-not-contact-me-emgmt_qemu" ],
     "default_domain": "hcphacking.xyz",
 
     "services": [
@@ -26,7 +25,6 @@
         "path": "/fqdn-bus",
         "refresh": 60,
         "expiry": 300,
-        "bad_address": "100.100.100.100",
         "no_publish": true,
         "no_recolt": true,
         "pass_networks": true
