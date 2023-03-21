@@ -31,6 +31,32 @@ ifndef HCP_RELAX
 HCP_DEPS_COMMON := $(TOP)/Makefile $(TOP)/settings.mk
 endif
 
+# If we intend to mount src/hcp into containers (and VMs), rather than package
+# and install it, we need to ensure that readable files are world-readable and
+# executable files are world-executable. Otherwise, anything that drops privs
+# from "root" in the container may fail to operate.
+ifdef HCP_MOUNT
+define hcp_mount_check
+$(eval pbit := $(strip $1))
+$(eval adj := $(strip $2))
+$(eval check := $(shell find src/hcp -perm -u=$(pbit) ! -perm -o=$(pbit)))
+$(if $(check),
+$(if $(FORCE),
+$(info Warning, src/hcp contains $(adj) files that are not world-$(adj).)
+$(info FORCE is set, so I'll try to fix this.)
+$(shell chmod o+$(pbit) $(check))
+,
+$(info Error, src/hcp contains $(adj) files that are not world-$(adj).)
+$(info - $(check))
+$(info If you retry with FORCE=1, I'll fix this for you.)
+$(error stop)
+)
+)
+endef
+$(eval $(call hcp_mount_check,r,readable))
+$(eval $(call hcp_mount_check,x,executable))
+endif
+
 # Helper, before any included Makefiles might need it
 uniq = $(if $1,$(firstword $1) $(call uniq,$(filter-out $(firstword $1),$1)))
 
