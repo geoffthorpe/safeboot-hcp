@@ -15,6 +15,17 @@ HCP_OUT ?= $(TOP)/output
 HCP_SRC := $(TOP)/src
 HCP_UTIL := $(TOP)/util
 
+# We need to choose a usecase, and add a top-level "docker-compose.yml" symlink
+# to the corresponding file.
+ifeq (,$(wildcard docker-compose.yml))
+ifdef FORCE
+$(info Warning, setting default docker-compose.yml symlink to usecase/)
+$(shell ln -s usecase/docker-compose.yml)
+else
+$(error No docker-compose.yml. Retry with FORCE=1 if you want me to set a default.)
+endif
+endif
+
 # $(HCP_OUT) is the only directory we explicitly create during preprocessing,
 # rather than adding it to MDIRS and relying on order-only dependencies to
 # create it. This is because preprocessing also creates a suite of hidden
