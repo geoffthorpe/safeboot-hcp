@@ -31,10 +31,14 @@ UsePAM yes
 X11Forwarding yes
 PrintMotd no
 PidFile /var/run/sshd.$HCP_ID.pid
+TCPKeepAlive yes
 AcceptEnv LANG LC_*
 Subsystem sftp /usr/lib/openssh/sftp-server
 GSSAPIAuthentication yes
 GSSAPICleanupCredentials yes
+GSSAPIKeyExchange yes
+GSSAPIStoreCredentialsOnRekey yes
+GSSAPIStrictAcceptorCheck no
 PasswordAuthentication no
 EOF
 fi
