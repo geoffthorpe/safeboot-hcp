@@ -38,6 +38,7 @@ $(HCP_TESTCREDS_OUT)/done.enrollsigner:
 	$Q$(HCP_TESTCREDS_DOCKER_RUN) "$(CMD_CREDS_ENROLLSIG)"
 	$Qtouch $@
 HCP_TESTCREDS_DONE += $(HCP_TESTCREDS_OUT)/done.enrollsigner
+HCP_DOCKER_ENVS += HCP_TESTCREDS_ENROLLSIGNER
 
 # "enrollverifier"
 #    Simply the public half of "enrollsigner". For obvious reasons,
@@ -53,6 +54,7 @@ $(HCP_TESTCREDS_OUT)/done.enrollverifier:
 	$Qcp "$(HCP_TESTCREDS_ENROLLSIGNER)/key.pem" "$(HCP_TESTCREDS_ENROLLVERIFIER)/"
 	$Qtouch $@
 HCP_TESTCREDS_DONE += $(HCP_TESTCREDS_OUT)/done.enrollverifier
+HCP_DOCKER_ENVS += HCP_TESTCREDS_ENROLLVERIFIER
 
 # "enrollcertissuer"
 #    This is the HCP CA. The public half (the certificate) gets included in all
@@ -77,6 +79,7 @@ $(HCP_TESTCREDS_OUT)/done.enrollcertissuer:
 	$Q$(HCP_TESTCREDS_DOCKER_RUN) "$(CMD_CREDS_ENROLLCERTISSUER)"
 	$Qtouch $@
 HCP_TESTCREDS_DONE += $(HCP_TESTCREDS_OUT)/done.enrollcertissuer
+HCP_DOCKER_ENVS += HCP_TESTCREDS_ENROLLCERTISSUER
 
 # "enrollcertchecker"
 #    Simply the public half of "enrollcertissuer". Most hosts get this via
@@ -91,6 +94,7 @@ $(HCP_TESTCREDS_OUT)/done.enrollcertchecker:
 	$Qcp "$(HCP_TESTCREDS_ENROLLCERTISSUER)/CA.cert" "$(HCP_TESTCREDS_ENROLLCERTCHECKER)/"
 	$Qtouch $@
 HCP_TESTCREDS_DONE += $(HCP_TESTCREDS_OUT)/done.enrollcertchecker
+HCP_DOCKER_ENVS += HCP_TESTCREDS_ENROLLCERTCHECKER
 
 # "enrollserver"
 #    This is a web server certificate that can be used to host the
@@ -119,6 +123,7 @@ $(HCP_TESTCREDS_OUT)/done.enrollserver:
 	$Q$(HCP_TESTCREDS_DOCKER_RUN) "$(CMD_CREDS_ENROLLSERVER)"
 	$Qtouch $@
 HCP_TESTCREDS_DONE += $(HCP_TESTCREDS_OUT)/done.enrollserver
+HCP_DOCKER_ENVS += HCP_TESTCREDS_ENROLLSERVER
 
 # "enrollclient"
 #    This is a client certificate that can be used with the orchestration
@@ -158,6 +163,7 @@ $(HCP_TESTCREDS_OUT)/done.enrollclient:
 	$Q$(HCP_TESTCREDS_DOCKER_RUN) "$(CMD_CREDS_ENROLLCLIENT)"
 	$Qtouch $@
 HCP_TESTCREDS_DONE += $(HCP_TESTCREDS_OUT)/done.enrollclient
+HCP_DOCKER_ENVS += HCP_TESTCREDS_ENROLLCLIENT
 
 # A wrapper target to package testcreds
 testcreds: $(HCP_TESTCREDS_DONE)

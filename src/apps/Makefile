@@ -67,6 +67,7 @@ $(eval $(call pp_add_layer,\
 	,\
 	))
 ALL += $(HCP_CABOODLE_TFILE)
+HCP_DOCKER_IMGS += caboodle
 
 ###############
 # UML version #
@@ -108,6 +109,7 @@ $(HCP_CABOODLE_UML_PATH):
 	$Q$(HCP_BOOTSTRAP_CMD) tar2ext4 \
 		$(HCP_APPS_OUT)/uml_caboodle.tar $@ $(HCP_UML_EXT4_MB) unused
 ALL += $(HCP_CABOODLE_UML_PATH)
+HCP_DOCKER_IMGS += uml_caboodle
 ifneq (,$(wildcard $(HCP_APPS_OUT)/uml_caboodle.tar $(HCP_CABOODLE_UML_PATH)))
 clean_uml_caboodle_pieces:
 	$Qrm -f $(HCP_APPS_OUT)/uml_caboodle.tar $(HCP_CABOODLE_UML_PATH)
@@ -162,6 +164,7 @@ $(HCP_QEMU_CABOODLE_IMG)/disk:
 		$(HCP_APPS_OUT)/qemu_caboodle.tar $(HCP_QEMU_CABOODLE_IMG) \
 		$(HCP_QEMU_DISK_MB) unused
 ALL += $(HCP_QEMU_CABOODLE_IMG)/disk
+HCP_DOCKER_IMGS += qemu_caboodle
 ifneq (,$(wildcard $(HCP_APPS_OUT)/qemu_caboodle.tar $(HCP_QEMU_CABOODLE_IMG)))
 clean_qemu_caboodle_pieces:
 	$Qrm -f $(HCP_APPS_OUT)/qemu_caboodle.tar
