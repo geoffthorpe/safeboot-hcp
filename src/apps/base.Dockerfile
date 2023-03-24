@@ -3,10 +3,6 @@
 RUN echo "source /hcp/common/hcp.sh" > /etc/profile.d/hcp_common.sh
 RUN echo "source /hcp/common/hcp.sh" > /root/.bashrc
 
-# TODO: this is probably no longer needed. I made webapi support co-tenant
-# instances, so this global path suggests this is probably detritus.
-RUN rm /etc/nginx/sites-enabled/default
-
 # Create all the HCP-expected accounts by baking them into the container image.
 # TODO: there should be a JSON file to summarize the uid/gid mappings that get
 # created by the following. So that, later on, if a different version or
