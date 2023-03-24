@@ -108,7 +108,8 @@ def gen_preinstall(fname, assets):
 def gen_postinstall(fname, assets):
 	if fname and f"{fname}" in os.environ:
 		prog = os.environ[f"{fname}"]
-		subprocess.run([prog, fname], text = True,
+		prog = prog.split()
+		subprocess.run(prog + [ fname ], text = True,
 				input = json.dumps(assets))
 
 # Method for assets that need typical {etc}/<foo> handling

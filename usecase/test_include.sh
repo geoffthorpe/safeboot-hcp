@@ -155,13 +155,7 @@ do_core_fg()
 # each start an "attester" agent running early during start up (they also block
 # for this agent to successfully complete at least one attestation - to
 # simplify service synchronization and not need other components to handle the
-# error-retry cases that otherwise occur). This includes;
-# - all instances of the KDC service ('kdcsvc'):
-#       kdc_primary, kdc_secondary
-# - all instances of the SSH service ('sshsvc'):
-#       sherver
-# - all instances of the stateful client tool ('do_nothing'):
-#       workstation1
+# error-retry cases that otherwise occur).
 
 # do_normal_* variants of the above functions all add the 'start-attester'
 # to the target list.
@@ -210,6 +204,7 @@ do_shell()
 # attempt to address the server in the way it is expecting to be addressed,
 # otherwise GSSAPI will grab a session ticket for the wrong principle and the
 # result is an obscure "fail to decrypt" error in sshd.
+# TODO: we need a different workaround, this is going to break new usecases.
 if [[ -n $HCP_IN_MONOLITH ]]; then
 	SHERVER_FQDN=monolith.hcphacking.xyz
 else

@@ -15,13 +15,11 @@
     "services": [
         "fqdn_updater",
         "attester",
-        "sshsvc",
         "sshd"
     ],
     "default_targets": [
         "start-fqdn",
         "start-attester",
-        "setup-global",
         "setup-local",
         "start-services"
     ],
@@ -50,7 +48,7 @@
                 "HCP_NOTRACEFILE": null
             },
             "set": {
-                "HCP_ATTESTCLIENT_HOOK_KRB5KEY": "/hcp/sshsvc/hup_sshd.sh"
+                "HCP_ATTESTCLIENT_HOOK_KRB5KEYTAB": "/hcp/sshd.py --hup"
             }
         },
         "period": 120,
@@ -67,24 +65,9 @@
         "callbacks": [ "/hcp/tools/attest_callback_common.py" ]
     },
 
-    "sshsvc": {
-        "setup": [ {
-                "tag": "global",
-                "exec": "/hcp/sshsvc/setup_global.sh",
-                "touchfile": "/sherver/initialized"
-            }, {
-                "tag": "local",
-                "exec": "/hcp/sshsvc/setup_local.sh",
-                "touchfile": "/etc/hcp/sherver/touch-sshsvc-local-setup"
-            } ],
-        "state": "/sherver"
-    },
-
     "sshd": {
-        "setup": { "touchfile": "/etc/hcp/sherver/touch-sshsvc-local-setup" },
-        "exec": [ "/hcp/sshsvc/run_sshd.py", "/usr/sbin/sshd" ],
-        "args": [ "-e", "-D", "-f", "/sherver/etc/config", "-p", "2222" ],
+        "exec": "/hcp/sshd.py",
         "tag": "services",
-        "env": { "set": { "HCP_NOTRACEFILE": "1" } }
+        "port": 2222
     }
 }

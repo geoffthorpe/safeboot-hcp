@@ -42,7 +42,7 @@ $(eval $(call hcp_install,attestsvc,attestsvc,755,))
 $(eval $(call hcp_install,policysvc,policysvc,755,))
 $(eval $(call hcp_install,swtpmsvc,swtpmsvc,755,))
 $(eval $(call hcp_install,kdcsvc,kdcsvc,755,))
-$(eval $(call hcp_install,sshsvc,sshsvc,755,))
+$(eval $(call hcp_install,sshd,sshd,755,))
 $(eval $(call hcp_install,uml,uml,755,))
 $(eval $(call hcp_install,qemu,qemu,755,ls -1 *))
 

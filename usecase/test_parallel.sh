@@ -49,7 +49,7 @@ title "Enrolling remaining TPMs"
 do_core_fg orchestrator -c -e
 
 title "Waiting for 'sherver' and 'workstation1' to be alive"
-do_exec sherver /hcp/sshsvc/healthcheck.sh $RARGS
+do_exec sherver /hcp/sshd.py --healthcheck $RARGS
 do_exec workstation1 /hcp/monolith/networked_healthcheck.sh $RARGS
 
 title "Extracting sherver's ssh hostkey"

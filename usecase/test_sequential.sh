@@ -128,14 +128,11 @@ do_core_start sherver_tpm
 title "wait for sherver TPM to come up"
 do_exec sherver_tpm /hcp/swtpmsvc/healthcheck.sh $RARGS
 
-title "initializing sherver state"
-do_normal_setup sherver
-
 title "start sherver"
 do_normal_start sherver
 
 title "wait for sherver to come up"
-do_exec sherver /hcp/sshsvc/healthcheck.sh $RARGS
+do_exec sherver /hcp/sshd.py --healthcheck $RARGS
 
 title "create and enroll 'workstation1' TPM"
 do_core_fg orchestrator -- -c -e workstation1

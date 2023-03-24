@@ -43,9 +43,6 @@
         "period": 120,
         "retry": 5,
         "env": {
-            "set": {
-                "HCP_ATTESTCLIENT_HOOK_KRB5KEY": "/hcp/sshsvc/hup_sshd.sh"
-            },
             "unset": {
                 "HCP_NOTRACEFILE": null
             }
