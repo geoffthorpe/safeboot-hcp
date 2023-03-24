@@ -3,6 +3,12 @@
 RUN echo "source /hcp/common/hcp.sh" > /etc/profile.d/hcp_common.sh
 RUN echo "source /hcp/common/hcp.sh" > /root/.bashrc
 
+# Tell the ssh client to use some settings we care about
+RUN echo "ForwardAgent yes" > /etc/ssh/ssh_config.d/10-hcp.conf
+RUN echo "GSSAPIAuthentication yes" > /etc/ssh/ssh_config.d/10-hcp.conf
+RUN echo "GSSAPIKeyExchange yes" > /etc/ssh/ssh_config.d/10-hcp.conf
+RUN echo "GSSAPIRenewalForcesRekey yes" >> /etc/ssh/ssh_config.d/10-hcp.conf
+
 # Create all the HCP-expected accounts by baking them into the container image.
 # TODO: there should be a JSON file to summarize the uid/gid mappings that get
 # created by the following. So that, later on, if a different version or

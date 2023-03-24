@@ -152,25 +152,12 @@ do_normal_start workstation1
 title "waiting for the client machine to be up"
 do_exec workstation1 /hcp/monolith/networked_healthcheck.sh $RARGS
 
-title "obtaining the sshd server's randomly-generated public key"
-do_exec sherver bash -c "ssh-keyscan -p 2222 $SHERVER_FQDN" > $tmpfile
-
-title "inject sshd pubkey into client's 'known_hosts'"
-cmdstr="mkdir -p /root/.ssh && chmod 600 /root/.ssh"
-cmdstr="$cmdstr && cat - > /root/.ssh/known_hosts"
-cat $tmpfile | do_exec workstation1 bash -c "$cmdstr"
-
 title "Use HCP cred to get TGT, then GSSAPI to ssh from client to sherver"
 cmdstr="kinit -C FILE:/home/luser/.hcp/pkinit/user-luser-key.pem luser"
 cmdstr="$cmdstr ssh -l luser -p 2222 $SHERVER_FQDN echo -n hello"
-# NB: we intentionally do it twice, in case the first time comes with a
-# "Warning: Permanently added the [...] for IP address [...] to the list of
-# known hosts" message. Also, VERBOSE causes stuff to leak into the output,
-# which is difficult to balance against the need for "-l" (without which ssh
-# auth fails - TODO to figure that out).
+# VERBOSE causes stuff to leak into the output, so we suppress that.
 export VERBOSE=0
-do_exec workstation1 bash -c -l "$cmdstr" > $tmpfile
-do_exec workstation1 bash -c -l "$cmdstr" > $tmpfile
+do_exec workstation1 bash -c "$cmdstr" > $tmpfile
 
 if [[ $(cat $tmpfile) != 'hello' ]]; then
     echo "FAILURE: output not 'hello': x${x}x" >&2
