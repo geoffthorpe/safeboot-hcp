@@ -69,7 +69,7 @@ title "starting attestsvc containers"
 do_core_start arepl ahcp
 
 title "waiting for emgmt service to come up"
-do_exec emgmt /hcp/common/webapi.sh healthcheck $RARGS
+do_exec emgmt /hcp/webapi.sh healthcheck $RARGS
 
 title "create aclient TPM"
 do_core_fg orchestrator -- -c aclient
@@ -105,7 +105,7 @@ title "starting kdc_primary"
 do_normal_start kdc_primary
 
 title "wait for kdc_primary to come up"
-do_exec kdc_primary /hcp/common/webapi.sh healthcheck $RARGS
+do_exec kdc_primary /hcp/webapi.sh healthcheck $RARGS
 
 title "wait for kdc_secondary TPM to come up"
 do_exec kdc_secondary_tpm /hcp/swtpmsvc/healthcheck.sh $RARGS
@@ -117,7 +117,7 @@ title "start kdc_secondary"
 do_normal_start kdc_secondary
 
 title "wait for kdc_secondary to come up"
-do_exec kdc_secondary /hcp/common/webapi.sh healthcheck $RARGS
+do_exec kdc_secondary /hcp/webapi.sh healthcheck $RARGS
 
 title "create and enroll 'sherver' TPM"
 do_core_fg orchestrator -- -c -e sherver

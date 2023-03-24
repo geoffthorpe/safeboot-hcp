@@ -101,7 +101,7 @@ services:
 #        ports:
 #          - "8443:8443"
 #        healthcheck:
-#            test: /hcp/common/webapi.sh healthcheck
+#            test: /hcp/webapi.sh healthcheck
 #            timeout: 30s
 #            interval: 60s
     emgmt_pol:
@@ -116,7 +116,7 @@ services:
           #- HCP_CONFIG_FILE=/usecase/emgmt_pol_qemu.json
           #- HCP_CONFIG_FILE=/usecase/emgmt_pol_uml.json
 #        healthcheck:
-#            test: /hcp/common/webapi.sh healthcheck
+#            test: /hcp/webapi.sh healthcheck
 #            timeout: 3s
 #            interval: 10s
 
@@ -163,7 +163,7 @@ services:
         environment:
           - HCP_CONFIG_FILE=/usecase/ahcp.json
 #        healthcheck:
-#            test: /hcp/common/webapi.sh healthcheck
+#            test: /hcp/webapi.sh healthcheck
 #            timeout: 3s
 #            interval: 10s
 
@@ -228,7 +228,7 @@ services:
         ports:
           - "9090:9090"
 #        healthcheck:
-#            test: /hcp/common/webapi.sh healthcheck
+#            test: /hcp/webapi.sh healthcheck
 #            timeout: 3s
 #            interval: 10s
     kdc_primary_tpm:
@@ -252,7 +252,7 @@ services:
         environment:
           - HCP_CONFIG_FILE=/usecase/kdc_primary_pol.json
 #        healthcheck:
-#            test: /hcp/common/webapi.sh healthcheck
+#            test: /hcp/webapi.sh healthcheck
 #            timeout: 3s
 #            interval: 10s
 
@@ -272,7 +272,7 @@ services:
         environment:
           - HCP_CONFIG_FILE=/usecase/kdc_secondary.json
 #        healthcheck:
-#            test: /hcp/common/webapi.sh healthcheck
+#            test: /hcp/webapi.sh healthcheck
 #            timeout: 3s
 #            interval: 10s
     kdc_secondary_tpm:
@@ -296,7 +296,7 @@ services:
         environment:
           - HCP_CONFIG_FILE=/usecase/kdc_secondary_pol.json
 #        healthcheck:
-#            test: /hcp/common/webapi.sh healthcheck
+#            test: /hcp/webapi.sh healthcheck
 #            timeout: 3s
 #            interval: 10s
 

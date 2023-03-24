@@ -33,7 +33,7 @@ do_core_start_lazy \
 	workstation1 workstation1_tpm
 
 title "Waiting for emgmt to be alive"
-do_exec emgmt /hcp/common/webapi.sh healthcheck $RARGS
+do_exec emgmt /hcp/webapi.sh healthcheck $RARGS
 
 title "Enrolling TPMs for non-krb5-dependent entities"
 do_core_fg orchestrator -c -e aclient kdc_primary kdc_secondary
@@ -42,8 +42,8 @@ title "Running a test attestation"
 do_core_fg aclient $RARGS
 
 title "Waiting for KDCs to be alive"
-do_exec kdc_primary /hcp/common/webapi.sh healthcheck $RARGS
-do_exec kdc_secondary /hcp/common/webapi.sh healthcheck $RARGS
+do_exec kdc_primary /hcp/webapi.sh healthcheck $RARGS
+do_exec kdc_secondary /hcp/webapi.sh healthcheck $RARGS
 
 title "Enrolling remaining TPMs"
 do_core_fg orchestrator -c -e

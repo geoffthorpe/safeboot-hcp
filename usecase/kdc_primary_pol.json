@@ -28,7 +28,7 @@
     },
 
     "webapi": {
-        "exec": "/hcp/common/webapi.sh",
+        "exec": "/hcp/webapi.sh",
         "tag": "services",
         "servername": "policy.primary.kdc.hcphacking.xyz",
         "port": 9180,
