@@ -84,8 +84,10 @@ wrapper()
 	if [[ $cmd == shell ]]; then
 		echo "Starting '$wload' shell" >&2
 	fi
-	export HCP_LAUNCHER_TGTS="$targets"
-	$cmdline "$@"
+	(
+		export HCP_LAUNCHER_TGTS="$targets"
+		$cmdline "$@"
+	)
 	if [[ $cmd == shell ]]; then
 		echo "Exited '$wload' shell" >&2
 	fi
