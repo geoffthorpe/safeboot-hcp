@@ -206,7 +206,7 @@ services:
         environment:
           - HCP_CONFIG_FILE=/usecase/aclient_tpm.json
 #        healthcheck:
-#            test: /hcp/swtpmsvc/healthcheck.sh
+#            test: /hcp/swtpm.py --healthcheck
 #            timeout: 3s
 #            interval: 10s
 
@@ -241,7 +241,7 @@ services:
         environment:
           - HCP_CONFIG_FILE=/usecase/kdc_primary_tpm.json
 #        healthcheck:
-#            test: /hcp/swtpmsvc/healthcheck.sh
+#            test: /hcp/swtpm.py --healthcheck
 #            timeout: 3s
 #            interval: 10s
     kdc_primary_pol:
@@ -285,7 +285,7 @@ services:
         environment:
           - HCP_CONFIG_FILE=/usecase/kdc_secondary_tpm.json
 #        healthcheck:
-#            test: /hcp/swtpmsvc/healthcheck.sh
+#            test: /hcp/swtpm.py --healthcheck
 #            timeout: 3s
 #            interval: 10s
     kdc_secondary_pol:
@@ -326,7 +326,7 @@ services:
         environment:
           - HCP_CONFIG_FILE=/usecase/sherver_tpm.json
 #        healthcheck:
-#            test: /hcp/swtpmsvc/healthcheck.sh
+#            test: /hcp/swtpm.py --healthcheck
 #            timeout: 3s
 #            interval: 10s
 
@@ -363,7 +363,7 @@ services:
         environment:
           - HCP_CONFIG_FILE=/usecase/workstation1_tpm.json
 #        healthcheck:
-#            test: /hcp/swtpmsvc/healthcheck.sh
+#            test: /hcp/swtpm.py --healthcheck
 #            timeout: 3s
 #            interval: 10s
 

@@ -96,7 +96,7 @@ wrapper()
 # "attester" agent. This includes;
 # - all instances of the core HCP core services ('enrollsvc', 'attestsvc'):
 #       emgmt, erepl, arepl, ahcp
-# - all instances of the 'swtpmsvc' software TPM sidecar:
+# - all instances of the 'swtpm' software TPM sidecar:
 #       aclient_tpm, kdc_primary_tpm, kdc_secondary_tpm,
 #       sherver_tpm, workstation1_tpm
 # - all instances of the 'policysvc' policy service sidecar:

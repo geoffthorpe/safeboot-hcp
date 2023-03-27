@@ -78,7 +78,7 @@ title "starting aclient TPM"
 do_core_start aclient_tpm
 
 title "wait for aclient TPM to come up"
-do_exec aclient_tpm /hcp/swtpmsvc/healthcheck.sh $RARGS
+do_exec aclient_tpm /hcp/swtpm.py --healthcheck $RARGS
 
 title "run attestation client, expecting failure (unenrolled)"
 do_core_fg aclient -w
@@ -96,7 +96,7 @@ title "starting KDC TPMs and policy engines"
 do_core_start kdc_primary_tpm kdc_secondary_tpm kdc_primary_pol kdc_secondary_pol
 
 title "wait for kdc_primary TPM to come up"
-do_exec kdc_primary_tpm /hcp/swtpmsvc/healthcheck.sh $RARGS
+do_exec kdc_primary_tpm /hcp/swtpm.py --healthcheck $RARGS
 
 title "initializing kdc_primary state"
 do_normal_setup kdc_primary
@@ -108,7 +108,7 @@ title "wait for kdc_primary to come up"
 do_exec kdc_primary /hcp/webapi.py --healthcheck $RARGS
 
 title "wait for kdc_secondary TPM to come up"
-do_exec kdc_secondary_tpm /hcp/swtpmsvc/healthcheck.sh $RARGS
+do_exec kdc_secondary_tpm /hcp/swtpm.py --healthcheck $RARGS
 
 title "initializing kdc_secondary state"
 do_normal_setup kdc_secondary
@@ -126,7 +126,7 @@ title "start sherver TPM"
 do_core_start sherver_tpm
 
 title "wait for sherver TPM to come up"
-do_exec sherver_tpm /hcp/swtpmsvc/healthcheck.sh $RARGS
+do_exec sherver_tpm /hcp/swtpm.py --healthcheck $RARGS
 
 title "start sherver"
 do_normal_start sherver
@@ -141,7 +141,7 @@ title "start TPM for client machine (workstation1)"
 do_core_start workstation1_tpm
 
 title "wait for client TPM to come up"
-do_exec workstation1_tpm /hcp/swtpmsvc/healthcheck.sh $RARGS
+do_exec workstation1_tpm /hcp/swtpm.py --healthcheck $RARGS
 
 title "initializing client machine (workstation1)"
 do_normal_setup workstation1

@@ -6,7 +6,7 @@
 
     "services": [
         "fqdn_updater",
-        "swtpmsvc"
+        "swtpm"
     ],
     "default_targets": [
         "start-fqdn",
@@ -27,7 +27,7 @@
         "expiry": 300
     },
 
-    "swtpmsvc": {
+    "swtpm": {
         "setup": {
             "tag": "global",
             "exec": [
@@ -36,7 +36,7 @@
             ],
             "touchfile": "/tpm_workstation1/tpm/ek.pub"
         },
-        "exec": "/hcp/swtpmsvc/run_swtpm.sh",
+        "exec": "/hcp/swtpm.py",
         "state": "/tpm_workstation1",
         "sockdir": "/tpm_socket_workstation1",
         "tag": "services"
