@@ -63,7 +63,7 @@
         "_": [
             "This is a setup-only 'service', its settings get consumed by",
             "setup hooks, and when services start up, there is nothing here to",
-            "start (webapi.sh, reenroller, and purger are self-sufficient at",
+            "start (webapi.py, reenroller, and purger are self-sufficient at",
             "that point). That said, it will create the users that non-root",
             "tasks start as, and it will write this JSON structure into those",
             "home directories, so for example sudo'd handlers invoked by the",
@@ -192,7 +192,7 @@
 
     "webapi": {
         "setup": { "touchfile": "/etc/hcp/emgmt/touch-enrollsvc-local-setup" },
-        "exec": "/hcp/webapi.sh",
+        "exec": "/hcp/webapi.py",
         "tag": "services",
         "servername": "emgmt.hcphacking.xyz",
         "port": 8443,

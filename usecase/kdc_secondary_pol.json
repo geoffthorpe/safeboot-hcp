@@ -28,7 +28,7 @@
     },
 
     "webapi": {
-        "exec": "/hcp/webapi.sh",
+        "exec": "/hcp/webapi.py",
         "tag": "services",
         "servername": "policy.secondary.kdc.hcphacking.xyz",
         "port": 9280,

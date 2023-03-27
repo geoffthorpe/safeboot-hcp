@@ -115,7 +115,7 @@
 
     "webapi": {
         "setup": { "touchfile": "/etc/hcp/primary.kdc/touch-kdcsvc-local-setup" },
-        "exec": "/hcp/webapi.sh",
+        "exec": "/hcp/webapi.py",
         "tag": "services",
         "servername": "primary.kdc.hcphacking.xyz",
         "port": 9090,

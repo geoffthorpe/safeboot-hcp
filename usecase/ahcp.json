@@ -52,7 +52,7 @@
             "The 'env' entries 'DIR', 'BINDIR', 'SAFEBOOT_DB_DIR' are to",
             "support the safeboot scripts that can run underneath us." ],
         "setup": { "touchfile": "/etc/hcp/ahcp/touch-attestsvc-local-setup" },
-        "exec": "/hcp/webapi.sh",
+        "exec": "/hcp/webapi.py",
         "tag": "services",
         "servername": "ahcp.hcphacking.xyz",
         "port": 8080,

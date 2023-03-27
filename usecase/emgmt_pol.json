@@ -28,7 +28,7 @@
     },
 
     "webapi": {
-        "exec": "/hcp/webapi.sh",
+        "exec": "/hcp/webapi.py",
         "tag": "services",
         "servername": "policy.emgmt.hcphacking.xyz",
         "port": 9080,
