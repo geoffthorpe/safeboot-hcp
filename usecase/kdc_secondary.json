@@ -83,7 +83,7 @@
         "mode": "secondary",
         "realm": "HCPHACKING.XYZ",
         "namespace": "hcphacking.xyz",
-        "policy_url": "http://policy.secondary.kdc.hcphacking.xyz:9180",
+        "policy_url": "http://policy.secondary.kdc.hcphacking.xyz:9280",
         "kadmin": {
             "preclient": {
                 "_": [
