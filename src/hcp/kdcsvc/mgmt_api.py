@@ -178,7 +178,7 @@ def my_cmd_handler(url, cmd, request, isPost = True):
     else:
         mylog("GET, using 'args'")
         args = request.args
-    form_principals = "{}"
+    form_principals = "[]"
     if 'principals' in args and len(args['principals']) > 0:
         form_principals = args['principals']
     mylog(f"form_principals={form_principals}")
