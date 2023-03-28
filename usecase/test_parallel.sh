@@ -33,7 +33,7 @@ do_core_start_lazy \
 	workstation1 workstation1_tpm
 
 title "Waiting for emgmt to be alive"
-do_exec emgmt /hcp/webapi.py healthcheck $RARGS
+do_exec emgmt /hcp/webapi.py --healthcheck $RARGS
 
 title "Enrolling TPMs for non-krb5-dependent entities"
 do_core_fg orchestrator -c -e aclient kdc_primary kdc_secondary
@@ -42,8 +42,8 @@ title "Running a test attestation"
 do_core_fg aclient $RARGS
 
 title "Waiting for KDCs to be alive"
-do_exec kdc_primary /hcp/webapi.py healthcheck $RARGS
-do_exec kdc_secondary /hcp/webapi.py healthcheck $RARGS
+do_exec kdc_primary /hcp/webapi.py --healthcheck $RARGS
+do_exec kdc_secondary /hcp/webapi.py --healthcheck $RARGS
 
 title "Enrolling remaining TPMs"
 do_core_fg orchestrator -c -e
@@ -52,14 +52,6 @@ title "Waiting for 'sherver' and 'workstation1' to be alive"
 do_exec sherver /hcp/sshd.py --healthcheck $RARGS
 do_exec workstation1 /hcp/monolith/networked_healthcheck.sh $RARGS
 
-title "Extracting sherver's ssh hostkey"
-do_exec sherver bash -c "ssh-keyscan -p 2222 $SHERVER_FQDN" > $tmpfile
-
-title "Getting workstation1 to pre-trust sherver's ssh hostkey"
-cmdstr="mkdir -p /root/.ssh && chmod 600 /root/.ssh"
-cmdstr="$cmdstr && cat - > /root/.ssh/known_hosts"
-cat $tmpfile | do_exec workstation1 bash -c "$cmdstr"
-
 title "Running 'echo hello' over 'ssh' over 'pkinit'"
 cmdstr="kinit -C FILE:/home/luser/.hcp/pkinit/user-luser-key.pem luser"
 cmdstr="$cmdstr ssh -l luser -p 2222 $SHERVER_FQDN"
@@ -67,10 +59,10 @@ cmdstr="$cmdstr echo hello"
 # The same comments apply as found in test_sequential.sh
 export VERBOSE=0
 do_exec workstation1 bash -c -l "$cmdstr" > $tmpfile
-do_exec workstation1 bash -c -l "$cmdstr" > $tmpfile
-hopinghello=$(cat $tmpfile | sed 's/\r$//')
-if [[ $hopinghello == hello ]]; then
-	echo "Success"
-else
-	echo "Failure"
+
+if [[ $(cat $tmpfile) != 'hello' ]]; then
+	echo "FAILURE: output not 'hello'" >&2
+	exit 1
 fi
+
+title "Success"
