@@ -36,6 +36,8 @@ mylog("\n" +
 	f" - principals_json={principals_json}\n" +
 	f" - clientjson={clientjson}")
 
+defdomain = hcp_config_extract('.kdcsvc.namespace', must_exist = True)
+
 # Load the server's config and extract the "preclient" and "postclient"
 # profiles. Let exceptions do our error-checking.
 serverprofile = hcp_config_extract('.kdcsvc.kadmin', must_exist = True)
@@ -89,7 +91,7 @@ if 'allowed' in resultprofile:
 		mylog(f"command {cmd} is not in the profile's 'allowed' list")
 		sys.exit(http2exit(403))
 policy_url = hcp_config_extract('.kdcsvc.policy_url', must_exist = True)
-if policy_url:
+if policy_url and cmd != 'realm_healthcheck':
 	uuid = uuid4().urn
 	os.environ['HCP_REQUEST_UID'] = uuid
 	form_data = {
@@ -106,6 +108,11 @@ if policy_url:
 
 # Automatically suffix all the requested principals with the requested realm
 realm_suffix = f"@{realm}"
+realm_healthcheck = False
+if cmd == 'realm_healthcheck':
+	cmd = 'ext_keytab'
+	realm_healthcheck = True
+	principals_list = [ f"host/healthcheck.{defdomain}" ]
 principals_args = [ f"{x}{realm_suffix}" for x in principals_list ]
 mylog(f"principals_args={principals_args}")
 # Verbosity is an option
@@ -235,11 +242,17 @@ elif cmd == 'del' or cmd == 'del_ns':
 elif cmd == 'ext_keytab':
 	# TODO: support user profile for options
 	kt_args = principals_args
-	print(json.dumps(run_subprocess(kt_args, base64wrap = '-k')))
+	res = run_subprocess(kt_args, base64wrap = '-k')
+	# Special case, 'cmd==realm_healthcheck' is rewritten to ext_keytab and we
+	# finish that hook here.
+	if realm_healthcheck:
+		print("OK: healthcheck principal obtained")
+	else:
+		print(json.dumps(res))
 
 else:
 	mylog(f"Error, cmd={cmd} unrecognized")
 	sys.exit(http2exit(500))
 
-mylog(f"JSON output produced, exiting with code 201")
+mylog(f"JSON output produced, exiting with code 200")
 sys.exit(http2exit(200))

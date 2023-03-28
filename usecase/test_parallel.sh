@@ -41,9 +41,12 @@ do_core_fg orchestrator -c -e aclient kdc_primary kdc_secondary
 title "Running a test attestation"
 do_core_fg aclient $RARGS
 
-title "Waiting for KDCs to be alive"
+title "Waiting for KDCs to be alive (webapi responding)"
 do_exec kdc_primary /hcp/webapi.py --healthcheck $RARGS
 do_exec kdc_secondary /hcp/webapi.py --healthcheck $RARGS
+
+title "Waiting for secondary KDC to sync the realm"
+do_exec kdc_secondary /hcp/kdcsvc/realm_healthcheck.py $RARGS
 
 title "Enrolling remaining TPMs"
 do_core_fg orchestrator -c -e

@@ -116,8 +116,11 @@ do_normal_setup kdc_secondary
 title "start kdc_secondary"
 do_normal_start kdc_secondary
 
-title "wait for kdc_secondary to come up"
+title "wait for kdc_secondary to come up (webapi endpoint)"
 do_exec kdc_secondary /hcp/webapi.py --healthcheck $RARGS
+
+title "wait for kdc_secondary to come up (realm replicated)"
+do_exec kdc_secondary /hcp/kdcsvc/realm_healthcheck.py $RARGS
 
 title "create and enroll 'sherver' TPM"
 do_core_fg orchestrator -- -c -e sherver

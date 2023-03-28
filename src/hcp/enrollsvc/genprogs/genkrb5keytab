@@ -71,14 +71,6 @@ req_data = { 'principals': (None, json.dumps(principals)) }
 req_cert = None
 if clientcred:
 	req_cert = clientcred
-# TODO: the KDC implementation has a naive healthcheck that tells us when it's
-# available, but (I think) it is doing so before iprop has replicated to the
-# secondary, so we press ahead with an ext_keytab request that sometimes fails.
-# For now, this mind-manglingly ugly fix punishes the enroller rather than the
-# healthcheck! It's only justified because enrolling with keytabs is not
-# currently used in production, whereas it certainly is in the CI test.
-import time
-time.sleep(2)
 response = requests.post(f"{kdcsvc}/v1/ext_keytab", files = req_data,
 		verify = True, cert = req_cert)
 if response.status_code != 200:
