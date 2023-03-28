@@ -160,7 +160,7 @@ export VERBOSE=0
 do_exec workstation1 bash -c "$cmdstr" > $tmpfile
 
 if [[ $(cat $tmpfile) != 'hello' ]]; then
-    echo "FAILURE: output not 'hello': x${x}x" >&2
+    echo "FAILURE: output not 'hello'" >&2
     exit 1
 fi
 
