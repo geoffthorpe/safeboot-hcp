@@ -92,6 +92,6 @@ while :; do
 		exit $res
 	fi
 	((retries--))
-	((VERBOSE > 0)) && echo >&2 "Pausing for $pause seconds"
+	((VERBOSE > 1)) && echo >&2 "Pausing for $pause seconds"
 	sleep $pause
 done

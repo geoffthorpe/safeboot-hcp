@@ -70,14 +70,14 @@ if args.healthcheck:
 		c = subprocess.run([ 'tpm2_pcrread' ], capture_output = True)
 		if c.returncode == 0:
 			break
-		h.hlog(0, f"Failed with code: {c.returncode}")
-		h.hlog(1, f"Error output:\n{c.stderr}")
+		h.hlog(1, f"Failed with code: {c.returncode}")
+		h.hlog(2, f"Error output:\n{c.stderr}")
 		if args.retries == 0:
 			h.hlog(0, "Failure, giving up")
 			break
 		args.retries = args.retries - 1
 		if args.pause > 0:
-			h.hlog(1, f"Pausing for {args.pause} seconds")
+			h.hlog(2, f"Pausing for {args.pause} seconds")
 			time.sleep(args.pause)
 	sys.exit(c.returncode)
 

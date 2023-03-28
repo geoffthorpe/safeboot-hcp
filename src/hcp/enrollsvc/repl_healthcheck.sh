@@ -76,13 +76,13 @@ while :; do
 		((VERBOSE > 0)) && echo >&2 "Success"
 		exit 0
 	fi
-	((VERBOSE > 0)) && echo >&2 "Failed with code: $res"
-	((VERBOSE > 1)) && echo >&2 "Error output:" && cat >&2 "$terr"
+	((VERBOSE > 1)) && echo >&2 "Failed with code: $res"
+	((VERBOSE > 2)) && echo >&2 "Error output:" && cat >&2 "$terr"
 	if [[ $retries == 0 ]]; then
 		echo >&2 "Failure, giving up"
 		exit $res
 	fi
 	((retries--))
-	((VERBOSE > 0)) && echo >&2 "Pausing for $pause seconds"
+	((VERBOSE > 2)) && echo >&2 "Pausing for $pause seconds"
 	sleep $pause
 done
