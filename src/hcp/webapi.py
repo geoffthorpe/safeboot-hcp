@@ -14,7 +14,7 @@ import hcp_common as h
 myworld = h.hcp_config_extract(".", must_exist = True)
 
 def param(field, _type, required = False, default = None,
-		obj = myworld, objpath = '.'):
+		obj = myworld, objpath = ''):
 	if field in obj:
 		v = obj[field]
 		if not isinstance(v, _type):
