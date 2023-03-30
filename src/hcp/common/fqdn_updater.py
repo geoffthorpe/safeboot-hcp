@@ -135,7 +135,8 @@ etc = f"/etc/hcp/{myid}"
 myuntil = f"{etc}/touch-fqdn-alive"
 
 mydomain = hcp_config_extract('.default_domain', must_exist = True)
-myhostnames = hcp_config_extract('.hostnames', or_default = True, default = [])
+myhostnames = hcp_config_extract('.hostnames', or_default = True,
+                default = [ f"{myid}.{mydomain}" ])
 mypassednetworks = '/upstream.networks/json'
 
 # We pull our config structure as a whole, once, then dig into it locally. I.e.
