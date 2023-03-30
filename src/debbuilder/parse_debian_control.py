@@ -43,6 +43,8 @@ def next_attribute(fp):
     l = l[s.span()[1] : ].strip()
     allvals = []
     while True:
+        if len(l) == 0:
+            break
         vals = l.split(',')
         numvals = len(vals)
         # If the line finished with a ',', the last item in 'vals' will
