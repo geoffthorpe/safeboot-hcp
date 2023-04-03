@@ -237,6 +237,9 @@ $(ppa_out_dfile):
 # Rule to build the docker image
 $(eval ppa_pkgs_local_src := $(strip $(ppa_pkgs_deb_src) $(ppa_pkgs_tgz_src)))
 $(eval ppa_pkgs_local_fnames := $(strip $(ppa_pkgs_deb_file) $(ppa_pkgs_tgz_file)))
+$(eval ppa_build_cmd := docker build -t $(ppa_out_dname))
+$(eval ppa_build_cmd += $(HCP_$(ppa_name_upper)_BUILD_ARGS))
+$(eval ppa_build_cmd += -f $(ppa_out_dfile) $(ppa_out_dir))
 $(if $(ppa_pkgs_local_src),
 	$(eval ppa_pkgs_preamble := \
 		trap 'cd $(ppa_out_dir) && rm -f $(ppa_pkgs_local_fnames)' EXIT; \
@@ -249,7 +252,7 @@ $(ppa_out_tfile): $(ppa_pkgs_local_src) $(ppa_copied)
 	$Qbash -c " \
 	( \
 		$(ppa_pkgs_preamble); \
-		docker build -t $(ppa_out_dname) -f $(ppa_out_dfile) $(ppa_out_dir); \
+		$(ppa_build_cmd); \
 	)"
 	$Qtouch $$@
 
