@@ -440,7 +440,7 @@ condneg = {
 	} for (k, v) in condbase.items()
 }
 
-conds = condbase | condneg
+conds = { **condbase, **condneg }
 
 # This function burrows into structures looking for any dicts having a key
 # equal to '_' and removing them.

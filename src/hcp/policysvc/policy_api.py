@@ -1,6 +1,6 @@
 # vim: set expandtab shiftwidth=4 softtabstop=4:
 import flask
-from flask import request, abort, send_file
+from flask import request, abort, send_file, jsonify
 import subprocess
 import json
 import os, sys
@@ -61,7 +61,7 @@ def my_common():
 
     # Success. Write something to the log that is not completely useless.
     print(f"ALLOW: {paramsjson} -> {policy_result}")
-    return params
+    return jsonify(params)
 
 if __name__ == "__main__":
     app.run()

@@ -224,5 +224,9 @@ stats = :{mystats}
 '''.format(myport = myport, myclienttimeout = myclienttimeout,
 		mystats = myport + 1))
 
+bin_uwsgi_python = shutil.which('uwsgi_python3')
+if not bin_uwsgi_python:
+	# On debian buster, we have a '37' (but no '3')
+	bin_uwsgi_python = shutil.which('uwsgi_python37')
 h.hlog(1, f"Starting uwsgi")
-subprocess.run([ 'uwsgi_python3', '--ini', etcuwsgi ])
+subprocess.run([ bin_uwsgi_python, '--ini', etcuwsgi ])

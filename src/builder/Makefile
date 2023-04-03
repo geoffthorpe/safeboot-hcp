@@ -137,7 +137,7 @@ $(eval local_docker_run := docker run --rm --init --label $(HCP_IMAGE_PREFIX)all
 	$(local_docker_xtra) $(HCP_LAYER_$N_DNAME) bash -c)
 $(eval local_trap := /chowner.sh /reffile/reffile \
 			/builder-src /builder-output)
-$(eval local_run := trap '$(local_trap)' EXIT && cd /builder-src)
+$(eval local_run := trap '$(local_trap)' EXIT; cd /builder-src)
 
 $(HCP_BUILD_DEP_$N_BOOTSTRAPPED): | $(HCP_BUILD_$N_OUT)
 $(HCP_BUILD_DEP_$N_BOOTSTRAPPED): $(HCP_BUILD_LAYER_DEP_$N)

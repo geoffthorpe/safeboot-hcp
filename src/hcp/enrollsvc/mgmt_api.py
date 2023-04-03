@@ -1,6 +1,6 @@
 # vim: set expandtab shiftwidth=4 softtabstop=4:
 import flask
-from flask import request, abort, send_file, Response
+from flask import request, abort, send_file, Response, make_response
 import subprocess
 import json
 import os, sys
@@ -145,21 +145,23 @@ def check_status_code(c):
             log("--- document to JSONDecode ---")
             log(f"{e.doc}")
             log("--- document to JSONDecode ---")
-            return "Server JSON error", 500
+            return ("Server JSON error", 500)
     # ... or failure in any other form
     else:
         log(f"aborting")
-        return "Error", httpcode
+        return make_response("Error", httpcode)
     log(f"decoded from stdout: {j}")
-    return j, httpcode, {'Content-Type': 'application/json'}
+    resp = make_response(json.dumps(j), httpcode)
+    resp.headers['Content-Type'] = 'application/json'
+    return resp
 
 @app.route('/v1/add', methods=['POST'])
 def my_add():
     log(f"my_add: request={request}")
     if 'ekpub' not in request.files:
-        return { "error": "ekpub not in request" }
+        return make_response("Error: ekpub not in request", 400)
     if 'hostname' not in request.form:
-        return { "error": "hostname not in request" }
+        return make_response("Error: hostname not in request", 400)
     form_ekpub = request.files['ekpub']
     form_hostname = request.form['hostname']
     form_profile = "{}"
@@ -190,13 +192,14 @@ def my_add():
                        stdout = subprocess.PIPE,
                        stderr = current_tracefile,
                        text = True)
-    return check_status_code(c)
+    foo = check_status_code(c)
+    return foo
 
 @app.route('/v1/query', methods=['GET'])
 def my_query():
     log(f"my_query: request={request}")
     if 'ekpubhash' not in request.args:
-        return { "error": "ekpubhash not in request" }
+        return make_response("Error: ekpubhash not in request", 400)
     request_data = get_request_data('/v1/query')
     request_data['ekpubhash'] = request.args['ekpubhash']
     if 'nofiles' in request.args:
@@ -215,7 +218,7 @@ def my_query():
 def my_delete():
     log(f"my_delete: request={request}")
     if 'ekpubhash' not in request.form:
-        return { "error": "ekpubhash not in request" }
+        return make_response("Error: ekpubhash not in request", 400)
     request_data = get_request_data('/v1/delete')
     request_data['ekpubhash'] = request.form['ekpubhash']
     if 'nofiles' in request.form:
@@ -233,7 +236,7 @@ def my_delete():
 def my_reenroll():
     log(f"my_reenroll: request={request}")
     if 'ekpubhash' not in request.form:
-        return { "error": "ekpubhash not in request" }
+        return make_response("Error: ekpubhash not in request", 400)
     request_data = get_request_data('/v1/reenroll')
     request_data['ekpubhash'] = request.form['ekpubhash']
     request_json = json.dumps(request_data)
@@ -247,7 +250,7 @@ def my_reenroll():
 def my_find():
     log(f"my_find: request={request}")
     if 'hostname_regex' not in request.args:
-        return { "error": "hostname_regex not in request" }
+        return make_response("Error: hostname_regex not in request", 400)
     request_data = get_request_data('/v1/find')
     request_data['hostname_regex'] = request.args['hostname_regex']
     request_json = json.dumps(request_data)

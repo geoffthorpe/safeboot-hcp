@@ -1,6 +1,6 @@
 # vim: set expandtab shiftwidth=4 softtabstop=4:
 import flask
-from flask import request, abort, send_file, Response
+from flask import request, abort, send_file, make_response
 import subprocess
 import json
 import os, sys
@@ -148,13 +148,15 @@ def check_status_code(c, mylog):
                 "--- document to JSONDecode ---\n" +
                 f"{e.doc}" +
                 "--- document to JSONDecode ---")
-            return "Server JSON error", 500
+            return make_response("Error: server JSON error", 500)
     # ... or failure in any other form
     else:
         mylog(f"aborting")
-        return "Error", httpcode
+        return make_response(f"Error", httpcode)
     mylog(f"decoded from stdout: {j}")
-    return j, httpcode, {'Content-Type': 'application/json'}
+    resp = make_response(json.dumps(j), httpcode)
+    resp.headers['Content-Type'] = 'application/json'
+    return resp
 
 def my_json_loads(x, t, mylog):
     try:
