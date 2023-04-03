@@ -13,19 +13,17 @@ include $(HCP_SRC)/base/Makefile
 # source.
 include $(HCP_SRC)/debbuilder/Makefile
 
-# External code-bases (using "debbuilder" -> *.deb)
-include $(HCP_SRC)/ext/tpmware-deb.Makefile
-
 # A "builder" docker image for building a low-brow, "tarball"-style package.
 include $(HCP_SRC)/builder/Makefile
 
 # Build user-mode-linux support
 include $(HCP_SRC)/uml/Makefile
 
-# HCP app code (using "debbuilder" -> *.deb)
+# HCP app code
 include $(HCP_SRC)/hcp/Makefile
 
-# External code-bases (using "builder" -> *.tar.gz)
+# External code-bases
+include $(HCP_SRC)/ext/tpmware-deb.Makefile
 include $(HCP_SRC)/ext/tpmware.Makefile
 include $(HCP_SRC)/ext/heimdal.Makefile
 include $(HCP_SRC)/ext/safeboot.Makefile
