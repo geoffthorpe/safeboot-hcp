@@ -163,11 +163,11 @@ $(foreach p,$($(dbo_name_lower)_PKGS),\
 	$(eval $(call cache_file_get,\
 		$p,\
 		$($p_LOCAL_FILE),\
-		debbuilder))\
+		debbuilder/$(HCP_DEBIAN_NAME)))\
 	$(eval $(call cache_file_update,\
 		$p,\
 		$($p_LOCAL_FILE),\
-		debbuilder,
+		debbuilder/$(HCP_DEBIAN_NAME),
 		$($p_BUILT_PATH)))\
 	$(if $($p_LOCAL_PATH),,$(eval $p_LOCAL_PATH := $(HCP_CACHE_$p_FILE)))\
 	$(if $($p_LOCAL_PATH),,$(eval $p_LOCAL_PATH := $($p_BUILT_PATH)))\

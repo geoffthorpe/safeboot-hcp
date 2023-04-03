@@ -57,7 +57,8 @@ $(eval $(call pp_add_layer,\
 
 ifdef HCP_1APT_ENABLE
 
-FILES_1APT:= $(shell cd $(HCP_BASE_LAYERS_SRC)/base1 && ls)
+FILES_1APT := $(shell cd $(HCP_BASE_LAYERS_SRC)/base1 && ls)
+HCP_BASE1_BUILD_ARGS := --build-arg HCP_DEBIAN_NAME=$(HCP_DEBIAN_NAME)
 
 $(eval $(call pp_add_layer,\
 	BASE1,\

@@ -112,11 +112,11 @@ $(eval $(N_lower)_BUILT_PATH := $(HCP_BUILD_$N_OUT)/$($(N_lower)_LOCAL_FILE))
 $(eval $(call cache_file_get,\
 	$(N_lower),\
 	$($(N_lower)_LOCAL_FILE),\
-	builder))
+	builder/$(HCP_DEBIAN_NAME)))
 $(eval $(call cache_file_update,\
 	$(N_lower),\
 	$($(N_lower)_LOCAL_FILE),\
-	builder,\
+	builder/$(HCP_DEBIAN_NAME),\
 	$($(N_lower)_BUILT_PATH)))
 $(if $($(N_lower)_LOCAL_PATH),,$(eval $(N_lower)_LOCAL_PATH := $(HCP_CACHE_$(N_lower)_FILE)))
 $(if $($(N_lower)_LOCAL_PATH),,$(eval $(N_lower)_LOCAL_PATH := $($(N_lower)_BUILT_PATH)))
