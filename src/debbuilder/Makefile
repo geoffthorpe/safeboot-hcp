@@ -79,6 +79,7 @@ $(eval dbo_src_dir := $($(dbo_name_lower)_PKG_SRC))
 $(eval dbo_debian_src_dir := $($(dbo_name_lower)_PKG_DEBIAN_SRC))
 $(eval dbo_layer_upper_dname := $(HCP_$(dbo_layer_upper)_DNAME))
 $(eval dbo_cmd_env := $($(dbo_name_lower)_PKG_CMD_ENV))
+$(eval dbo_cmd_drun_flags := $($(dbo_name_lower)_PKG_CMD_DRUN_FLAGS))
 $(eval dbo_cmd_bootstrap := $($(dbo_name_lower)_PKG_CMD_BOOTSTRAP))
 $(eval dbo_cmd_package := $($(dbo_name_lower)_PKG_CMD_PACKAGE))
 $(eval dbo_builddeps := $($(dbo_name_lower)_PKG_BUILD_DEPENDS))
@@ -124,13 +125,13 @@ $(if $(dbo_debian_src_dir),\
 	$(eval debian_xtra :=))
 $(eval docker_run := docker run --rm -v $(dbo_out_dir):/empty \
 			-v $(dbo_src_dir):/empty/$(dbo_name_lower) \
-			$(debian_xtra) \
+			$(debian_xtra) $(dbo_cmd_drun_flags) \
 			-v $(HCP_SRC)/reffile:/reffile:ro \
 			$(dbo_build_layer_dname) \
 			bash -c)
 # and common preamble to what we run in the container
 $(if $(dbo_cmd_env),$(eval dbo_cmd_env += ;))
-$(eval docker_cmd := trap '/chowner.sh /reffile/reffile ..' EXIT ; \
+$(eval docker_cmd := trap '/chowner.sh /reffile/reffile /empty' EXIT ; \
 			$(dbo_cmd_env) cd /empty/$(dbo_name_lower))
 
 # Bootstrap target
