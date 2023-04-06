@@ -189,8 +189,10 @@ $(if $(strip $(ppa_pkgs_debbuilder)),
 		$(eval ppa_pkgs_deb_path += /$($i_LOCAL_FILE))
 		$(eval ppa_pkgs_deb_src += $($i_LOCAL_PATH)))
 	$(eval ppa_pkgs_deb_cmd1 := COPY $(ppa_pkgs_deb_file) /)
-	$(eval ppa_pkgs_deb_cmd2 := RUN apt install -y $(ppa_pkgs_deb_path) && \
-			rm -f $(ppa_pkgs_deb_path))
+	$(eval ppa_pkgs_deb_cmd2 := RUN \
+		$($(ppa_name_lower)_INSTALL_PRECMD) apt install -y \
+			$(ppa_pkgs_deb_path) && \
+		rm -f $(ppa_pkgs_deb_path))
 ,
 	$(eval ppa_pkgs_deb_cmd1 := RUN echo no local deb packages to copy)
 	$(eval ppa_pkgs_deb_cmd2 := RUN echo no local deb packages to install)
