@@ -10,6 +10,10 @@ RUN echo "GSSAPIAuthentication yes" >> /etc/ssh/ssh_config
 RUN echo "GSSAPIKeyExchange yes" >> /etc/ssh/ssh_config
 RUN echo "GSSAPIRenewalForcesRekey yes" >> /etc/ssh/ssh_config
 
+# This dockerfile is appended to the one that installs nginx, so use this
+# opportunity to restrain it from starting up.
+RUN systemctl disable nginx
+
 # Create all the HCP-expected accounts by baking them into the container image.
 # TODO: there should be a JSON file to summarize the uid/gid mappings that get
 # created by the following. So that, later on, if a different version or
