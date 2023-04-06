@@ -47,13 +47,27 @@ dname2tar()
 	mytar=$2
 	echo "Extracting '$myimg' container image as a tarball" >&2
 	(
-	trap 'rm -f $mytar' ERR
 	tmpfp=$(mktemp)
+	tmpd=$(mktemp -d)
+	trap 'rm -f $tmpfp ; rm -rf $tmpd' EXIT
+	(
+	trap 'rm -f $mytar' ERR
 	tmpf=$(basename $tmpfp)
 	CID=$(docker create --name $tmpf $myimg)
 	docker export -o "$mytar" $CID
 	docker container rm $CID
-	rm $tmpfp
+	cd $tmpd
+	mkdir etc
+	cat > etc/hosts <<EOF
+127.0.0.1 localhost
+::1     ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+EOF
+	tar -uf "$mytar" etc/hosts
+	)
 	)
 }
 
