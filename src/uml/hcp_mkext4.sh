@@ -66,7 +66,8 @@ ff00::0 ip6-mcastprefix
 ff02::1 ip6-allnodes
 ff02::2 ip6-allrouters
 EOF
-	tar -uf "$mytar" etc/hosts
+	ln -sf /run/systemd/resolve/stub-resolv.conf etc/resolv.conf
+	tar -uf "$mytar" etc/hosts etc/resolv.conf
 	)
 	)
 }

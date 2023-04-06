@@ -86,9 +86,7 @@ def run(cmd):
 # and router)
 run("vde_switch -d -s /vdeswitch -M /vdeswitch_mgmt".split())
 # TODO: need to make this configurable;
-# - "--host" argument to stipulate what network addresses to use (to avoid
-#   conflicting with other networks the host cares about).
-slirpcmd = "slirpvde --daemon --dhcp /vdeswitch".split()
+slirpcmd = "slirpvde --daemon --dhcp=10.0.2.15 --dns=10.0.2.3 /vdeswitch".split()
 if ports:
 	# TODO: it's not clear how to be certain of the address the VM will
 	# get, other than it's the first (only) DHCP client and by default the

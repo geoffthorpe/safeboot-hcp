@@ -14,7 +14,11 @@ RUN echo "hcphostfs /hostfs 9p trans=virtio,msize=10485760 0 0" >> /etc/fstab
 RUN echo "RESUME=none" > /etc/initramfs-tools/conf.d/resume
 RUN update-initramfs -u
 
-# Coax systemd into (a) calling our VDE interface 'vde0', and (b) using DHCP
+# Coax systemd into;
+# - handling resolv.conf setup from DHCP (systemd-resolved),
+# - naming our VDE interface 'vde0' (10-vde.link),
+# - using DHCP (25-vde.network).
+RUN systemctl enable systemd-resolved
 COPY 10-vde.link 25-vde.network /etc/systemd/network/
 RUN chmod 644 /etc/systemd/network/10-vde.link /etc/systemd/network/25-vde.network
 RUN systemctl enable systemd-networkd
