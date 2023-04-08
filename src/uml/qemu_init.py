@@ -11,7 +11,7 @@ import glob
 # Paths in /hostfs (in the container and UML instance)
 hostfs_dir = '/hostfs'
 hostfs_config = f"{hostfs_dir}/config.json"
-hostfs_shutdown = "/myshutdown"
+hostfs_shutdown = [ "/usr/sbin/shutdown", "-h", "now" ]
 
 # Parse the config
 with open(hostfs_config, 'r') as fp:
@@ -67,4 +67,4 @@ if len(args) == 0 or args[0] == '--':
 subprocess.run(args)
 
 # Kill the UML kernel (last one out shuts the lights)
-subprocess.run([hostfs_shutdown])
+subprocess.run(hostfs_shutdown)
