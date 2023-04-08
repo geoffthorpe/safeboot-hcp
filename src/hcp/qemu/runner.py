@@ -74,6 +74,12 @@ if publish_networks:
 	# use it as a path there too. Not a general solution.
 	config['publish_networks'] = publish_networks
 
+# If we're instructed to put our drive state somewhere, do so. This is
+# in order to support persistence.
+state = h.hcp_config_extract('runner.state', or_default = True)
+if not state:
+	state = tempfile.mkdtemp()
+
 # Dump config (HCP_CONFIG_FILE, **argv, mounts) as JSON for the guest
 with open(hostfs_config, 'w') as fp:
 	json.dump(config, fp)
@@ -99,12 +105,17 @@ run(slirpcmd)
 
 ## End of common-code. The remainder of the code is QEMU-specific.
 
-# Create a copy-on-write layer on the (read-only) disk image
-run("qemu-img create -f qcow2 -F raw -b /qemu_caboodle_img/disk /tmp.qcow2".split())
+# Our "disk" instance is really a copy-on-write layer on a global (and
+# read-only) disk image. If it already exists, we're running in a configuration
+# where the disk is persistent. Otherwise it only exists for the lifetime of
+# the container (which is the uptime of the VM).
+cowpath = f"{state}/disk.qcow2"
+if not os.path.isfile(cowpath):
+	run(f"qemu-img create -f qcow2 -F raw -b /qemu_caboodle_img/disk {cowpath}".split())
 
 # Run the VM
 cmd = [ "qemu-system-x86_64",
-	"-drive", "file=/tmp.qcow2",
+	"-drive", f"file={cowpath}",
 	"-m", "4096", "-smp", "4", "-enable-kvm",
 	"-kernel", "/qemu_caboodle_img/vmlinuz",
 	"-initrd", "/qemu_caboodle_img/initrd.img",
