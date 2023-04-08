@@ -144,7 +144,7 @@ HCP_UML_KERNEL_URL ?= \
 	$(HCP_UML_KERNEL_SITE)/$(HCP_UML_KERNEL_SITEDIR)/$(HCP_UML_KERNEL_FNAME)
 
 # What size ext4 image(s) to make
-HCP_UML_EXT4_MB := 3072
+HCP_UML_EXT4_MB := 4096
 
 # Do we build application support for UML? (This involves embedding a UML
 # kernel and modules into the caboodle image.)
@@ -154,7 +154,7 @@ HCP_APP_UML := 1
 # QEMU settings #
 #################
 
-HCP_QEMU_DISK_MB := 3072
+HCP_QEMU_DISK_MB := 4096
 HCP_APP_QEMU := 1
 # Define this to give QEMU VMs a VGA device (comes up in an X window)
 #HCP_APP_QEMU_XFORWARD := 1
