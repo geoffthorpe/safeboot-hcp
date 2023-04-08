@@ -33,6 +33,7 @@
     "runner": {
         "exec": "/hcp/qemu/runner.py",
         "tag": "services",
+        "state": "/qemu_state",
         "init_env": {
             "pathadd": {
                 "PATH": "/bin:/sbin:/usr/bin:/usr/sbin"
