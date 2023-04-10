@@ -500,13 +500,19 @@ try:
         else:
             bail(f"HCP launcher: internal bug, bad 'tostart': {i}")
 
-    # Everything that is to be done/started has been done/started. Now we wait for
-    # things to exit. Note, if the only things left running all have 'nowait' set
-    # True, we should exit. This is to cover things like 'fqdn_updater' - if
-    # someone runs a setup stage, they expect the container to exit once it's done,
-    # so if things like 'fqdn_updater' get started, we'll mark them 'nowait' so
-    # that we don't pause indefinitely waiting for it to exit once the thing we
-    # _were_ waiting on has already done so.
+    # Everything that is to be done/started has been done/started.
+    # If the user wanted us to notify when we reach this state (eg. in order to
+    # unblock the other system initialization that depends on our workload), do
+    # that now.
+    if 'HCP_QEMU_INIT_CALLBACK' in os.environ:
+        cb_json = os.environ['HCP_QEMU_INIT_CALLBACK']
+        cb = json.loads(cb_json)
+        log(f"HCP launcher: running HCP_QEMU_INIT_CALLBACK ({cb})")
+        subprocess.run(cb)
+    else:
+        log(f"HCP launcher: no callback")
+
+    # Now we wait for things to exit.
     log("HCP launcher: waiting for children to exit")
     while True:
         x = []

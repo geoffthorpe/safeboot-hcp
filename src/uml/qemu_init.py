@@ -12,6 +12,7 @@ import glob
 hostfs_dir = '/hostfs'
 hostfs_config = f"{hostfs_dir}/config.json"
 hostfs_shutdown = [ "/usr/sbin/shutdown", "-h", "now" ]
+hostfs_notify = [ "/sd_notify_ready" ]
 
 # Parse the config
 with open(hostfs_config, 'r') as fp:
@@ -59,6 +60,17 @@ if 'mounts' in config:
 		subprocess.run([ "mkdir", "-p", dest ])
 		args += [ tag, dest ]
 		subprocess.run(args)
+
+# We've mounted filesystems from the host and set the expected environment, now
+# we run. To support qemu_init.py being run by a systemd unit that other units
+# depend on, we implement "Type=notify" semantics - this means we need to
+# notify systemd that we have sufficiently initialized that it can start up
+# dependent services. We can do that by setting a callback env-var (with a JSON
+# encoding of the command/arg list), launcher.py will invoke that at the
+# appropriate moment. If something other than launcher.py is run, it'll need to
+# trigger the notification too, unless you are happy to leave systemd waiting
+# for as long as it is prepared to wait.
+os.environ['HCP_QEMU_INIT_CALLBACK'] = json.dumps(hostfs_notify)
 
 args = config['argv']
 # Run the desired command

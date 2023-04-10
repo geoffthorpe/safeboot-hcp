@@ -25,5 +25,9 @@ INSTALL_MOD_PATH=$DESTDIR make modules_install
 install --strip linux $DESTDIR/linux
 
 cd /
+
 gcc -Wall -o myshutdown myshutdown.c
 install --strip myshutdown $DESTDIR/myshutdown
+
+gcc -Wall -o sd_notify_ready sd_notify_ready.c $(pkg-config --cflags --libs libsystemd)
+install --strip sd_notify_ready $DESTDIR/sd_notify_ready

@@ -6,7 +6,7 @@
 
 # This script runs inside the 'uml_runner' container and takes care of running
 # the UML instance. It should not be confused with code running inside the UML
-# instance (init.py and myshutdown).
+# instance.
 # Expectations: we are started via launcher, with a JSON config whose 'runner'
 # section may contain an 'init_env' section. We also expect the following
 # mounts;

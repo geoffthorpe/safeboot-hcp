@@ -8,10 +8,11 @@ $(HCP_UML_OUT): | $(HCP_OUT)
 MDIRS += $(HCP_UML_OUT)
 
 ###############
-### UML_BUILDER - for compiling the kernel, modules, and 'myshutdown'
+### UML_BUILDER - for compiling kernel+modules, 'myshutdown', 'sd_notify_ready'
 ###############
 
 uml_builder_packages := gcc make xz-utils flex bison bc kmod libvdeplug-dev
+uml_builder_packages += libsystemd-dev
 
 $(eval $(call pp_add_layer,\
 	UML_BUILDER,\
@@ -22,6 +23,7 @@ $(eval $(call pp_add_layer,\
 	$(HCP_UML_SRC)/Makefile,\
 	,\
 	$(HCP_UML_SRC)/uml.kconfig $(HCP_UML_SRC)/myshutdown.c\
+		$(HCP_UML_SRC)/sd_notify_ready.c\
 		$(HCP_UML_SRC)/kbuild.sh))
 
 ####################################

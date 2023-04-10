@@ -3,9 +3,9 @@ Description=HCP workload launcher
 After=network.target
 
 [Service]
-Type=exec
-Restart=no
+Type=notify
 ExecStart=/qemu_init.py
+NotifyAccess=all
 
 [Install]
 WantedBy=multi-user.target
