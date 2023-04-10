@@ -22,7 +22,7 @@ apps_pre_base_pkgs := json-glib-tools libjson-perl libncurses5-dev \
 	python3-cryptography python3-openssl \
 	python3-flask python3-requests uwsgi-plugin-python3 \
 	nginx uuid-runtime \
-	openssh-server gnutls-bin libglib2.0-0 openssl vde2
+	openssh-server gnutls-bin libglib2.0-0 openssl vde2 socat
 $(eval $(call pp_add_layer,\
 	APPS_PRE_BASE,\
 	BASE,\

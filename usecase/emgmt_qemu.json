@@ -85,6 +85,6 @@
                 "host_options": "readonly"
             }
         },
-        "ports": [ 8443 ]
+        "ports": [ 8443, 11111 ]
     }
 }

