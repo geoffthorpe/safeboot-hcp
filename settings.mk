@@ -31,6 +31,13 @@ HCP_RELAX := 1
 # VMs) rather than packaged and installed into the images.
 HCP_MOUNT := 1
 
+# Define this if docker has "experimental features", currently used to control
+# whether "--squash" can be passed to "docker build". The following code tests
+# the daemon every time make runs, comment it out if you want to bypass.
+ifeq (true,$(shell docker version -f '{{.Server.Experimental}}'))
+HCP_DOCKER_EXPERIMENTAL := 1
+endif
+
 # If defined, the "1apt-source" layer in hcp/base will be used, allowing apt to
 # use an alternative source of debian packages, trust different package signing
 # keys, etc.

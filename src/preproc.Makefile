@@ -239,7 +239,11 @@ $(ppa_out_dfile):
 # Rule to build the docker image
 $(eval ppa_pkgs_local_src := $(strip $(ppa_pkgs_deb_src) $(ppa_pkgs_tgz_src)))
 $(eval ppa_pkgs_local_fnames := $(strip $(ppa_pkgs_deb_file) $(ppa_pkgs_tgz_file)))
-$(eval ppa_build_cmd := docker build -t $(ppa_out_dname))
+$(if $(HCP_DOCKER_EXPERIMENTAL),
+	$(eval ppa_build_cmd := docker build --squash -t $(ppa_out_dname))
+,
+	$(eval ppa_build_cmd := docker build -t $(ppa_out_dname))
+)
 $(eval ppa_build_cmd += $(HCP_$(ppa_name_upper)_BUILD_ARGS))
 $(eval ppa_build_cmd += -f $(ppa_out_dfile) $(ppa_out_dir))
 $(if $(ppa_pkgs_local_src),
