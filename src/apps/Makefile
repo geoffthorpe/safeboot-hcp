@@ -139,7 +139,7 @@ $(eval $(call pp_add_layer,\
 	QEMU_CABOODLE,\
 	QEMU_CABOODLE_BASE,\
 	APPS,\
-	$(hcp_pkg),\
+	$(hcp_pkg) uml-kbuild,\
 	$(HCP_UML_SRC)/qemu_init.Dockerfile,\
 	$(HCP_SRC)/apps/Makefile,\
 	,\
