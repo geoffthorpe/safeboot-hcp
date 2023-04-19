@@ -84,12 +84,16 @@ if args.healthcheck:
 h.hlog(2, f"Changing directory: {mystate}")
 os.chdir(mystate)
 
-h.hlog(1, f"Starting swtpm")
-subprocess.run(
-	[
-		'swtpm', 'socket', '--tpm2',
-		'--tpmstate', f"dir={mystate}/tpm",
-		'--server', f"type=unixio,path={mytpmsocket}",
-		'--ctrl', f"type=unixio,path={mytpmsocket}.ctrl",
-		'--flags', 'startup-clear'
-	], stderr = subprocess.DEVNULL)
+swtpmcmd = [
+	'swtpm', 'socket', '--tpm2',
+	'--tpmstate', f"dir={mystate}/tpm",
+	'--server', f"type=unixio,path={mytpmsocket}",
+	'--ctrl', f"type=unixio,path={mytpmsocket}.ctrl",
+	'--flags', 'startup-clear'
+]
+h.hlog(1, f"Starting swtpm: {swtpmcmd}")
+# NB: swtpm generates a _lot_ of identical errors to stderr - mute it
+if verbosity > 1:
+	subprocess.run(swtpmcmd)
+else:
+	subprocess.run(swtpmcmd, stderr = subprocess.DEVNULL)
