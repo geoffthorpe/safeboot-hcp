@@ -60,10 +60,13 @@ if args.healthcheck:
 	sys.exit(c.returncode)
 
 if args.hup:
-	with open('/var/run/sshd.pid', 'r') as fp:
-		pid=int(fp.read())
-	print(f"Sending a HUP to sshd process PID={pid}")
-	c = subprocess.run(f"kill -HUP {pid}".split())
+	try:
+		with open('/var/run/sshd.pid', 'r') as fp:
+			pid=int(fp.read())
+		print(f"Sending a HUP to sshd process PID={pid}")
+		c = subprocess.run(f"kill -HUP {pid}".split())
+	except:
+		printf('Not sending HUP, no sshd PID file')
 	sys.exit(0)
 
 if os.path.exists(etcsshd):
