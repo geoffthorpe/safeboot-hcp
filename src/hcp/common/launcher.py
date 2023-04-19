@@ -206,11 +206,21 @@ for i in services:
                     bail(f"'{i}:setup[]:exec' must be str or list (not {type(setupbin)})")
             else:
                 s['exec'] = None
-            if 'touchfile' not in s:
-                bail(f"'{i}:setup[]:touchfile' must be provided")
-            touchfile = s['touchfile']
-            if not isinstance(touchfile, str):
-                bail(f"'{i}:setup[]:touchfile' must be str (not {type(touchfile)})")
+            s['touchfn'] = None
+            if 'touchfile' in s:
+                if not isinstance(s['touchfile'], str):
+                    bail(f"'{i}:setup[]:touchfile' must be str (not {type(s['touchfile'])})")
+                s['touchfn'] = os.path.isfile
+                s['touchthing'] = s['touchfile']
+            if 'touchdir' in s:
+                if 'touchfile' in s:
+                    bail(f"'{i}:setup[]:touch(file,dir) can't both be provided")
+                if not isinstance(s['touchdir'], str):
+                    bail(f"'{i}:setup[]:touchdir' must be str (not {type(s['touchdir'])})")
+                s['touchfn'] = os.path.isdir
+                s['touchthing'] = s['touchdir']
+            if not s['touchfn']:
+                bail(f"'{i}:setup[]:touchfile' (or touchdir) must be provided")
             if 'tag' in s:
                 tag = s['tag']
                 if not isinstance(tag, str):
@@ -276,24 +286,25 @@ def run_setup(tag = None):
         for s in setup:
             if tag and tag != s['tag']:
                 continue
-            touchfile = s['touchfile']
-            if os.path.isfile(touchfile):
-                hlog(2, f"HCP launcher: '{n}:{touchfile}' already setup")
+            touchfn = s['touchfn']
+            touchthing = s['touchthing']
+            if touchfn(touchthing):
+                hlog(2, f"HCP launcher: '{n}:{touchthing}' already setup")
             else:
                 if not s['exec']:
-                    mybail(f"HCP launcher: '{n}:{touchfile}' has no setup function")
+                    mybail(f"HCP launcher: '{n}:{touchthing}' has no setup function")
                 ## Lazy-initialize the directory path if necessary
-                #if not os.path.isdir(os.path.dirname(touchfile)):
-                #    os.makedirs(os.path.dirname(touchfile), mode = 0o755)
-                hlog(2, f"HCP launcher: '{n}:{touchfile}' running setup: {s['exec']}")
+                #if not os.path.isdir(os.path.dirname(touchthing)):
+                #    os.makedirs(os.path.dirname(touchthing), mode = 0o755)
+                hlog(2, f"HCP launcher: '{n}:{touchthing}' running setup: {s['exec']}")
                 # Run the setup routine
                 pre_subprocess(i)
                 p = subprocess.run(s['exec'])
                 post_subprocess(i)
                 if p.returncode != 0:
-                    mybail(f"HCP launcher: '{n}:{touchfile}' setup failed, code: {p.returncode}")
-                if not os.path.isfile(touchfile):
-                    mybail(f"HCP launcher: '{n}:{touchfile}' setup didn't create touchfile")
+                    mybail(f"HCP launcher: '{n}:{touchthing}' setup failed, code: {p.returncode}")
+                if not touchfn(touchthing):
+                    mybail(f"HCP launcher: '{n}:{touchthing}' setup didn't create")
 
 def run_start(tag = None):
     global started
@@ -316,9 +327,8 @@ def run_start(tag = None):
         setup = i['setup']
         if setup:
             for s in setup:
-                touchfile = s['touchfile']
-                if not os.path.isfile(touchfile):
-                    mybail(f"HCP launcher: '{n}:{touchfile}' not setup")
+                if not s['touchfn'](s['touchthing']):
+                    mybail(f"HCP launcher: '{n}:{s['touchthing']}' not setup")
         pre_subprocess(i)
         p = subprocess.Popen(cmdargs)
         post_subprocess(i)
