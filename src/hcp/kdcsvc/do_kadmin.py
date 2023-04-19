@@ -90,7 +90,7 @@ if 'allowed' in resultprofile:
 	if cmd not in resultprofile['allowed']:
 		mylog(f"command {cmd} is not in the profile's 'allowed' list")
 		sys.exit(http2exit(403))
-policy_url = hcp_config_extract('.kdcsvc.policy_url', must_exist = True)
+policy_url = hcp_config_extract('.kdcsvc.policy_url', or_default = True)
 if policy_url and cmd != 'realm_healthcheck':
 	uuid = uuid4().urn
 	os.environ['HCP_REQUEST_UID'] = uuid
