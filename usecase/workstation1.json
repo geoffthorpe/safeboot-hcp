@@ -56,6 +56,7 @@
         },
         "attest_url": "http://ahcp.hcphacking.xyz:8080",
         "tcti": "swtpm:path=/tpm_socket_workstation1/tpm",
+        "enroll_CA": "/enrollverifier/key.pem",
         "callbacks": [ "/hcp/tools/attest_callback_common.py" ]
     },
 

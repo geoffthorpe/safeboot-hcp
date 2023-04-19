@@ -89,7 +89,7 @@ services:
           - hcpnetwork
           - emgmt_private
         volumes:
-          #- emgmt_qemu:/qemu_state
+        #  - emgmt_qemu:/qemu_state
           - enrolldb:/enrolldb:rw
           - ${HCP_TESTCREDS_ENROLLSIGNER}:/enrollsigner:ro
           - ${HCP_TESTCREDS_ENROLLCERTISSUER}:/enrollcertissuer:ro

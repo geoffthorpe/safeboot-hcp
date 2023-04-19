@@ -4,6 +4,7 @@ source /hcp/common/hcp.sh
 
 URL=$(hcp_config_extract ".client.attest_url")
 TCTI=$(hcp_config_extract ".client.tcti")
+ANCHOR=$(hcp_config_extract ".client.enroll_CA")
 # So longs as we're bash, parsing a JSON list will always be a
 # whitespace-handling whack-a-mole. For now, we assume that the list of
 # callbacks simply mustn't have spaces. If you want spaces, convert this script
@@ -18,8 +19,6 @@ TFILE=$(hcp_config_extract ".client.touchfile" "")
 retries=0
 pause=1
 VERBOSE=0
-ANCHOR=$([[ -f /enrollverifier/key.pem ]] &&
-	echo "/enrollverifier/key.pem" || true)
 wantfail=0
 
 usage() {
