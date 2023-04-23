@@ -1,0 +1,5 @@
+Host *
+ForwardAgent yes
+GSSAPIAuthentication yes
+GSSAPIKeyExchange yes
+GSSAPIRenewalForcesRekey yes

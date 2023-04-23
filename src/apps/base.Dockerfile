@@ -3,12 +3,10 @@
 RUN echo "source /hcp/common/hcp.sh" > /etc/profile.d/hcp_common.sh
 RUN echo "source /hcp/common/hcp.sh" > /root/.bashrc
 
-# Tell the ssh client to use some settings we care about
-RUN echo "Host *" > /etc/ssh/ssh_config
-RUN echo "ForwardAgent yes" >> /etc/ssh/ssh_config
-RUN echo "GSSAPIAuthentication yes" >> /etc/ssh/ssh_config
-RUN echo "GSSAPIKeyExchange yes" >> /etc/ssh/ssh_config
-RUN echo "GSSAPIRenewalForcesRekey yes" >> /etc/ssh/ssh_config
+# If the system/default ssh client and/or server get used, we assume HCP is
+# being used to setup identities and SSO, so give our base image better
+# defaults than the distro does.
+COPY ssh_config sshd_config /etc/ssh/
 
 # This dockerfile is appended to the one that installs nginx, so use this
 # opportunity to restrain it from starting up.
