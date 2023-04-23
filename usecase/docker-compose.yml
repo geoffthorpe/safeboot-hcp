@@ -80,7 +80,7 @@ services:
           - /tmp/.X11-unix:/tmp/.X11-unix
           - ${HCP_OUT}/docker-compose.xauth:/xauth:ro
 
-# Enrollment svc, mgmt interface - RUN THIS IN A QEMU VM, FOR KICKS
+# Enrollment svc, mgmt interface
     emgmt:
         extends: common
         #extends: qemu_runner
@@ -104,6 +104,31 @@ services:
             test: /hcp/webapi.py --healthcheck
             timeout: 30s
             interval: 60s
+
+# Enrollment svc, QEMU alternative
+    emgmt_qemu:
+        extends: qemu_runner
+        hostname: emgmt.hcphacking.xyz
+        networks:
+          - hcpnetwork
+          - emgmt_private
+        volumes:
+          - emgmt_qemu:/qemu_state
+          - enrolldb:/enrolldb:rw
+          - ${HCP_TESTCREDS_ENROLLSIGNER}:/enrollsigner:ro
+          - ${HCP_TESTCREDS_ENROLLCERTISSUER}:/enrollcertissuer:ro
+          - ${HCP_TESTCREDS_ENROLLCERTCHECKER}:/enrollcertchecker:ro
+          - ${HCP_TESTCREDS_ENROLLCLIENT}:/enrollclient:ro
+          - ${HCP_TESTCREDS_ENROLLSERVER}:/enrollserver:ro
+          - ${TOP}/vendors:/vendors:ro
+        environment:
+          - HCP_CONFIG_FILE=/usecase/emgmt_qemu.json
+        healthcheck:
+            test: /hcp/webapi.py --healthcheck
+            timeout: 30s
+            interval: 60s
+
+# Enrollment svc, policy engine
     emgmt_pol:
         extends: common
         #extends: qemu_runner
