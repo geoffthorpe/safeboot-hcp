@@ -101,7 +101,10 @@
                     "ENROLL_ISSUERCERT": "/usr/share/ca-certificates/{ENROLL_ID}/certissuer.pem",
                     "ENROLL_CERTPREFIX": "hostcert-",
                     "ENROLL_KDC": "secondary.kdc",
-                    "ENROLL_KDC_PORT": "3088"
+                    "ENROLL_KDC_PORT": "3088",
+                    "ENROLL_KRB5_KUSEROK_VAL1": "SYSTEM-K5LOGIN:/etc/k5login.d",
+                    "ENROLL_KRB5_KUSEROK_VAL2": "USER-K5LOGIN",
+                    "ENROLL_KRB5_KUSEROK_VAL3": "SIMPLE"
                 },
                 "genprogs": "gencert-hxtool",
                 "gencert-hxtool": {
@@ -133,6 +136,39 @@
                 "genkrb5keytab": {
                     "kdcsvc": "http://primary.kdc.hcphacking.xyz:9090",
                     "principals": [ "host/{ENROLL_HOSTNAME}" ]
+                },
+                "genconf-krb5": {
+                    "logging": {
+                        "default": "STDERR"
+                    },
+                    "libdefaults": {
+                        "default_realm": "{ENROLL_REALM}",
+                        "dns_lookup_kdc": "no",
+                        "dns_lookup_realm": "no",
+                        "ignore_acceptor_hostname": "yes",
+                        "dns_canonicalize_hostname": "no",
+                        "rdns": "no",
+                        "kuserok": [
+                            "{ENROLL_KRB5_KUSEROK_VAL1}",
+                            "{ENROLL_KRB5_KUSEROK_VAL2}",
+                            "{ENROLL_KRB5_KUSEROK_VAL3}"
+                        ]
+                    },
+                    "appdefaults": {
+                        "pkinit_anchors": "FILE:{ENROLL_ISSUERCERT}"
+                    },
+                    "domain_realm": {
+                        ".hcphacking.xyz": "HCPHACKING.XYZ"
+                    },
+                    "realms": {
+                        "{ENROLL_REALM}": {
+                            "kdc": "{ENROLL_KDC}.{ENROLL_DOMAIN}:{ENROLL_KDC_PORT}",
+                            "pkinit_require_eku": "true",
+                            "pkinit_require_krbtgt_otherName": "true",
+                            "pkinit_win2k": "no",
+                            "pkinit_win2k_require_binding": "yes"
+                        }
+                    }
                 }
             },
             "postclient": {
@@ -155,37 +191,6 @@
                 "gencert-issuer": {
                     "source": "{ENROLL_CA_ISSUER_PRIV}",
                     "dest": "certissuer.pem"
-                },
-                "genconf-krb5": {
-                    "logging": {
-                        "default": "STDERR"
-                    },
-                    "libdefaults": {
-                        "#1": "'default_realm' is obvious.",
-                        "#2": "The others are to suppress interference from 'hostname'",
-                        "#3": "and other name-resolution interferences.",
-                        "default_realm": "{ENROLL_REALM}",
-                        "dns_lookup_kdc": "no",
-                        "dns_lookup_realm": "no",
-                        "ignore_acceptor_hostname": "yes",
-                        "dns_canonicalize_hostname": "no",
-                        "rdns": "no"
-                    },
-                    "appdefaults": {
-                        "pkinit_anchors": "FILE:{ENROLL_ISSUERCERT}"
-                    },
-                    "domain_realm": {
-                        ".hcphacking.xyz": "HCPHACKING.XYZ"
-                    },
-                    "realms": {
-                        "{ENROLL_REALM}": {
-                            "kdc": "{ENROLL_KDC}.{ENROLL_DOMAIN}:{ENROLL_KDC_PORT}",
-                            "pkinit_require_eku": "true",
-                            "pkinit_require_krbtgt_otherName": "true",
-                            "pkinit_win2k": "no",
-                            "pkinit_win2k_require_binding": "yes"
-                        }
-                    }
                 }
             }
         }

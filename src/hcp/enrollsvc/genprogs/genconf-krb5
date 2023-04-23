@@ -30,8 +30,18 @@ for sectionname in ${sections[@]}; do
 	echo "[$sectionname]" >> krb5.conf
 	sectionkeys=( $(echo "$sectionjson" | jq -r 'keys[]') )
 	for key in ${sectionkeys[@]}; do
+		localtype=$(echo "$sectionjson" | jq -r ".[\"$key\"] | type")
 		localvalue=$(echo "$sectionjson" | jq -r ".[\"$key\"] // empty")
-		echo "    $key = $localvalue" >> krb5.conf
+		if [[ $localtype == "string" ]]; then
+			echo "    $key = $localvalue" >> krb5.conf
+		elif [[ $localtype == "array" ]]; then
+			items=( $(echo "$localvalue" | jq -r '.[]') )
+			for i in ${items[@]}; do
+				echo "    $key = $i" >> krb5.conf
+			done
+		else
+			echo "    ### BUG: got '$localtype' value" >> krb5.conf
+		fi
 	done
 done
 
