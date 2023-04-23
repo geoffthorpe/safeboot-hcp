@@ -251,7 +251,7 @@ def map_hostcert(prefix):
 	log(f"map_hostcert({prefix})")
 	if not prefix.startswith('hostcert-'):
 		log(f"skipping, we only map 'hostcert-*' prefixes")
-		return 0, None, None
+		return -1, None, None
 	trimmed = prefix.replace('hostcert-', '')
 	split3 = trimmed.split('-', maxsplit = 2)
 	split4 = trimmed.split('-', maxsplit = 3)
@@ -262,7 +262,7 @@ def map_hostcert(prefix):
 	if split3[0] == 'default':
 		if len(split3) != 3:
 			log(f"map_hostcert({prefix}), no default mapping")
-			return 0, None, None
+			return -1, None, None
 		log(f"following 'default' handling")
 		cat = split3[1]
 		subcat = split3[2]
@@ -292,7 +292,7 @@ def map_hostcert(prefix):
 	elif split4[0] == 'user':
 		if len(split4) != 4:
 			log(f"map_hostcert({prefix}), no user mapping")
-			return 0, None, None
+			return -1, None, None
 		log(f"following 'user' handling")
 		cat = split4[1]
 		subcat = split4[2]
@@ -337,7 +337,7 @@ def map_hostcert(prefix):
 			d = lazy_makedirs(f"{etc}/creds/unknown/{localuser}/{cat}")
 	else:
 		log(f"map_hostcert({prefix}), unrecognized form")
-		return 0, None, None
+		return -1, None, None
 	return uid, d, resprefix
 
 # Installer for host certificates (and keys)
@@ -364,7 +364,7 @@ def method_hostcerts(filematch):
 		# input.
 		uid, destpath, destprefix = map_hostcert(prefix)
 		res = []
-		if uid != 0:
+		if uid != -1:
 			res = [ {
 				'name': f"{prefix}.pem",
 				'dest': f"{destpath}/{destprefix}.pem",
