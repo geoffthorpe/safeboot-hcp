@@ -35,7 +35,13 @@ else:
 log("Starting attest_callback_common")
 
 myid = hcp_config_extract('id', or_default = True, default = 'unknown_id')
-etc = f"/etc/hcp/{myid}"
+myglobal = hcp_config_extract('client.global', or_default = True, default = False)
+if not isinstance(myglobal, bool):
+	bail(f"'client.global' must be bool (not {type(myglobal)})")
+if myglobal:
+	etc = '/etc'
+else:
+	etc = f"/etc/hcp/{myid}"
 
 # IMPORTANT NOTE ABOUT USERS: one goal of this way of working is to demonstrate
 # an SSO solution among a network of "hosts". Ie. HCP can provide TPM-protected
@@ -66,7 +72,7 @@ etc = f"/etc/hcp/{myid}"
 # entirely based on 'joe467' in that case.
 _usermap = hcp_config_extract("client.usermap", or_default = True, default = {})
 if not isinstance(_usermap, dict):
-	bail(f"{path_usermap} is not of type 'dict'")
+	bail(f"'client.usermap' must be 'dict' (not {type(_usermap)})")
 for k in _usermap:
 	v = _usermap[k]
 	# TODO: perhaps k and v should undergo more stringent checks,

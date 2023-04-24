@@ -5,10 +5,6 @@
     "hostnames": [ "workstation1" ],
     "default_domain": "hcphacking.xyz",
 
-    "env": {
-        "set": { "KRB5_CONFIG": "/etc/hcp/workstation1/krb5.conf" }
-    },
-
     "services": [
         "fqdn_updater",
         "attester",
@@ -57,7 +53,8 @@
         "attest_url": "http://ahcp.hcphacking.xyz:8080",
         "tcti": "swtpm:path=/tpm_socket_workstation1/tpm",
         "enroll_CA": "/enrollverifier/key.pem",
-        "callbacks": [ "/hcp/tools/attest_callback_common.py" ]
+        "callbacks": [ "/hcp/tools/attest_callback_common.py" ],
+        "global": true
     },
 
     "config": {
