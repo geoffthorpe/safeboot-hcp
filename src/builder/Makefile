@@ -30,7 +30,7 @@ $(eval $(call pp_add_layer,\
 	PREBUILDER,\
 	BASE,\
 	,\
-	gcc g++ make \
+	gcc g++ make cmake meson \
 		automake autoconf autoconf-archive libtool pkg-config \
 		expect gawk socat help2man bison flex \
 		libc-dev libssl-dev libseccomp-dev libtasn1-6-dev \

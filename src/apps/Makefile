@@ -22,7 +22,7 @@ apps_pre_base_pkgs := json-glib-tools libjson-perl libncurses5-dev \
 	python3-cryptography python3-openssl \
 	python3-flask python3-requests uwsgi-plugin-python3 \
 	nginx uuid-runtime \
-	openssh-server gnutls-bin libglib2.0-0 openssl vde2 socat
+	openssh-server gnutls-bin libglib2.0-0 openssl socat
 $(eval $(call pp_add_layer,\
 	APPS_PRE_BASE,\
 	BASE,\
@@ -34,7 +34,7 @@ $(eval $(call pp_add_layer,\
 	$(HCP_SRC)/apps/ssh_config $(HCP_SRC)/apps/sshd_config))
 
 # These are the possibly-locally-built upstream packages
-apps_base_pkgs := swtpm-tools tpm2-tools heimdal safeboot
+apps_base_pkgs := swtpm-tools tpm2-tools heimdal safeboot vdeplug_slirp vde2
 
 # And our in-tree source comes last. And if HCP_MOUNT is defined, then we don't
 # install 'hcp' into container images at all.

@@ -45,6 +45,10 @@
                 "HCP_NOTRACEFILE": "1"
             }
         },
+        "slirp": {
+            "hostname": "emgmt.hcphacking.xyz",
+            "ports": [ 8443, 11111 ]
+        },
         "mounts": {
             "fqdn-bus": "/fqdn-bus",
             "usecase": {
@@ -84,7 +88,6 @@
                 "path": "/vendors",
                 "host_options": "readonly"
             }
-        },
-        "ports": [ 8443, 11111 ]
+        }
     }
 }

@@ -22,3 +22,21 @@
 	path = ext-heimdal
 	url = https://github.com/heimdal/heimdal.git
 	branch = master
+[submodule "ext-vde/vdeplug4"]
+	path = ext-vde/vdeplug4
+	url = https://github.com/rd235/vdeplug4
+[submodule "ext-vde/s2argv-execs"]
+	path = ext-vde/s2argv-execs
+	url = https://github.com/virtualsquare/s2argv-execs
+[submodule "ext-vde/vdeplug_slirp"]
+	path = ext-vde/vdeplug_slirp
+	url = https://github.com/virtualsquare/vdeplug_slirp
+[submodule "ext-vde/libvdeslirp"]
+	path = ext-vde/libvdeslirp
+	url = https://github.com/virtualsquare/libvdeslirp
+[submodule "ext-vde/libslirp"]
+	path = ext-vde/libslirp
+	url = https://gitlab.freedesktop.org/slirp/libslirp
+[submodule "ext-vde/vde-2"]
+	path = ext-vde/vde-2
+	url = https://github.com/virtualsquare/vde-2

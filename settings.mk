@@ -19,7 +19,7 @@ HCP_VERSION ?= 0.5
 # - This baseline container image also gets used as a "utility" container, used
 #   particularly when needing to run cleanup shell-commands and "any image will
 #   do".
-HCP_DEBIAN_NAME ?= buster
+HCP_DEBIAN_NAME ?= bullseye
 HCP_ORIGIN_DNAME ?= debian:$(HCP_DEBIAN_NAME)
 #HCP_ORIGIN_DNAME ?= internal.dockerhub.mycompany.com/library/debian:$(HCP_DEBIAN_NAME)-slim
 

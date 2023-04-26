@@ -60,7 +60,7 @@ if init_env:
 mounts = h.hcp_config_extract('runner.mounts', or_default = True)
 if mounts:
 	config['mounts'] = mounts
-ports = h.hcp_config_extract('runner.ports', or_default = True)
+slirp = h.hcp_config_extract('runner.slirp', or_default = True)
 # This one is interesting, because we're taking a prop from fqdn_updater,
 # rather than runner. This avoids us having to tweak and relocate the 'usecase'
 # JSON to inject the container networks into the fqdn_updater that will run
@@ -90,17 +90,37 @@ def run(cmd):
 
 # Start up a VDE switch and plug a slirpvde instance into it (for DHCP, DNS,
 # and router)
-run("vde_switch -d -s /vdeswitch -M /vdeswitch_mgmt".split())
+run("/usr/legacy/bin/vde_switch -d -s /vdeswitch -M /vdeswitch_mgmt".split())
 # TODO: need to make this configurable;
-slirpcmd = "slirpvde --daemon --dhcp=10.0.2.15 --dns=10.0.2.3 /vdeswitch".split()
-if ports:
+slirpcmd = [ 'vde_plug', '--daemon', 'vde:///vdeswitch' ]
+slirparg = 'slirp:///dhcp=10.0.2.15/vnameserver=10.0.2.3'
+if slirp:
+	if not isinstance(slirp, dict):
+		h.bail(f"'runner.slirp' must be dict (not {type(slirp)})")
+	ports = []
+	if 'ports' in slirp:
+		ports = slirp['ports']
+		if not isinstance(ports, list):
+			h.bail(f"'runner.slirp.ports' must be list (not {type(ports)})")
 	# TODO: it's not clear how to be certain of the address the VM will
 	# get, other than it's the first (only) DHCP client and by default the
 	# DHCP server (apparently) hands out addresses from 10.0.2.15 onwards.
 	# <shrug>
 	vdehost = '10.0.2.15'
+	tcpfwd=''
 	for p in ports:
-		slirpcmd += [ '-L', f"{p}:{vdehost}:{p}" ]
+		n = f"{p}:{vdehost}:{p}"
+		if len(tcpfwd) > 0:
+			tcpfwd = f"{tcpfwd},{n}"
+		else:
+			tcpfwd = n
+	slirparg = f"{slirparg}/tcpfwd={tcpfwd}"
+	if 'hostname' in slirp:
+		hname = slirp['hostname']
+		if not isinstance(hname, str):
+			h.bail(f"'runner.slirp.hostname' must be str (not {type(hname)})")
+		slirparg = f"{slirparg}/hostname={hname}"
+slirpcmd += [ slirparg ]
 run(slirpcmd)
 
 ## End of common-code. The remainder of the code is QEMU-specific.

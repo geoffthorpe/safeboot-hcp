@@ -27,6 +27,7 @@ include $(HCP_SRC)/ext/tpmware-deb.Makefile
 include $(HCP_SRC)/ext/tpmware.Makefile
 include $(HCP_SRC)/ext/heimdal.Makefile
 include $(HCP_SRC)/ext/safeboot.Makefile
+include $(HCP_SRC)/ext/vde2.Makefile
 
 # Build the desired container images
 include $(HCP_SRC)/apps/Makefile
