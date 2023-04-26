@@ -198,6 +198,19 @@ do_shell()
 	wrapper shell none -- "$@"
 }
 
+#
+# 'do_until_yes' retries something until its output is "yes"
+do_until_yes()
+{
+	while :; do
+		r=$("$@")
+		if [[ $r == "yes" ]]; then
+			break
+		fi
+		sleep 1
+	done
+}
+
 # Sadly, sshd is very obnoxious about hostnames, canonicalization, and so forth.
 # If it is running in the 'sherver' container, everything is fine. But if that
 # workload is running in the 'monolith' container, it insists on using the
