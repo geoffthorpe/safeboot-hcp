@@ -9,15 +9,12 @@ $(eval MOUNTSRC := source=$(HCP_SRC)/ext/safeboot-install.Makefile)
 $(eval MOUNTDST := destination=/hcp.Makefile)
 $(eval comma := ,)
 $(eval MOUNTARG := type=bind$(comma)$(MOUNTSRC)$(comma)$(MOUNTDST)$(comma)readonly)
+safeboot_CMD_INSTALL := LOCAL_PREFIX=$(HCP_SAFEBOOT_PREFIX) make -f /hcp.Makefile install
 $(eval $(call builder_add,\
 	safeboot,\
 	$(HCP_SAFEBOOT_SRC),\
 	,\
 	,\
-	,\
-	,\
-	,\
-	LOCAL_PREFIX=$(HCP_SAFEBOOT_PREFIX) make -f /hcp.Makefile install,\
 	--mount $(MOUNTARG)))
 
 $(eval $(call builder_simpledep,safeboot))

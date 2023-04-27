@@ -58,15 +58,12 @@ uml-kbuild_env += KERNEL_CONF=/uml.kconfig
 # container-exit doing a "chowner" run as the bootsrap, configure, compile, and
 # install steps run. It's just one run, and the source is extracted and deleted
 # in that run, so no need to fix FS ownerships.
+uml-kbuild_CMD_INSTALL := $(uml-kbuild_env) /kbuild.sh
 $(eval $(call builder_add,\
 	uml-kbuild,\
 	$(HCP_UML_KBUILD_OUT),\
 	,\
 	,\
-	,\
-	,\
-	,\
-	$(uml-kbuild_env) /kbuild.sh,\
 	))
 
 # Make sure our persistent directory exists and contains the kernel source

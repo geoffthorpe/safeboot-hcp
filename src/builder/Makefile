@@ -55,11 +55,11 @@ $(eval $(call pp_add_layer,\
 # $2 = path to source
 # $3 = packages that are build dependencies.
 # $4 = packages that are run-time dependencies.
-# $5 = command line to bootstrap the codebase
-# $6 = command line to configure the codebase
-# $7 = command line to compile the codebase
-# $8 = command line to install the codebase
-# $9 = extra option arguments to 'docker run' (eg. mounts)
+# $5 = extra option arguments to 'docker run' (eg. mounts)
+# $1_CMD_BOOTSTRAP = command line to bootstrap the codebase
+# $1_CMD_CONFIGURE = command line to configure the codebase
+# $1_CMD_COMPILE = command line to compile the codebase
+# $1_CMD_INSTALL = command line to install the codebase
 # $1_BUILDER = alternative builder layer to the default; "BUILDER". If specified
 #              it should probably be a derivative of "BUILDER".
 # Once builder_add() is run;
@@ -78,11 +78,11 @@ $(eval N := $(shell echo "$(N_lower)" | tr '[:lower:]' '[:upper:]'))
 $(eval HCP_BUILD_SRC_$N := $(strip $2))
 $(eval HCP_BUILD_DEPS_$N := $(strip $3))
 $(eval $(N_lower)_DEPENDS := $(strip $4))
-$(eval local_bootstrap := $(strip $5))
-$(eval local_configure := $(strip $6))
-$(eval local_compile := $(strip $7))
-$(eval local_install := $(strip $8))
-$(eval local_docker_xtra := $(strip $9))
+$(eval local_docker_xtra := $(strip $5))
+$(eval local_bootstrap := $($(N_lower)_CMD_BOOTSTRAP))
+$(eval local_configure := $($(N_lower)_CMD_CONFIGURE))
+$(eval local_compile := $($(N_lower)_CMD_COMPILE))
+$(eval local_install := $($(N_lower)_CMD_INSTALL))
 $(if $($(N_lower)_BUILDER),,$(eval $(N_lower)_BUILDER := BUILDER))
 
 $(eval $(call pp_add_layer,
