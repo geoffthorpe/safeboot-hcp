@@ -220,10 +220,10 @@ clean_mkout_$(db_mksym):
 	$Qrm -f $(db_mkout)
 clean: clean_mkout_$(db_mksym)
 
-$(eval $(call pp_exec_stdout_to_make,\
-	$(HCP_DEBBUILDER_SRC)/parse_debian_control.py $(db_srcdir) $(db_debiandir) | \
-	$(HCP_DEBBUILDER_SRC)/mkvars_from_debcontrol.py,\
-	$(db_mkout)))
+$(shell $(HCP_DEBBUILDER_SRC)/parse_debian_control.py $(db_srcdir) $(db_debiandir) | \
+	$(HCP_DEBBUILDER_SRC)/mkvars_from_debcontrol.py > $(db_mkout).tmp)
+$(shell $(HCP_SRC)/tmp2new.sh $(db_mkout))
+$(eval include $(db_mkout))
 
 $(eval $(call pvt_debian_build,$(db_mksym),$(db_layer_upper),$(db_file_deps)))
 
