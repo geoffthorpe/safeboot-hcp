@@ -1,25 +1,3 @@
-# A bunch of cleanup rules were repeating the same dance of checking whether a
-# certain touchfile existed to indicated that an image had been built, and if
-# so, declaring a rule to clean out the image and touchfile, and making that
-# rule a dependency of a parent rule. This function sucks out the noise.
-# $1=touchfile
-# $2=image
-# $3=unique id (must be different each time this is called)
-# $4=parent clean rule
-define pp_rule_docker_image_rm
-	$(eval ppr_rname := clean_image_$(strip $3))
-	$(eval ppr_pname := $(strip $4))
-	$(eval ppr_tpath := $(strip $1))
-	$(eval ppr_iname := $(strip $2))
-ifneq (,$(wildcard $(ppr_tpath)))
-$(ppr_pname): $(ppr_rname)
-$(ppr_rname):
-	$Qecho "Removing container image $(ppr_iname)"
-	$Qdocker image rm $(ppr_iname)
-	rm $(strip $(ppr_tpath))
-endif
-endef
-
 # The following two functions provide a way to form the transitive closure of
 # symbols <name> that have <name>_DEPENDS attributes. Eg. if we have the
 # following dependencies;
@@ -263,11 +241,13 @@ $(ppa_out_tfile): $(ppa_pkgs_local_src) $(ppa_copied)
 	$Qtouch $$@
 
 # Cleanup
-$(eval $(call pp_rule_docker_image_rm,\
-	$(ppa_out_tfile),\
-	$(ppa_out_dname),\
-	$(ppa_name_lower),\
-	clean_$(ppa_name_lower)))
+ifneq (,$(wildcard $(ppa_out_tfile)))
+clean_$(ppa_name_lower): clean_image_$(ppa_name_lower)
+clean_image_$(ppa_name_lower):
+	$Qecho "Removing container image $(ppa_out_dname)"
+	$Qdocker image rm $(ppa_out_dname)
+	rm $(strip $(ppa_out_tfile))
+endif
 
 ifneq (,$(wildcard $(ppa_out_dir)))
 clean_$(ppa_name_lower): | preclean
