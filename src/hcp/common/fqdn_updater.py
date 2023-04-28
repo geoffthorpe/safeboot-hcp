@@ -309,9 +309,8 @@ def recolt(networks):
     with open('/etc/.new.hosts', 'w') as fp:
         for l in lines:
             fp.write(f"{l}\n")
-    # We'd rather use os.replace(), but docker sometimes does weird things, and
-    # this can cause a 'Device or resource busy' failure.
-    shutil.copyfile('/etc/.new.hosts', '/etc/hosts')
+    os.chmod('/etc/.new.hosts', 0o644)
+    shutil.move('/etc/.new.hosts', '/etc/hosts')
 
 def loop():
     while True:
