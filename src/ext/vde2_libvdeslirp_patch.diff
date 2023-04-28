@@ -1,0 +1,28 @@
+From 4cc9da693afed6ba1d54c2f79dd0f76f4a2dd0f4 Mon Sep 17 00:00:00 2001
+From: Geoffrey Thorpe <geoffrey@twosigma.com>
+Date: Thu, 27 Apr 2023 20:49:18 -0400
+Subject: [PATCH] cmake: fix use of variable names with '/' characters
+
+Signed-off-by: Geoffrey Thorpe <geoffrey@twosigma.com>
+---
+ CMakeLists.txt | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index b1c3a0e..7bff390 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -28,8 +28,8 @@ foreach(THISLIB IN LISTS LIBS_REQUIRED)
+ endforeach(THISLIB)
+ 
+ foreach(HEADER IN LISTS HEADERS_REQUIRED)
+-  check_include_file(${HEADER} ${HEADER}_OK)
+-  if(NOT ${HEADER}_OK)
++  check_include_file(${HEADER} FOOBAR_OK)
++  if(NOT FOOBAR_OK)
+     message(FATAL_ERROR "header file ${HEADER} not found")
+   endif()
+ endforeach(HEADER)
+-- 
+2.34.1
+

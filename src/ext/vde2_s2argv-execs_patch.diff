@@ -1,0 +1,30 @@
+From 3ebd5a30c0597e83e7555578cf0e46902aad6e94 Mon Sep 17 00:00:00 2001
+From: Geoffrey Thorpe <geoffrey@twosigma.com>
+Date: Wed, 26 Apr 2023 21:21:40 -0400
+Subject: [PATCH] Add missing ARCHIVE_DESTINATION for static targets
+
+Signed-off-by: Geoffrey Thorpe <geoffrey@twosigma.com>
+---
+ CMakeLists.txt | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 638388c..f0ea9a5 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -31,8 +31,10 @@ target_compile_options(execs-embedded_static PUBLIC -DEEXECS)
+ 
+ install(TARGETS execs LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+ install(TARGETS execs-embedded LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+-install(TARGETS execs_static LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+-install(TARGETS execs-embedded_static LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
++install(TARGETS execs_static LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
++	ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
++install(TARGETS execs-embedded_static LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
++	ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+ install(FILES execs.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+ 
+ add_executable(exectest execstest.c)
+-- 
+2.34.1
+

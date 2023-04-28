@@ -1,3 +1,14 @@
+define vde2_patch
+$(eval N_lower := $(strip $1))
+$(eval N_upper := $(strip $2))
+$(eval p := $(HCP_SRC)/ext/vde2_$(N_lower)_patch.diff)
+$(eval d := $(HCP_$(N_upper)_SRC))
+$(if $(wildcard $d/.hcp-patched),,
+$(info Applying patch to '$(N_lower)')
+$(shell cd $d && patch -p1 < $p >/dev/null 2>&1 && touch .hcp-patched))
+endef
+
+
 HCP_S2ARGV_EXECS_SRC := $(TOP)/ext-vde/s2argv-execs
 HCP_S2ARGV_EXECS_PREFIX := /usr
 s2argv-execs_CMD_BOOTSTRAP := mkdir -p build
@@ -11,6 +22,7 @@ $(eval $(call builder_add,\
 	,\
 	))
 $(eval $(call builder_simpledep,s2argv-execs))
+$(eval $(call vde2_patch,s2argv-execs,S2ARGV_EXECS))
 
 HCP_VDEPLUG4_SRC := $(TOP)/ext-vde/vdeplug4
 HCP_VDEPLUG4_PREFIX := /usr
@@ -51,6 +63,7 @@ $(eval $(call builder_add,\
 	libslirp vdeplug4,\
 	))
 $(eval $(call builder_simpledep,libvdeslirp))
+$(eval $(call vde2_patch,libvdeslirp,LIBVDESLIRP))
 
 HCP_VDEPLUG_SLIRP_SRC := $(TOP)/ext-vde/vdeplug_slirp
 HCP_VDEPLUG_SLIRP_PREFIX := /usr
