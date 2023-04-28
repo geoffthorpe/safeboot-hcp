@@ -7,6 +7,8 @@ RUN echo "source /hcp/common/hcp.sh" > /root/.bashrc
 # being used to setup identities and SSO, so give our base image better
 # defaults than the distro does.
 COPY ssh_config sshd_config /etc/ssh/
+RUN chmod 644 /etc/ssh/ssh_config
+RUN chmod 640 /etc/ssh/sshd_config
 
 # This dockerfile is appended to the one that installs nginx, so use this
 # opportunity to restrain it from starting up.
