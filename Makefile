@@ -94,6 +94,7 @@ $(shell echo "HCP_IMAGE_$i=$(call HCP_IMAGE,$i)" >> $(FOO).tmp))
 HCP_DOCKER_ENVS += TOP HCP_OUT
 $(foreach i,$(HCP_DOCKER_ENVS),\
 $(shell echo "$i=$($i)" >> $(FOO).tmp))
+$(shell echo "HCP_HOST_UID=$$(id -u)" >> $(FOO).tmp)
 $(shell $(HCP_SRC)/tmp2new.sh $(FOO))
 
 ifdef HCP_APP_QEMU_XFORWARD
