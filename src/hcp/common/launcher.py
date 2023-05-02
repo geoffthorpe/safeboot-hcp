@@ -206,21 +206,21 @@ for i in services:
                     bail(f"'{i}:setup[]:exec' must be str or list (not {type(setupbin)})")
             else:
                 s['exec'] = None
-            s['touchfn'] = None
             if 'touchfile' in s:
                 if not isinstance(s['touchfile'], str):
                     bail(f"'{i}:setup[]:touchfile' must be str (not {type(s['touchfile'])})")
                 s['touchfn'] = os.path.isfile
                 s['touchthing'] = s['touchfile']
-            if 'touchdir' in s:
+            elif 'touchdir' in s:
                 if 'touchfile' in s:
                     bail(f"'{i}:setup[]:touch(file,dir) can't both be provided")
                 if not isinstance(s['touchdir'], str):
                     bail(f"'{i}:setup[]:touchdir' must be str (not {type(s['touchdir'])})")
                 s['touchfn'] = os.path.isdir
                 s['touchthing'] = s['touchdir']
-            if not s['touchfn']:
-                bail(f"'{i}:setup[]:touchfile' (or touchdir) must be provided")
+            else:
+                s['touchfn'] = None
+                s['touchthing'] = None
             if 'tag' in s:
                 tag = s['tag']
                 if not isinstance(tag, str):
@@ -288,7 +288,7 @@ def run_setup(tag = None):
                 continue
             touchfn = s['touchfn']
             touchthing = s['touchthing']
-            if touchfn(touchthing):
+            if touchfn and touchfn(touchthing):
                 hlog(2, f"HCP launcher: '{n}:{touchthing}' already setup")
             else:
                 if not s['exec']:
@@ -303,7 +303,7 @@ def run_setup(tag = None):
                 post_subprocess(i)
                 if p.returncode != 0:
                     mybail(f"HCP launcher: '{n}:{touchthing}' setup failed, code: {p.returncode}")
-                if not touchfn(touchthing):
+                if touchfn and not touchfn(touchthing):
                     mybail(f"HCP launcher: '{n}:{touchthing}' setup didn't create")
 
 def run_start(tag = None):
@@ -327,7 +327,7 @@ def run_start(tag = None):
         setup = i['setup']
         if setup:
             for s in setup:
-                if not s['touchfn'](s['touchthing']):
+                if s['touchfn'] and not s['touchfn'](s['touchthing']):
                     mybail(f"HCP launcher: '{n}:{s['touchthing']}' not setup")
         pre_subprocess(i)
         p = subprocess.Popen(cmdargs)
