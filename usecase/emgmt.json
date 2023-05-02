@@ -148,6 +148,7 @@
                         "ignore_acceptor_hostname": "yes",
                         "dns_canonicalize_hostname": "no",
                         "rdns": "no",
+                        "forwardable": "true",
                         "kuserok": [
                             "{ENROLL_KRB5_KUSEROK_VAL1}",
                             "{ENROLL_KRB5_KUSEROK_VAL2}",

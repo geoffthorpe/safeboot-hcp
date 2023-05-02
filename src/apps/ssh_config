@@ -3,3 +3,4 @@ ForwardAgent yes
 GSSAPIAuthentication yes
 GSSAPIKeyExchange yes
 GSSAPIRenewalForcesRekey yes
+GSSAPIDelegateCredentials yes
