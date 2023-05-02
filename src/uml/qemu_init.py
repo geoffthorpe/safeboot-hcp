@@ -11,7 +11,7 @@ import glob
 # Paths in /hostfs (in the container and UML instance)
 hostfs_dir = '/hostfs'
 hostfs_config = f"{hostfs_dir}/config.json"
-hostfs_shutdown = [ "/usr/sbin/shutdown", "-h", "now" ]
+hostfs_shutdown = [ "/sbin/shutdown", "-h", "now" ]
 hostfs_notify = [ "/sd_notify_ready" ]
 
 # Parse the config
@@ -53,8 +53,6 @@ if 'mounts' in config:
 		args = [ 'mount', '-t', '9p', '-o', m['guest_options'] ]
 		if 'guest_path' in m:
 			dest = m['guest_path']
-		elif 'path' in m:
-			dest = m['path']
 		else:
 			dest = f"/{tag}"
 		subprocess.run([ "mkdir", "-p", dest ])
