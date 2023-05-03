@@ -21,6 +21,8 @@ volumes:
     tpm_sherver:
     tpmsocket_sherver:
     emgmt_qemu:
+    bigbrother_tpm:
+    target_tpm:
 
 networks:
     emgmt_private:
@@ -205,6 +207,8 @@ services:
           - tpm_kdc_secondary:/tpm_kdc_secondary
           - tpm_workstation1:/tpm_workstation1
           - tpm_sherver:/tpm_sherver
+          - bigbrother_tpm:/tpm_bigbrother
+          - target_tpm:/tpm_target
         environment:
           - HCP_CONFIG_FILE=/usecase/orchestrator.json
 
@@ -385,6 +389,26 @@ services:
             test: /hcp/swtpm.py --healthcheck
             timeout: 30s
             interval: 60s
+
+    bigbrother:
+        extends: common
+        hostname: bigbrother.hcphacking.xyz
+        volumes:
+          - bigbrother_tpm:/tpm_bigbrother
+        networks:
+          - hcpnetwork
+        environment:
+          - HCP_CONFIG_FILE=/usecase/bigbrother.json
+
+    target:
+        extends: common
+        hostname: target.hcphacking.xyz
+        volumes:
+          - target_tpm:/tpm_target
+        networks:
+          - hcpnetwork
+        environment:
+          - HCP_CONFIG_FILE=/usecase/target.json
 
 # 'monolith' exists to run all of the workloads that the targets above run in
 # separate containers, but running them co-tenant within this single container

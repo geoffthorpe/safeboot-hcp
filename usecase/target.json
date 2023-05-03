@@ -1,0 +1,91 @@
+{
+    "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
+
+    "id": "target",
+    "default_domain": "hcphacking.xyz",
+
+    "env": {
+        "set": {
+            "KRB5_KTNAME": "/etc/hcp/target/krb5.keytab",
+            "KRB5_CONFIG": "/etc/hcp/target/krb5.conf"
+        }
+    },
+
+    "services": [
+        "fqdn_updater",
+        "swtpm",
+        "attester",
+        "sshd"
+    ],
+    "default_targets": [
+        "start-fqdn",
+        "setup-swtpm",
+        "start-swtpm",
+        "start-attester",
+        "start-services"
+    ],
+    "args_for": "sshd",
+
+    "fqdn_updater": {
+        "exec": "/hcp/common/fqdn_updater.py",
+        "until": "/etc/hcp/target/touch-fqdn-alive",
+        "nowait": 1,
+        "tag": "fqdn",
+        "env": {
+            "unset": { "HCP_NOTRACEFILE": null }
+        },
+        "path": "/fqdn-bus",
+        "refresh": 60,
+        "expiry": 300
+    },
+
+    "swtpm": {
+        "setup": [ {
+            "tag": "swtpm",
+            "exec": [
+                "/hcp/common/wait_touchfile.py",
+                "/tpm_target/tpm/ek.pub"
+            ],
+            "touchfile": "/tpm_target/tpm/ek.pub"
+        }, {
+            "tag": "swtpm",
+            "exec": [ "mkdir", "/tpm_socket_target" ],
+            "touchdir": "/tpm_socket_target"
+        } ],
+        "exec": "/hcp/swtpm.py",
+        "state": "/tpm_target",
+        "sockdir": "/tpm_socket_target",
+        "tag": "swtpm"
+    },
+
+    "attester": {
+        "exec": "/hcp/common/attester.py",
+        "until": "/etc/hcp/target/touch-attested",
+        "nowait": 1,
+        "tag": "attester",
+        "period": 120,
+        "retry": 5,
+        "env": {
+            "unset": {
+                "HCP_NOTRACEFILE": null
+            }
+        }
+    },
+    "client": {
+        "exec": "/hcp/tools/run_client.sh",
+        "touchfile": "/etc/hcp/target/touch-attested",
+        "env": {
+            "unset": { "HCP_NOTRACEFILE": null }
+        },
+        "attest_url": "http://ahcp.hcphacking.xyz:8080",
+        "tcti": "swtpm:path=/tpm_socket_target/tpm",
+        "enroll_CA": "/enrollverifier/key.pem",
+        "callbacks": [ "/hcp/tools/attest_callback_common.py" ]
+    },
+
+    "sshd": {
+        "exec": "/hcp/sshd.py",
+        "tag": "services",
+        "port": 2223
+    }
+}

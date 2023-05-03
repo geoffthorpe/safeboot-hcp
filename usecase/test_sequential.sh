@@ -122,8 +122,8 @@ do_exec kdc_secondary /hcp/webapi.py --healthcheck $RARGS
 title "wait for kdc_secondary to come up (realm replicated)"
 do_exec kdc_secondary /hcp/kdcsvc/realm_healthcheck.py $RARGS
 
-title "create and enroll 'sherver' TPM"
-do_core_fg orchestrator -- -c -e sherver
+title "create and enroll remaining TPMs"
+do_core_fg orchestrator -- -c -e
 
 title "start sherver TPM"
 do_core_start sherver_tpm
@@ -136,9 +136,6 @@ do_normal_start sherver
 
 title "wait for sherver to come up"
 do_exec sherver /hcp/sshd.py --healthcheck $RARGS
-
-title "create and enroll 'workstation1' TPM"
-do_core_fg orchestrator -- -c -e workstation1
 
 title "start TPM for client machine (workstation1)"
 do_core_start workstation1_tpm

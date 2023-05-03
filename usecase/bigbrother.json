@@ -1,0 +1,88 @@
+{
+    "_": " vim: set expandtab shiftwidth=4 softtabstop=4: ",
+
+    "id": "bigbrother",
+    "default_domain": "hcphacking.xyz",
+
+    "env": {
+        "set": {
+            "KRB5_CONFIG": "/etc/hcp/bigbrother/krb5.conf"
+        }
+    },
+
+    "services": [
+        "fqdn_updater",
+        "swtpm",
+        "attester",
+        "do_nothing"
+    ],
+    "default_targets": [
+        "start-fqdn",
+        "setup-swtpm",
+        "start-swtpm",
+        "start-attester",
+        "start-services"
+    ],
+
+    "fqdn_updater": {
+        "exec": "/hcp/common/fqdn_updater.py",
+        "until": "/etc/hcp/bigbrother/touch-fqdn-alive",
+        "nowait": 1,
+        "tag": "fqdn",
+        "env": {
+            "unset": { "HCP_NOTRACEFILE": null }
+        },
+        "path": "/fqdn-bus",
+        "refresh": 60,
+        "expiry": 300
+    },
+
+    "swtpm": {
+        "setup": [ {
+            "tag": "swtpm",
+            "exec": [
+                "/hcp/common/wait_touchfile.py",
+                "/tpm_bigbrother/tpm/ek.pub"
+            ],
+            "touchfile": "/tpm_bigbrother/tpm/ek.pub"
+        }, {
+            "tag": "swtpm",
+            "exec": [ "mkdir", "/tpm_socket_bigbrother" ],
+            "touchdir": "/tpm_socket_bigbrother"
+        } ],
+        "exec": "/hcp/swtpm.py",
+        "state": "/tpm_bigbrother",
+        "sockdir": "/tpm_socket_bigbrother",
+        "tag": "swtpm"
+    },
+
+    "attester": {
+        "exec": "/hcp/common/attester.py",
+        "until": "/etc/hcp/bigbrother/touch-attested",
+        "nowait": 1,
+        "tag": "attester",
+        "period": 120,
+        "retry": 5,
+        "env": {
+            "unset": {
+                "HCP_NOTRACEFILE": null
+            }
+        }
+    },
+    "client": {
+        "exec": "/hcp/tools/run_client.sh",
+        "touchfile": "/etc/hcp/bigbrother/touch-attested",
+        "env": {
+            "unset": { "HCP_NOTRACEFILE": null }
+        },
+        "attest_url": "http://ahcp.hcphacking.xyz:8080",
+        "tcti": "swtpm:path=/tpm_socket_bigbrother/tpm",
+        "enroll_CA": "/enrollverifier/key.pem",
+        "callbacks": [ "/hcp/tools/attest_callback_common.py" ]
+    },
+
+    "do_nothing": {
+        "exec": "/hcp/common/do_nothing.sh",
+        "tag": "services"
+    }
+}

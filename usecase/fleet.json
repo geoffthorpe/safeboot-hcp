@@ -127,6 +127,37 @@
 					]
 				}
 			}
+		},
+		{
+			"name": "target",
+			"tpm_path": "/tpm_target",
+			"enroll_hostname": "target.hcphacking.xyz",
+			"enroll_profile": {
+				"genprogs": "genconf-krb5 genkrb5keytab",
+				"genkrb5keytab": {
+					"principals": [
+						"host/{ENROLL_HOSTNAME}",
+						"host/monolith.hcphacking.xyz"
+					]
+				}
+			}
+		},
+		{
+			"name": "bigbrother",
+			"tpm_path": "/tpm_bigbrother",
+			"enroll_hostname": "bigbrother.hcphacking.xyz",
+			"enroll_profile": {
+				"__env": {
+					"ENROLL_PKINIT_USER_PRINC": "root"
+				},
+				"genprogs": "genconf-krb5 gencert-hxtool",
+				"gencert-hxtool": {
+					"list": [
+						"default-https-server",
+						"user-pkinit-user"
+					]
+				}
+			}
 		}
 	]
 }

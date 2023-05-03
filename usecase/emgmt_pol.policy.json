@@ -231,7 +231,9 @@
                         "aclient.{ENROLL_DOMAIN}",
                         "primary.kdc.{ENROLL_DOMAIN}",
                         "workstation1.{ENROLL_DOMAIN}",
-                        "sherver.{ENROLL_DOMAIN}" ] },
+                        "sherver.{ENROLL_DOMAIN}",
+                        "target.{ENROLL_DOMAIN}",
+                        "bigbrother.{ENROLL_DOMAIN}" ] },
                 "name": "enrollsvc::asset_check::user-pkinit-user - bad host",
                 "action": "reject" },
             { "_": "On 'aclient', only issue an 'alicia' cred",
@@ -254,15 +256,22 @@
                     } ],
                 "name": "enrollsvc::asset_check::user-pkinit-user - kdc_primary,foo",
                 "action": "return" },
-            { "_": [ "Lastly, on 'sherver' and 'workstation1', issue anything",
+            { "_": [ "Lastly, on {sherver,target,workstation1,bigbrother}, issue anything",
                      "at all, otherwise fail." ],
                 "if": [ {
                         "not-equal": ".__env.ENROLL_HOSTNAME",
                         "value": "sherver.{ENROLL_DOMAIN}"
                     }, {
                         "not-equal": ".__env.ENROLL_HOSTNAME",
-                        "value": "workstation1.{ENROLL_DOMAIN}" } ],
-                "name": "enrollsvc::asset_check::user-pkinit-user - sherver and workstation1",
+                        "value": "target.{ENROLL_DOMAIN}"
+                    }, {
+                        "not-equal": ".__env.ENROLL_HOSTNAME",
+                        "value": "workstation1.{ENROLL_DOMAIN}"
+                    }, {
+                        "not-equal": ".__env.ENROLL_HOSTNAME",
+                        "value": "bigbrother.{ENROLL_DOMAIN}"
+                    } ],
+                "name": "enrollsvc::asset_check::user-pkinit-user - sherver, target, workstation1, bigbrother",
                 "action": "reject",
                 "otherwise": "return" } ],
 
