@@ -24,7 +24,6 @@ cat > $HCP_KDCSVC_STATE/etc/kdc.conf << EOF
 	signal_socket = $HCP_KDCSVC_STATE/var/signalsock-iprop
 	iprop-acl = $HCP_KDCSVC_STATE/etc/iprop-secondaries
 	enable-pkinit = yes
-	synthetic_clients = true
 	pkinit_identity = FILE:/etc/hcp/$HCP_ID/pkinit/kdc-key.pem
 	pkinit_anchors = FILE:/usr/share/ca-certificates/$HCP_ID/certissuer.pem
 	#pkinit_pool = PKCS12:/path/to/useful-intermediate-certs.pfx
@@ -37,6 +36,8 @@ cat > $HCP_KDCSVC_STATE/etc/kdc.conf << EOF
 	enable_virtual_hostbased_princs = true
 	virtual_hostbased_princ_mindots = 1
 	virtual_hostbased_princ_maxdots = 5
+	enable_synthetic_clients = true
+	synthetic_clients_forwardable = true
 EOF
 cat /etc/hcp/$HCP_ID/krb5.conf >> $HCP_KDCSVC_STATE/etc/kdc.conf
 
