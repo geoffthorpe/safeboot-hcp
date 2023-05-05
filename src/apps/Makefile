@@ -31,7 +31,7 @@ $(eval $(call pp_add_layer,\
 	$(HCP_SRC)/apps/base.Dockerfile,\
 	$(HCP_SRC)/apps/Makefile,\
 	,\
-	$(HCP_SRC)/apps/ssh_config $(HCP_SRC)/apps/sshd_config))
+	$(HCP_SRC)/apps/ssh_config))
 
 # These are the possibly-locally-built upstream packages
 apps_base_pkgs := swtpm-tools tpm2-tools heimdal safeboot vdeplug_slirp vde2

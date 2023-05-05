@@ -6,9 +6,9 @@ RUN echo "source /hcp/common/hcp.sh" > /root/.bashrc
 # If the system/default ssh client and/or server get used, we assume HCP is
 # being used to setup identities and SSO, so give our base image better
 # defaults than the distro does.
-COPY ssh_config sshd_config /etc/ssh/
+COPY ssh_config /etc/ssh/
 RUN chmod 644 /etc/ssh/ssh_config
-RUN chmod 640 /etc/ssh/sshd_config
+RUN systemctl disable sshd
 
 # This dockerfile is appended to the one that installs nginx, so use this
 # opportunity to restrain it from starting up.
