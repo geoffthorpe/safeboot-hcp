@@ -4,17 +4,11 @@
     "id": "bigbrother",
     "default_domain": "hcphacking.xyz",
 
-    "env": {
-        "set": {
-            "KRB5_CONFIG": "/etc/hcp/bigbrother/krb5.conf"
-        }
-    },
-
     "services": [
         "fqdn_updater",
         "swtpm",
         "attester",
-        "do_nothing"
+        "sshd"
     ],
     "default_targets": [
         "start-fqdn",
@@ -78,11 +72,13 @@
         "attest_url": "http://ahcp.hcphacking.xyz:8080",
         "tcti": "swtpm:path=/tpm_socket_bigbrother/tpm",
         "enroll_CA": "/enrollverifier/key.pem",
-        "callbacks": [ "/hcp/tools/attest_callback_common.py" ]
+        "callbacks": [ "/hcp/tools/attest_callback_common.py" ],
+        "global": true
     },
 
-    "do_nothing": {
-        "exec": "/hcp/common/do_nothing.sh",
-        "tag": "services"
+    "sshd": {
+        "exec": "/hcp/sshd.py",
+        "tag": "services",
+        "port": 22
     }
 }
