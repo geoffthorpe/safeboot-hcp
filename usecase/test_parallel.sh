@@ -68,4 +68,7 @@ if [[ $(cat $tmpfile) != 'hello' ]]; then
 	exit 1
 fi
 
+title "Bring up everything that isn't already up"
+do_normal_start_lazy bigbrother target
+
 title "Success"

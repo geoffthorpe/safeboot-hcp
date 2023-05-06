@@ -44,7 +44,7 @@ trap 'rm -f $tmpfile' EXIT
 #   the entity has been "HCP bootstrapped" (a successful first attestation).
 #
 # For this test, we want things to be sequential and provide no
-# lazy-initialization, i.e.  the "setup-global" step must be performed
+# lazy-initialization, i.e. the "setup-global" step must be performed
 # explicitly, it won't happen automatically when starting the service.
 # So, global setup uses these explicit target lists:
 #        (HCP core)       start-fqdn setup-global
@@ -163,5 +163,8 @@ if [[ $(cat $tmpfile) != 'hello' ]]; then
     echo "FAILURE: output not 'hello'" >&2
     exit 1
 fi
+
+title "Bring up everything that isn't already up"
+do_normal_start_lazy bigbrother target
 
 title "success"
