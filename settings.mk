@@ -164,4 +164,4 @@ HCP_APP_UML := 1
 HCP_QEMU_DISK_MB := 4096
 HCP_APP_QEMU := 1
 # Define this to give QEMU VMs a VGA device (comes up in an X window)
-#HCP_APP_QEMU_XFORWARD := 1
+HCP_APP_QEMU_XFORWARD := 1

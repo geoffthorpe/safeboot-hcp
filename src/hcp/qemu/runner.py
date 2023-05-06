@@ -141,11 +141,11 @@ cmd = [ "qemu-system-x86_64",
 	"-initrd", "/qemu_caboodle_img/initrd.img",
 	"-virtfs", f"local,path={hostfs_dir},security_model=passthrough,mount_tag=hcphostfs",
 	"-nic", "vde,sock=/vdeswitch,mac=52:54:98:76:54:32,model=e1000",
-	"-append", "root=/dev/sda1 console=ttyS0" ]
+	"-append" ]
 if 'XAUTHORITY' in os.environ and 'DISPLAY' in os.environ:
-	cmd += [ "-serial", "stdio" ]
+	cmd += [ "root=/dev/sda1", "-serial", "stdio" ]
 else:
-	cmd += [ "-nographic" ]
+	cmd += [ "root=/dev/sda1 console=ttyS0", "-nographic" ]
 if mounts:
 	if not isinstance(mounts, dict):
 		h.bail(f"mounts must be a dict (not {type(mounts)})")
