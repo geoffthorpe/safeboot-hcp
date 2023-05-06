@@ -31,6 +31,7 @@ cat > $HCP_KDCSVC_STATE/etc/kdc.conf << EOF
 	pkinit_allow_proxy_certificate = no
 	pkinit_win2k_require_binding = yes
 	pkinit_principal_in_certificate = yes
+	pkinit_max_life_from_cert = yes
 [hdb]
 	db-dir = $HCP_KDCSVC_STATE/var
 	enable_virtual_hostbased_princs = true
