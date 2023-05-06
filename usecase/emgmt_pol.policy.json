@@ -141,6 +141,7 @@
             "if": { "not-equal": ".default-https-hostclient", "value": {
                     "generate-key": "rsa",
                     "key-bits": "2048",
+                    "lifetime": "1hour",
                     "type": "https-client",
                     "subject": "UID=host,{ENROLL_HOSTNAME2DC}",
                     "hostname": "{ENROLL_HOSTNAME}",
@@ -153,6 +154,7 @@
             "if": { "not-equal": ".default-https-server", "value": {
                     "generate-key": "rsa",
                     "key-bits": "2048",
+                    "lifetime": "1hour",
                     "type": "https-server",
                     "hostname": "{ENROLL_HOSTNAME}",
                     "ca-certificate": "{ENROLL_CA_ISSUER_PRIV}" } },
@@ -167,6 +169,7 @@
                 "if": { "not-equal": ".default-pkinit-kdc", "value": {
                         "generate-key": "rsa",
                         "key-bits": "2048",
+                        "lifetime": "1hour",
                         "type": "pkinit-kdc",
                         "pk-init-principal": "krbtgt/{ENROLL_REALM}@{ENROLL_REALM}",
                         "ca-certificate": "{ENROLL_CA_ISSUER_PRIV}" } },
@@ -185,6 +188,7 @@
                 "if": { "not-equal": ".default-pkinit-iprop", "value": {
                         "generate-key": "rsa",
                         "key-bits": "2048",
+                        "lifetime": "1hour",
                         "type": "pkinit-client",
                         "pk-init-principal": "iprop/{ENROLL_HOSTNAME}@{ENROLL_REALM}",
                         "subject": "CN=iprop,{ENROLL_HOSTNAME2DC}",

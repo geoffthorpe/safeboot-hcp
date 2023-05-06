@@ -112,7 +112,8 @@
                     "prefix": "{ENROLL_CERTPREFIX}",
                     "<common>": {
                         "generate-key": "rsa",
-                        "key-bits": "2048"
+                        "key-bits": "2048",
+                        "lifetime": "1hour"
                     },
                     "default-pkinit-kdc": {
                         "type": "pkinit-kdc",
@@ -148,6 +149,7 @@
                         "ignore_acceptor_hostname": "yes",
                         "dns_canonicalize_hostname": "no",
                         "rdns": "no",
+                        "clockskew": "1s",
                         "forwardable": "true",
                         "kuserok": [
                             "{ENROLL_KRB5_KUSEROK_VAL1}",
