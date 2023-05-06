@@ -9,11 +9,18 @@
 				"ENROLL_HTTPS_CLIENT_PRINC": "nobody"
 			},
 			"genprogs": "genconf-krb5 gencert-hxtool",
+			"genkrb5keytab": {
+				"principals": [
+					"host/{ENROLL_HOSTNAME}",
+					"host/monolith.hcphacking.xyz"
+				]
+			},
 			"gencert-hxtool": {
 				"list": [ "default-https-hostclient" ],
 				"user-pkinit-user": {
 					"name": "user-pkinit-user-{ENROLL_PKINIT_USER_PRINC}",
 					"type": "pkinit-client",
+					"lifetime": "10minutes",
 					"pk-init-principal": "{ENROLL_PKINIT_USER_PRINC}@{ENROLL_REALM}",
 					"subject": "CN={ENROLL_PKINIT_USER_PRINC},{ENROLL_HOSTNAME2DC}"
 				},
@@ -119,12 +126,6 @@
 						"default-https-server",
 						"user-pkinit-user"
 					]
-				},
-				"genkrb5keytab": {
-					"principals": [
-						"host/{ENROLL_HOSTNAME}",
-						"host/monolith.hcphacking.xyz"
-					]
 				}
 			}
 		},
@@ -133,13 +134,7 @@
 			"tpm_path": "/tpm_target",
 			"enroll_hostname": "target.hcphacking.xyz",
 			"enroll_profile": {
-				"genprogs": "genconf-krb5 genkrb5keytab",
-				"genkrb5keytab": {
-					"principals": [
-						"host/{ENROLL_HOSTNAME}",
-						"host/monolith.hcphacking.xyz"
-					]
-				}
+				"genprogs": "genconf-krb5 genkrb5keytab"
 			}
 		},
 		{
@@ -150,7 +145,7 @@
 				"__env": {
 					"ENROLL_PKINIT_USER_PRINC": "root"
 				},
-				"genprogs": "genconf-krb5 gencert-hxtool",
+				"genprogs": "genconf-krb5 gencert-hxtool genkrb5keytab",
 				"gencert-hxtool": {
 					"list": [
 						"default-https-server",
