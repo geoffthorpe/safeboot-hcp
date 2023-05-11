@@ -68,6 +68,9 @@
     "sshd": {
         "exec": "/hcp/sshd.py",
         "tag": "services",
-        "port": 2222
+        "port": 2222,
+        "xtra": [
+            "# GSSAPIStoreNonAn2Ln yes"
+        ]
     }
 }

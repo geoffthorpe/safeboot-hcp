@@ -1,6 +1,14 @@
 Host *
+EnableSSHKeysign yes
 ForwardAgent yes
+ForwardX11 yes
+ForwardX11Trusted yes
 GSSAPIAuthentication yes
+GSSAPIDelegateCredentials yes
+#GSSAPIDelegateCredentials user:%l
 GSSAPIKeyExchange yes
 GSSAPIRenewalForcesRekey yes
-GSSAPIDelegateCredentials yes
+HashKnownHosts no
+KeepAlive yes
+Protocol 2,1
+SendEnv LANG LC_*
