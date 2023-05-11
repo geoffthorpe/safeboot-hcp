@@ -20,7 +20,7 @@
 				"user-pkinit-user": {
 					"name": "user-pkinit-user-{ENROLL_PKINIT_USER_PRINC}",
 					"type": "pkinit-client",
-					"lifetime": "10minutes",
+					"lifetime": "2h",
 					"pk-init-principal": "{ENROLL_PKINIT_USER_PRINC}@{ENROLL_REALM}",
 					"subject": "CN={ENROLL_PKINIT_USER_PRINC},{ENROLL_HOSTNAME2DC}"
 				},

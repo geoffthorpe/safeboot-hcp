@@ -181,7 +181,7 @@ def method_keytab(filematch):
 		log(f"running subprocess: {args}")
 		c = subprocess.run(args)
 		# purge keys older than 1 day (TODO: configurable!)
-		args = [ 'ktutil', f"--keytab={k}", 'purge', '--age=1d' ]
+		args = [ 'ktutil', f"--keytab={k}", 'purge', '--age=3d' ]
 		log(f"running subprocess: {args}")
 		c = subprocess.run(args)
 		# Before callbacks run, fix the asset paths to the real destination
