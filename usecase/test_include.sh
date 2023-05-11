@@ -199,16 +199,25 @@ do_shell()
 }
 
 #
-# 'do_until_yes' retries something until its output is "yes"
-do_until_yes()
+# 'do_until_match' retries something until its output is "$1"
+do_until_match()
 {
+	MATCHOUTPUT=$1
+	shift
 	while :; do
-		r=$("$@")
-		if [[ $r == "yes" ]]; then
+		r=$("$@") 2> /dev/null
+		if [[ $r == "$MATCHOUTPUT" ]]; then
 			break
 		fi
 		sleep 1
 	done
+}
+
+#
+# 'do_until_yes' retries something until its output is "yes"
+do_until_yes()
+{
+	do_until_match "yes" "$@"
 }
 
 # Sadly, sshd is very obnoxious about hostnames, canonicalization, and so forth.
