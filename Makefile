@@ -36,6 +36,17 @@ $(info Creating HCP_OUT=$(HCP_OUT))
 $(shell mkdir $(HCP_OUT))
 endif
 
+# Actually, that wasn't true - we also explicitly create a sub-directory that
+# we can mount into any X11-dependent containers, and we insist that the host
+# be running a (global) socat instance listening on a unix socket in that
+# directory (the socket/file should be called "X0") and proxing any/all
+# connections to the host's real display server. (See docker-compose.yml
+# comments for details.)
+ifeq (,$(wildcard $(HCP_OUT)/docker-compose.tmpX11))
+$(info Creating $(HCP_OUT)/docker-compose.tmpX11)
+$(shell mkdir $(HCP_OUT)/docker-compose.tmpX11)
+endif
+
 # Used in dependency chains, as a change in these files can have effects that
 # require rebuilding other things.
 ifndef HCP_RELAX
@@ -95,18 +106,8 @@ HCP_DOCKER_ENVS += TOP HCP_OUT
 $(foreach i,$(HCP_DOCKER_ENVS),\
 $(shell echo "$i=$($i)" >> $(FOO).tmp))
 $(shell echo "HCP_HOST_UID=$$(id -u)" >> $(FOO).tmp)
+$(shell $(HCP_SRC)/prep_x11.sh $(FOO).tmp)
 $(shell $(HCP_SRC)/tmp2new.sh $(FOO))
-
-ifdef HCP_APP_QEMU_XFORWARD
-$(HCP_OUT)/docker-compose.xauth: | $(HCP_OUT)
-$(HCP_OUT)/docker-compose.xauth: $(TOP)/settings.mk
-$(HCP_OUT)/docker-compose.xauth: $(TOP)/Makefile
-$(HCP_OUT)/docker-compose.xauth:
-	$Qecho "Generating: $@"
-	$Qxauth nlist $(DISPLAY) | sed -e 's/^..../ffff/' | \
-		xauth -f $@ nmerge -
-ALL += $(HCP_OUT)/docker-compose.xauth
-endif
 
 #########
 # Tests #
@@ -158,9 +159,10 @@ preclean:
 clean:
 ifneq (,$(wildcard $(HCP_OUT)))
 	$Qrm -f $(HCP_OUT)/docker-compose.env
-ifdef HCP_APP_QEMU_XFORWARD
-	$Qrm -f $(HCP_OUT)/docker-compose.xauth
+ifneq (,$(wildcard $(HCP_OUT)/docker-compose.tmpX11))
+	$Qrmdir $(HCP_OUT)/docker-compose.tmpX11
 endif
+	$Qrm -f $(HCP_OUT)/docker-compose.xauth
 	$Qrm -f $(HCP_OUT)/.all.done
 	$Qrmdir $(HCP_OUT)
 clean: clean_deps

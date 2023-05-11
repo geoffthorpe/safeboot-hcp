@@ -70,17 +70,34 @@ services:
         tmpfs:
           - /dev/shm:exec
 
-    # Use this variant if (a) you want QEMU to launch a VGA window, (b)
-    # HCP_APP_QEMU_XFORWARD is enabled in settings.mk, and (c) if you have an X
-    # environment ("make" will populate output/docker-compose.xauth).
+    # Use of this target makes assumptions on the host;
+    #  - running a socat instance that forwards the container's X connections
+    #    to wherever the host's display socket. Eg. if DISPLAY=:3, that's a
+    #    unix socket;
+    #        socat unix-listen:output/docker-compose.tmpX11/X0,fork \
+    #              unix-connect:/tmp/.X11-unix/X0
+    #    For if DISPLAY=somehost:3333, that's a tcp socket;
+    #        socat unix-listen:output/docker-compose.tmpX11/X0,fork \
+    #              tcp-connect:somehost:3333
+    # - that the most recent run of "make" was in the shell that will
+    #   docker-compose to start this container! YES THIS IS HORRIBLE! It
+    #   processes the host's current X settings (which may change from shell to
+    #   shell!) and updates output/docker-compose.xauth. TODO: the future UX
+    #   won't require this. If you have to run make for only this reason, but
+    #   don't want it to do anything else, run "make blah" (or any other make
+    #   target that doesn't exist) and ignore the error. (make will perform the
+    #   xauth update anyway.)
+    # - the shell that starts the container must not exit until the container
+    #   is stopped (if the shell exits, it might tear down an X-forwarding
+    #   tunnel that's in use).
     qemu_runner_x11:
         extends: qemu_runner
         environment:
-          - XAUTHORITY=/xauth
-          - DISPLAY=${DISPLAY}
+          - DISPLAY=:0
+          - XAUTHKEY=${XAUTHKEY}
         volumes:
-          - /tmp/.X11-unix:/tmp/.X11-unix
-          - ${HCP_OUT}/docker-compose.xauth:/xauth:ro
+          - ${HCP_OUT}/docker-compose.tmpX11:/tmp/.X11-unix
+          - ${XAUTHORITY}:/root/Xauthority:ro
 
 # Enrollment svc, mgmt interface
     emgmt:

@@ -32,6 +32,7 @@ import json
 import shutil
 import subprocess
 import tempfile
+import socket
 
 sys.path.insert(1, '/hcp/common')
 import hcp_common as h
@@ -142,8 +143,20 @@ cmd = [ "qemu-system-x86_64",
 	"-virtfs", f"local,path={hostfs_dir},security_model=passthrough,mount_tag=hcphostfs",
 	"-nic", "vde,sock=/vdeswitch,mac=52:54:98:76:54:32,model=e1000",
 	"-append" ]
-if 'XAUTHORITY' in os.environ and 'DISPLAY' in os.environ:
+if 'DISPLAY' in os.environ:
 	cmd += [ "root=/dev/sda1", "-serial", "stdio" ]
+	# Catch the common case, so it's easier to fix
+	if os.environ['DISPLAY'] == ':0' and not os.path.exists('/tmp/.X11-unix/X0'):
+		h.bail('Missing "socat" on the host for the X11 socket?')
+	if os.path.isfile('/root/Xauthority'):
+		# We expect $XAUTHKEY to contain the X11 magic cookie, and for
+		# $XAUTHORITY to point to a source xauth file that we should
+		# supplement.
+		if 'XAUTHKEY' not in os.environ:
+			h.bail('XAUTHKEY not defined')
+		hname = socket.gethostname()
+		shutil.copy('/root/Xauthority', '/root/.Xauthority')
+		run(['xauth', 'add', f"{hname}/unix:0", '.', os.environ['XAUTHKEY']])
 else:
 	cmd += [ "root=/dev/sda1 console=ttyS0", "-nographic" ]
 if mounts:
