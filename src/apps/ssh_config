@@ -1,4 +1,5 @@
 Host *
+ConnectTimeout 2
 EnableSSHKeysign yes
 ForwardAgent yes
 ForwardX11 yes
