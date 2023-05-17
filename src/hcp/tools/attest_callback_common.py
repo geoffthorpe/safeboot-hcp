@@ -442,7 +442,7 @@ classes = [
 		'_': 'Covers the assets produced by gencert-hxtool',
 		'name': 'gencert-hxtool',
 		'glob': 'hostcert-*.pem',
-		'method': method_hostcerts('HCP_ATTESTCLIENT_HOOK_HOSTCERT')
+		'method': method_hostcerts('HCP_ATTESTCLIENT_HOOK_HOSTCERTS')
 	}, {
 		'_': 'Covers the assets produced by gencert-issuer',
 		'name': 'gencert-issuer',
@@ -489,24 +489,24 @@ for c in classes:
 				f"[{x['is_changed'] and 'changed' or 'unchanged'}]")
 			anything_changed = anything_changed or x['is_changed']
 			log(f"asset={x},anything_changed={anything_changed}")
-		if not anything_changed:
-			print(f' [no changes]')
-			continue
 		if 'preinstall' in meth and meth['preinstall']:
 			verbose(f" [preinstall]")
 			log(f"calling {meth}'s preinstall hook")
 			meth['preinstall'](items)
-		log("running the 'cp+chmod' loop")
-		for x in items:
-			log(f"x={x}")
-			if x['is_changed']:
-				print(f" - install: {x['name']},{x['mode']:o}")
-				print(f"      dest: {x['dest']}")
-				shutil.copyfile(x['name'], x['dest'])
-				os.chmod(x['dest'], x['mode'])
-				uid = x['uid']
-				if uid != 1:
-					os.chown(x['dest'], uid, -1)
+		if not anything_changed:
+			print(f' [no changes]')
+		else:
+			log("running the 'cp+chmod' loop")
+			for x in items:
+				log(f"x={x}")
+				if x['is_changed']:
+					print(f" - install: {x['name']},{x['mode']:o}")
+					print(f"      dest: {x['dest']}")
+					shutil.copyfile(x['name'], x['dest'])
+					os.chmod(x['dest'], x['mode'])
+					uid = x['uid']
+					if uid != 1:
+						os.chown(x['dest'], uid, -1)
 		if 'postinstall' in meth and meth['postinstall']:
 			verbose(f" [postinstall]")
 			meth['postinstall'](items)
