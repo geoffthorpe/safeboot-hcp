@@ -2,6 +2,7 @@
 
 source /hcp/common/hcp.sh
 
+ID=$(hcp_config_extract ".id")
 URL=$(hcp_config_extract ".client.attest_url")
 TCTI=$(hcp_config_extract ".client.tcti")
 ANCHOR=$(hcp_config_extract ".client.enroll_CA")
@@ -126,15 +127,20 @@ source_safeboot_functions
 export DIR=/install-safeboot
 cd $DIR
 
+# We store some stuff we should clean up, and we also grab a global lockfile to
+# prevent two of these clients running in parallel, so use a trap.
+my_lockfile=/tmp/lockfile.attestclient.$ID
+if ! lockfile -1 -r 0 $my_lockfile; then
+	echo "Waiting for parallel clients to exit..."
+	lockfile -1 -r 30 -l 120 -s 5 $my_lockfile
+fi
 echo "Running 'attestclient'"
-
-# We store some stuff we should cleanup, so use a trap
-tmp_pcrread=`mktemp`
-tmp_secrets=`mktemp`
-tmp_attest=`mktemp`
-tmp_key=`mktemp`
-tmp_extract=`mktemp -d`
-trap 'rm -rf $tmp_pcrread $tmp_secrets $tmp_attest $tmp_key $tmp_extract' EXIT ERR
+tmp_pcrread=$(mktemp)
+tmp_secrets=$(mktemp)
+tmp_attest=$(mktemp)
+tmp_key=$(mktemp)
+tmp_extract=$(mktemp -d)
+trap 'rm -rf $my_lockfile $tmp_pcrread $tmp_secrets $tmp_attest $tmp_key $tmp_extract' EXIT ERR
 
 # TODO: this is a temporary and bad fix. The swtpm assumes that connections
 # that are set up (tpm2_startup) but not gracefully terminated (tpm2_shutdown)
