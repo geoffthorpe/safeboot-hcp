@@ -74,9 +74,6 @@ def derive_env(envobj, pathstr, baseenv):
             if s == 'unset':
                 if ev != None:
                     bail(f"'{pathstr}:{s}:{e}' must be None (not {type(ev)})")
-            else:
-                if not isinstance(ev, str):
-                    bail(f"'{pathstr}:{s}:{e}' must be a str (not a {type(ev)})")
     newenv = baseenv.copy()
     if 'unset' in envobj:
         es = envobj['unset']
@@ -86,7 +83,10 @@ def derive_env(envobj, pathstr, baseenv):
     if 'set' in envobj:
         es = envobj['set']
         for k in es:
-            newenv[k] = es[k]
+            if isinstance(es[k], str):
+                newenv[k] = es[k]
+            else:
+                newenv[k] = json.dumps(es[k])
     if 'pathadd' in envobj:
         ep = envobj['pathadd']
         for k in ep:
