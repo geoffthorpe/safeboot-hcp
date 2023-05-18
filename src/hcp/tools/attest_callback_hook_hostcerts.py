@@ -109,7 +109,7 @@ for a in assets:
 			_match = i
 			break
 	if not _match:
-		doprint(f"Info, asset '{name}' didn't match '{regex}'")
+		doprint(f"Info, asset '{name}' didn't match any rules")
 		continue
 	olddest = a['dest']
 	newdest = _match['dest']
