@@ -16,7 +16,7 @@ LAZY := 1
 # everything that might be a dependency is a good way of keeping it simple.
 BUILDER_DEPS := $(HCP_DBB_LIST)
 
-# The pp_add_layer() logic, rightly, prioritizes the installation of
+# The hcp_image_derive() logic, rightly, prioritizes the installation of
 # locally-built packages before the installation of upstream packages. This is
 # to avoid the case where an upstream package has a dependency on a package we
 # have locally-built but that 'apt' pulls an upstream version before we try to
@@ -29,7 +29,7 @@ BUILDER_DEPS := $(HCP_DBB_LIST)
 PREBUILDER_FILES := $(HCP_BUILDER_SRC)/deb_src_ify.sh
 PREBUILDER_DEPFILES := $(HCP_BUILDER_SRC)/Makefile
 PREBUILDER_DSTUB := $(HCP_BUILDER_SRC)/Dockerfile
-$(eval $(call pp_add_layer,\
+$(eval $(call hcp_image_derive,\
 	PREBUILDER,\
 	BASE,\
 	,\
@@ -41,11 +41,18 @@ $(eval $(call pp_add_layer,\
 		uuid-dev gnu-efi binutils-dev libjson-glib-dev \
 		libfile-slurp-perl libncurses5-dev comerr-dev libdb-dev))
 BUILDER_DEPFILES := $(HCP_BUILDER_SRC)/Makefile
-$(eval $(call pp_add_layer,\
+$(eval $(call hcp_image_derive,\
 	BUILDER,\
 	PREBUILDER,\
 	,\
 	$(BUILDER_DEPS)))
+
+# Safes some code duplication below
+define __set_if_empty
+$(eval k := $(strip $1))
+$(eval v := $(strip $2))
+$(if $($k),,$(eval $k := $v))
+endef
 
 # $1 = package name, used in naming the build layer, dependency targets, etc.
 # $2 = path to source
@@ -82,16 +89,16 @@ $(eval local_install := $($(N_lower)_CMD_INSTALL))
 $(if $($(N_lower)_BUILDER),,$(eval $(N_lower)_BUILDER := BUILDER))
 
 $(eval $N_DEPFILES := $(HCP_BUILDER_SRC)/Makefile)
-$(eval $(call pp_add_layer,
+$(eval $(call hcp_image_derive,
 	LAYER_$N,
 	$($(N_lower)_BUILDER),
 	BUILDER,
 	$(call uniq,$(HCP_BUILD_DEPS_$N) $($(N_lower)_DEPENDS))))
 
-$(eval $(call pp_if_empty,local_bootstrap,/bin/true))
-$(eval $(call pp_if_empty,local_configure,/bin/true))
-$(eval $(call pp_if_empty,local_compile,/bin/true))
-$(eval $(call pp_if_empty,local_install,/bin/true))
+$(eval $(call __set_if_empty,local_bootstrap,/bin/true))
+$(eval $(call __set_if_empty,local_configure,/bin/true))
+$(eval $(call __set_if_empty,local_compile,/bin/true))
+$(eval $(call __set_if_empty,local_install,/bin/true))
 
 $(eval HCP_BUILD_PREFIX_$N := /destdir-$(N_lower))
 $(eval HCP_BUILD_$N_OUT := $(HCP_BUILDER_OUT)/artifacts-$(N_lower))

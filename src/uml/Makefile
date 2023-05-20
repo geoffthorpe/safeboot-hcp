@@ -19,7 +19,7 @@ UML_BUILDER_FILES := $(HCP_UML_SRC)/uml.kconfig $(HCP_UML_SRC)/myshutdown.c\
 UML_BUILDER_DEPFILES := $(HCP_UML_SRC)/Makefile
 UML_BUILDER_DSTUB := $(HCP_UML_SRC)/kbuild.Dockerfile
 
-$(eval $(call pp_add_layer,\
+$(eval $(call hcp_image_derive,\
 	UML_BUILDER,\
 	BUILDER,\
 	UML,\
@@ -91,7 +91,7 @@ endif
 UML_RUN_FILES := $(HCP_UML_SRC)/start.sh
 UML_RUN_DEPFILES := $(HCP_UML_SRC)/Makefile $(HCP_UML_BUILDER_TFILE)
 UML_RUN_DSTUB := $(HCP_UML_SRC)/run.Dockerfile
-$(eval $(call pp_add_layer,\
+$(eval $(call hcp_image_derive,\
 	UML_RUN,\
 	BASE,\
 	UML,\
@@ -117,7 +117,7 @@ UML_BOOTSTRAPPER_ROOTFS_FILES := $(HCP_UML_SRC)/bootstrapper_init.sh \
 				$(HCP_UML_SRC)/hcp_mkext4.sh
 UML_BOOTSTRAPPER_ROOTFS_DEPFILES := $(HCP_UML_SRC)/Makefile $(HCP_UML_BUILDER_TFILE)
 UML_BOOTSTRAPPER_ROOTFS_DSTUB := $(HCP_UML_SRC)/bootstrapper.Dockerfile
-$(eval $(call pp_add_layer,\
+$(eval $(call hcp_image_derive,\
 	UML_BOOTSTRAPPER_ROOTFS,\
 	BASE,\
 	UML,\

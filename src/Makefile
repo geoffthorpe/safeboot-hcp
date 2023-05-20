@@ -1,5 +1,5 @@
-# Some templates and other routines to reduce duplication
-include $(HCP_SRC)/preproc.Makefile
+# The API to define images
+include $(HCP_SRC)/image.Makefile
 
 # A "base platform" Docker image is created, and used as a basis for deriving
 # two kinds of images;

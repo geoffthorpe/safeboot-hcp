@@ -1,7 +1,7 @@
 HCP_DEBBUILDER_SRC := $(HCP_SRC)/debbuilder
 
 DEBBUILDER_DEPFILES := $(HCP_DEBBUILDER_SRC)/Makefile
-$(eval $(call pp_add_layer,\
+$(eval $(call hcp_image_derive,\
 	DEBBUILDER,\
 	BASE,\
 	,\
@@ -11,7 +11,7 @@ $(eval $(call pp_add_layer,\
 #      is used by the debian_build() API.
 # $1 - name of the package set in lower case.
 # $2 - name of the layer used for building these packages (usually created by
-#      the pp_add_layer() API just above). The artifacts produced will be put
+#      the hcp_image_derive() API just above). The artifacts produced will be put
 #      in the 'artifacts' subdirectory of that layer's output directory.
 # $3 - the calling Makefile and any other source files that the resulting
 #      debian build rules should be dependent on.
@@ -99,7 +99,7 @@ $(foreach p,$($(dbo_name_lower)_PKGS),\
 # Derive a layer that will have our deps installed
 $(eval dbo_build_layer_upper := $(dbo_layer_upper)_$(dbo_name_upper))
 $(eval $(dbo_build_layer_upper)_DEPFILES := $(dbo_file_deps))
-$(eval $(call pp_add_layer,\
+$(eval $(call hcp_image_derive,\
 	$(dbo_build_layer_upper),\
 	$(dbo_layer_upper),\
 	$(dbo_layer_upper),\

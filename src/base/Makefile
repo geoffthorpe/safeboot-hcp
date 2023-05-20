@@ -14,7 +14,7 @@ clean: clean_base_layers
 endif
 
 # settings.mk defines HCP_ORIGIN_DNAME. To pass "ORIGIN" as the "ancestor" to
-# pp_add_layer(), we must define a HCP_ORIGIN_TFILE and a corresponding rule.
+# hcp_image_derive(), we must define a HCP_ORIGIN_TFILE and a corresponding rule.
 HCP_ORIGIN_TFILE := $(HCP_BASE_LAYERS_OUT)/origin.imported
 $(HCP_ORIGIN_TFILE): | $(HCP_BASE_LAYERS_OUT)
 $(HCP_ORIGIN_TFILE):
@@ -31,7 +31,7 @@ endif
 #      - inherit the debian image we're based on (per hcp/settings.mk)
 
 BASE0_DEPFILES := $(HCP_DEPS_COMMON) $(HCP_BASE_LAYERS_SRC)/Makefile
-$(eval $(call pp_add_layer,\
+$(eval $(call hcp_image_derive,\
 	BASE0,\
 	ORIGIN,\
 	BASE_LAYERS,\
@@ -55,7 +55,7 @@ HCP_BASE1_BUILD_ARGS := --build-arg HCP_DEBIAN_NAME=$(HCP_DEBIAN_NAME)
 
 BASE1_FILES := $(shell cd $(HCP_BASE_LAYERS_SRC)/base1 && ls)
 BASE1_DSTUB := $(HCP_BASE_LAYERS_SRC)/1apt-source.Dockerfile
-$(eval $(call pp_add_layer,\
+$(eval $(call hcp_image_derive,\
 	BASE1,\
 	BASE0,\
 	BASE_LAYERS,\
@@ -77,7 +77,7 @@ endif # HCP_1APT_ENABLE
 BASE2_FILES := /etc/timezone $(shell find $(HCP_BASE_LAYERS_SRC)/base2 -maxdepth 1 -type f)
 BASE2_DSTUB := $(HCP_BASE_LAYERS_SRC)/2apt-usable.Dockerfile
 
-$(eval $(call pp_add_layer,\
+$(eval $(call hcp_image_derive,\
 	BASE2,\
 	$(ANCESTOR2),\
 	BASE_LAYERS,\
@@ -90,7 +90,7 @@ $(eval $(call pp_add_layer,\
 BASE3_FILES := $(shell find $(HCP_BASE_LAYERS_SRC)/base3 -maxdepth 1 -type f)
 BASE3_DSTUB := $(HCP_BASE_LAYERS_SRC)/3platform.Dockerfile
 
-$(eval $(call pp_add_layer,\
+$(eval $(call hcp_image_derive,\
 	BASE3,\
 	BASE2,\
 	BASE_LAYERS,\
@@ -108,7 +108,7 @@ $(if $(strip $(FILES_4CA_CERT)),,\
 
 BASE4_FILES := $(FILES_4CA_CERT)
 BASE4_DSTUB := $(HCP_BASE_LAYERS_SRC)/4add-cacerts.Dockerfile
-$(eval $(call pp_add_layer,\
+$(eval $(call hcp_image_derive,\
 	BASE4,\
 	BASE3,\
 	BASE_LAYERS,\
@@ -123,7 +123,7 @@ ANCESTOR5 := BASE3
 endif # HCP_4ADD_CACERTS_PATH
 
 # The "hcp_base" layer sits on top of all that we just did
-$(eval $(call pp_add_layer,\
+$(eval $(call hcp_image_derive,\
 	BASE,\
 	$(ANCESTOR5),\
 	BASE_LAYERS,\
