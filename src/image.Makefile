@@ -38,23 +38,25 @@ endef
 
 # hcp_image_derive(): define a docker image.
 # $1 - gives the new layer a symbolic name. This should be upper case, as it
-#      will also get converted to lower-case for usage that requires it. E.g.
-#      "foo" gives;
+#      will get converted to lower-case for usage that requires it. E.g. "foo"
+#      gives;
 #         ./output/apps/foo, make clean_foo, etc.
 #         HCP_FOO_OUT, HCP_FOO_DFILE, HCP_FOO_TFILE, etc...
-# $2 - the symbolic name (in upper case) of the layer that this layer should be
-#      derived from.
-# $3 - the symbolic name (in upper case) of the layer whose output directory
-#      should be the parent of this layer's output directory. If empty, it will
-#      be made a top-level layer (underneath $(HCP_OUT), for example). If $7 is
-#      given, then we also assume this layer's source directory is a child of
-#      the source directory for the same parent.
-# $4 - the packages to be installed in the new layer. For each package <foo>;
-#      If foo_PKG_FORMAT == debbuilder;
-#      - foo_LOCAL_FILE should be the path to the package file (and should be a
-#        valid makefile target).
-#      If foo_PKG_FORMAT == builder;
-#      - HCP_BUILD_TGZ_PATH_foo should be the path to the tarball.
+# $($1_IMG_PARENT)
+#      required, the symbolic name (in upper case) of the layer that this layer
+#      should be derived from.
+# $($1_OUT_PARENT)
+#      optional, the symbolic name (in upper case) of the layer whose output
+#      directory should be the parent of this layer's output directory. If
+#      empty, it will be made a top-level layer underneath $(HCP_OUT).
+# $($1_PKGS)
+#      optional, the packages to be installed in the new layer.
+#      For each package <foo>;
+#        If foo_PKG_FORMAT == debbuilder;
+#          - foo_LOCAL_FILE should be the path to the package file (and should
+#            be a valid makefile target).
+#        If foo_PKG_FORMAT == builder;
+#          - HCP_BUILD_TGZ_PATH_foo should be the path to the tarball.
 #      Locally-built packages should declare their dependencies on other
 #      (possibly locally-built) packages using foo_DEPENDS. The function will
 #      expand such dependencies and add them to the installation layer. For
@@ -78,11 +80,11 @@ endef
 define hcp_image_derive
 $(eval hid_name_upper := $(strip $1))
 $(eval hid_name_lower := $(shell echo "$(hid_name_upper)" | tr '[:upper:]' '[:lower:]'))
-$(eval hid_ancestor_upper := $(strip $2))
+$(eval hid_ancestor_upper := $(strip $($(hid_name_upper)_IMG_PARENT)))
 $(eval hid_ancestor_lower := $(shell echo "$(hid_ancestor_upper)" | tr '[:upper:]' '[:lower:]'))
-$(eval hid_parent_upper := $(strip $3))
+$(eval hid_parent_upper := $(strip $($(hid_name_upper)_OUT_PARENT)))
 $(eval hid_parent_lower := $(shell echo "$(hid_parent_upper)" | tr '[:upper:]' '[:lower:]'))
-$(eval hid_pkg_list := $(strip $4))
+$(eval hid_pkg_list := $(strip $($(hid_name_upper)_PKGS)))
 $(eval hid_dfile_xtra := $(strip $($(hid_name_upper)_DSTUB)))
 $(eval hid_mfile_xtra := $(strip $($(hid_name_upper)_DEPFILES)))
 $(eval hid_xtra := $(strip $($(hid_name_upper)_FILES)))

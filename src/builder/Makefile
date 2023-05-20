@@ -8,14 +8,6 @@ HCP_BUILDER_SRC := $(HCP_SRC)/builder
 # updated? Probably not.
 LAZY := 1
 
-# We're going to assume that the builder image should have all the
-# locally-built packages $(HCP_DBB_LIST) preinstalled. 'builder' is a less
-# refined way of building, packaging, and installing. (Globally-unique
-# installation path for each package, the package is a tarball, no recording or
-# handling of dependencies, ...) So having the builder image preinstall
-# everything that might be a dependency is a good way of keeping it simple.
-BUILDER_DEPS := $(HCP_DBB_LIST)
-
 # The hcp_image_derive() logic, rightly, prioritizes the installation of
 # locally-built packages before the installation of upstream packages. This is
 # to avoid the case where an upstream package has a dependency on a package we
@@ -26,26 +18,29 @@ BUILDER_DEPS := $(HCP_DBB_LIST)
 # reinstalled every time we make local changes, without any fancy docker (and
 # buildkit) caching to speed it up.
 # --> Solution: use two layers.
-PREBUILDER_FILES := $(HCP_BUILDER_SRC)/deb_src_ify.sh
-PREBUILDER_DEPFILES := $(HCP_BUILDER_SRC)/Makefile
-PREBUILDER_DSTUB := $(HCP_BUILDER_SRC)/Dockerfile
-$(eval $(call hcp_image_derive,\
-	PREBUILDER,\
-	BASE,\
-	,\
-	gcc g++ make cmake meson \
+PREBUILDER_PKGS := gcc g++ make cmake meson \
 		automake autoconf autoconf-archive libtool pkg-config \
 		expect gawk socat help2man bison flex \
 		libc-dev libssl-dev libseccomp-dev libtasn1-6-dev \
 		libjson-c-dev libcurl4-openssl-dev libqrencode-dev \
 		uuid-dev gnu-efi binutils-dev libjson-glib-dev \
-		libfile-slurp-perl libncurses5-dev comerr-dev libdb-dev))
+		libfile-slurp-perl libncurses5-dev comerr-dev libdb-dev
+PREBUILDER_IMG_PARENT := BASE
+PREBUILDER_FILES := $(HCP_BUILDER_SRC)/deb_src_ify.sh
+PREBUILDER_DEPFILES := $(HCP_BUILDER_SRC)/Makefile
+PREBUILDER_DSTUB := $(HCP_BUILDER_SRC)/Dockerfile
+$(eval $(call hcp_image_derive,PREBUILDER))
 BUILDER_DEPFILES := $(HCP_BUILDER_SRC)/Makefile
-$(eval $(call hcp_image_derive,\
-	BUILDER,\
-	PREBUILDER,\
-	,\
-	$(BUILDER_DEPS)))
+
+# We're going to assume that the builder image should have all the
+# locally-built packages $(HCP_DBB_LIST) preinstalled. 'builder' is a less
+# refined way of building, packaging, and installing. (Globally-unique
+# installation path for each package, the package is a tarball, no recording or
+# handling of dependencies, ...) So having the builder image preinstall
+# everything that might be a dependency is a good way of keeping it simple.
+BUILDER_IMG_PARENT := PREBUILDER
+BUILDER_PKGS := $(HCP_DBB_LIST)
+$(eval $(call hcp_image_derive,BUILDER))
 
 # Safes some code duplication below
 define __set_if_empty
@@ -88,12 +83,11 @@ $(eval local_compile := $($(N_lower)_CMD_COMPILE))
 $(eval local_install := $($(N_lower)_CMD_INSTALL))
 $(if $($(N_lower)_BUILDER),,$(eval $(N_lower)_BUILDER := BUILDER))
 
-$(eval $N_DEPFILES := $(HCP_BUILDER_SRC)/Makefile)
-$(eval $(call hcp_image_derive,
-	LAYER_$N,
-	$($(N_lower)_BUILDER),
-	BUILDER,
-	$(call uniq,$(HCP_BUILD_DEPS_$N) $($(N_lower)_DEPENDS))))
+$(eval LAYER_$N_IMG_PARENT := $($(N_lower)_BUILDER))
+$(eval LAYER_$N_OUT_PARENT := BUILDER)
+$(eval LAYER_$N_PKGS := $(call uniq,$(HCP_BUILD_DEPS_$N) $($(N_lower)_DEPENDS)))
+$(eval LAYER_$N_DEPFILES := $(HCP_BUILDER_SRC)/Makefile)
+$(eval $(call hcp_image_derive,LAYER_$N))
 
 $(eval $(call __set_if_empty,local_bootstrap,/bin/true))
 $(eval $(call __set_if_empty,local_configure,/bin/true))

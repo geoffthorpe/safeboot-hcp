@@ -17,26 +17,20 @@ endif
 # We create this layer with the commonly-required upstream packages _before_
 # creating layers with the possibly-locally-built upstream and
 # HCP-specific packages.
-apps_pre_base_pkgs := json-glib-tools libjson-perl libncurses5-dev \
+APPS_PRE_BASE_PKGS := json-glib-tools libjson-perl libncurses5-dev \
 	python3 python3-yaml python3-netifaces python3-psutil \
 	python3-cryptography python3-openssl \
 	python3-flask python3-requests uwsgi-plugin-python3 \
 	nginx uuid-runtime \
 	openssh-server gnutls-bin libglib2.0-0 openssl socat
+APPS_PRE_BASE_IMG_PARENT := BASE
+APPS_PRE_BASE_OUT_PARENT := APPS
 APPS_PRE_BASE_FILES := $(HCP_SRC)/apps/ssh_config
 APPS_PRE_BASE_DEPFILES := $(HCP_SRC)/apps/Makefile
 APPS_PRE_BASE_DSTUB := $(HCP_SRC)/apps/base.Dockerfile
-$(eval $(call hcp_image_derive,\
-	APPS_PRE_BASE,\
-	BASE,\
-	APPS,\
-	$(apps_pre_base_pkgs)))
+$(eval $(call hcp_image_derive,APPS_PRE_BASE))
 
-# These are the possibly-locally-built upstream packages
-apps_base_pkgs := swtpm-tools tpm2-tools heimdal safeboot vdeplug_slirp vde2
-
-# And our in-tree source comes last. And if HCP_MOUNT is defined, then we don't
-# install 'hcp' into container images at all.
+# We use this to encapsulate whether we're mounting or installing HCP code
 ifdef HCP_MOUNT
 hcp_pkg :=
 else
@@ -47,18 +41,16 @@ endif
 # Caboodle #
 ############
 
+CABOODLE_BASE_IMG_PARENT := APPS_PRE_BASE
+CABOODLE_BASE_OUT_PARENT := APPS
+CABOODLE_BASE_PKGS := swtpm-tools tpm2-tools heimdal safeboot vdeplug_slirp vde2
 CABOODLE_BASE_DEPFILES := $(HCP_SRC)/apps/Makefile
-$(eval $(call hcp_image_derive,\
-	CABOODLE_BASE,\
-	APPS_PRE_BASE,\
-	APPS,\
-	$(apps_base_pkgs)))
+$(eval $(call hcp_image_derive,CABOODLE_BASE))
+CABOODLE_IMG_PARENT := CABOODLE_BASE
+CABOODLE_OUT_PARENT := APPS
+CABOODLE_PKGS := $(hcp_pkg)
 CABOODLE_DEPFILES := $(HCP_SRC)/apps/Makefile
-$(eval $(call hcp_image_derive,\
-	CABOODLE,\
-	CABOODLE_BASE,\
-	APPS,\
-	$(hcp_pkg)))
+$(eval $(call hcp_image_derive,CABOODLE))
 ALL += $(HCP_CABOODLE_TFILE)
 HCP_DOCKER_IMGS += caboodle
 
@@ -70,21 +62,18 @@ HCP_DOCKER_IMGS += caboodle
 # for the container that launches the UML VM (the "runner"), and (b) the basis
 # for a bootable image to run workloads.
 ifdef HCP_APP_UML
-uml_base_pkgs := kmod isc-dhcp-client initramfs-tools uml-kbuild
-UML_CABOODLE_BASE := $(HCP_SRC)/apps/Makefile
-$(eval $(call hcp_image_derive,\
-	UML_CABOODLE_BASE,\
-	CABOODLE_BASE,\
-	APPS,\
-	$(uml_base_pkgs)))
+UML_CABOODLE_BASE_IMG_PARENT := CABOODLE_BASE
+UML_CABOODLE_BASE_OUT_PARENT := APPS
+UML_CABOODLE_BASE_PKGS := kmod isc-dhcp-client initramfs-tools uml-kbuild
+UML_CABOODLE_BASE_DEPFILES := $(HCP_SRC)/apps/Makefile
+$(eval $(call hcp_image_derive,UML_CABOODLE_BASE))
+UML_CABOODLE_IMG_PARENT := UML_CABOODLE_BASE
+UML_CABOODLE_OUT_PARENT := APPS
+UML_CABOODLE_PKGS := $(hcp_pkg)
 UML_CABOODLE_FILES := $(HCP_UML_SRC)/uml_init.py
 UML_CABOODLE_DEPFILES := $(HCP_SRC)/apps/Makefile
 UML_CABOODLE_DSTUB := $(HCP_UML_SRC)/uml_init.Dockerfile
-$(eval $(call hcp_image_derive,\
-	UML_CABOODLE,\
-	UML_CABOODLE_BASE,\
-	APPS,\
-	$(hcp_pkg)))
+$(eval $(call hcp_image_derive,UML_CABOODLE))
 
 $(HCP_APPS_OUT)/uml_caboodle.tar: $(HCP_UML_CABOODLE_TFILE)
 $(HCP_APPS_OUT)/uml_caboodle.tar: $(HCP_UML_SRC)/hcp_mkext4.sh
@@ -112,26 +101,23 @@ endif # HCP_APP_UML
 ################
 
 ifdef HCP_APP_QEMU
-qemu_base_pkgs := $(uml_base_pkgs)
-qemu_base_pkgs += linux-image-amd64 systemd-sysv qemu-system-x86
-qemu_base_pkgs += qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
+QEMU_CABOODLE_BASE_IMG_PARENT := CABOODLE_BASE
+QEMU_CABOODLE_BASE_OUT_PARENT := APPS
+QEMU_CABOODLE_BASE_PKGS := kmod isc-dhcp-client initramfs-tools uml-kbuild
+QEMU_CABOODLE_BASE_PKGS += linux-image-amd64 systemd-sysv qemu-system-x86
+QEMU_CABOODLE_BASE_PKGS += qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
 QEMU_CABOODLE_BASE_DEPFILES := $(HCP_SRC)/apps/Makefile
-$(eval $(call hcp_image_derive,\
-	QEMU_CABOODLE_BASE,\
-	CABOODLE_BASE,\
-	APPS,\
-	$(qemu_base_pkgs)))
+$(eval $(call hcp_image_derive,QEMU_CABOODLE_BASE))
+QEMU_CABOODLE_PKGS := $(hcp_pkg) uml-kbuild
 QEMU_CABOODLE_FILES := $(HCP_UML_SRC)/qemu_init.py \
 		$(HCP_UML_SRC)/10-vde.link \
 		$(HCP_UML_SRC)/25-vde.network \
 		$(HCP_UML_SRC)/hcp_systemd.service
+QEMU_CABOODLE_IMG_PARENT := QEMU_CABOODLE_BASE
+QEMU_CABOODLE_OUT_PARENT := APPS
 QEMU_CABOODLE_DEPFILES := $(HCP_SRC)/apps/Makefile
 QEMU_CABOODLE_DSTUB := $(HCP_UML_SRC)/qemu_init.Dockerfile
-$(eval $(call hcp_image_derive,\
-	QEMU_CABOODLE,\
-	QEMU_CABOODLE_BASE,\
-	APPS,\
-	$(hcp_pkg) uml-kbuild))
+$(eval $(call hcp_image_derive,QEMU_CABOODLE))
 
 $(HCP_APPS_OUT)/qemu_caboodle.tar: $(HCP_QEMU_CABOODLE_TFILE)
 $(HCP_APPS_OUT)/qemu_caboodle.tar: $(HCP_UML_SRC)/hcp_mkext4.sh

@@ -11,19 +11,16 @@ MDIRS += $(HCP_UML_OUT)
 ### UML_BUILDER - for compiling kernel+modules, 'myshutdown', 'sd_notify_ready'
 ###############
 
-uml_builder_packages := gcc make xz-utils flex bison bc kmod libvdeplug-dev
-uml_builder_packages += libsystemd-dev
+UML_BUILDER_IMG_PARENT := BUILDER
+UML_BUILDER_OUT_PARENT := UML
+UML_BUILDER_PKGS := gcc make xz-utils flex bison bc kmod libvdeplug-dev
+UML_BUILDER_PKGS += libsystemd-dev
 UML_BUILDER_FILES := $(HCP_UML_SRC)/uml.kconfig $(HCP_UML_SRC)/myshutdown.c\
 		$(HCP_UML_SRC)/sd_notify_ready.c\
 		$(HCP_UML_SRC)/kbuild.sh
 UML_BUILDER_DEPFILES := $(HCP_UML_SRC)/Makefile
 UML_BUILDER_DSTUB := $(HCP_UML_SRC)/kbuild.Dockerfile
-
-$(eval $(call hcp_image_derive,\
-	UML_BUILDER,\
-	BUILDER,\
-	UML,\
-	$(uml_builder_packages)))
+$(eval $(call hcp_image_derive,UML_BUILDER))
 
 ####################################
 # Build the UML kernel and modules #
@@ -88,14 +85,13 @@ endif
 # TODO: actually, is this even used now? hcp/qemu probably bypasses it ... need
 # to sort things out and reconcile.
 
+UML_RUN_IMG_PARENT := BASE
+UML_RUN_OUT_PARENT := UML
+UML_RUN_PKGS := vde2 qemu-system-x86 uml-kbuild
 UML_RUN_FILES := $(HCP_UML_SRC)/start.sh
 UML_RUN_DEPFILES := $(HCP_UML_SRC)/Makefile $(HCP_UML_BUILDER_TFILE)
 UML_RUN_DSTUB := $(HCP_UML_SRC)/run.Dockerfile
-$(eval $(call hcp_image_derive,\
-	UML_RUN,\
-	BASE,\
-	UML,\
-	vde2 qemu-system-x86 uml-kbuild))
+$(eval $(call hcp_image_derive,UML_RUN))
 
 ###########################
 ### UML_BOOTSTRAPPER_ROOTFS - for making filesystem and disk images
@@ -113,15 +109,15 @@ $(eval $(call hcp_image_derive,\
 # for a password.
 
 # The docker-generated rootfs used to create the imager image.
+UML_BOOTSTRAPPER_ROOTFS_IMG_PARENT := BASE
+UML_BOOTSTRAPPER_ROOTFS_OUT_PARENT := UML
+UML_BOOTSTRAPPER_ROOTFS_PKGS := kmod isc-dhcp-client fdisk extlinux \
+				initramfs-tools uml-kbuild
 UML_BOOTSTRAPPER_ROOTFS_FILES := $(HCP_UML_SRC)/bootstrapper_init.sh \
 				$(HCP_UML_SRC)/hcp_mkext4.sh
 UML_BOOTSTRAPPER_ROOTFS_DEPFILES := $(HCP_UML_SRC)/Makefile $(HCP_UML_BUILDER_TFILE)
 UML_BOOTSTRAPPER_ROOTFS_DSTUB := $(HCP_UML_SRC)/bootstrapper.Dockerfile
-$(eval $(call hcp_image_derive,\
-	UML_BOOTSTRAPPER_ROOTFS,\
-	BASE,\
-	UML,\
-	kmod isc-dhcp-client fdisk extlinux initramfs-tools uml-kbuild))
+$(eval $(call hcp_image_derive,UML_BOOTSTRAPPER_ROOTFS))
 
 HCP_UML_BOOTSTRAPPER_FNAME := uml_bootstrapper.ext4
 HCP_UML_BOOTSTRAPPER_BUILT_PATH := $(HCP_UML_OUT)/$(HCP_UML_BOOTSTRAPPER_FNAME)
