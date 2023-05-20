@@ -26,6 +26,9 @@ BUILDER_DEPS := $(HCP_DBB_LIST)
 # reinstalled every time we make local changes, without any fancy docker (and
 # buildkit) caching to speed it up.
 # --> Solution: use two layers.
+PREBUILDER_FILES := $(HCP_BUILDER_SRC)/deb_src_ify.sh
+PREBUILDER_DEPFILES := $(HCP_BUILDER_SRC)/Makefile
+PREBUILDER_DSTUB := $(HCP_BUILDER_SRC)/Dockerfile
 $(eval $(call pp_add_layer,\
 	PREBUILDER,\
 	BASE,\
@@ -36,20 +39,13 @@ $(eval $(call pp_add_layer,\
 		libc-dev libssl-dev libseccomp-dev libtasn1-6-dev \
 		libjson-c-dev libcurl4-openssl-dev libqrencode-dev \
 		uuid-dev gnu-efi binutils-dev libjson-glib-dev \
-		libfile-slurp-perl libncurses5-dev comerr-dev libdb-dev,\
-	$(HCP_BUILDER_SRC)/Dockerfile,\
-	$(HCP_BUILDER_SRC)/Makefile,\
-	,\
-	$(HCP_BUILDER_SRC)/deb_src_ify.sh))
+		libfile-slurp-perl libncurses5-dev comerr-dev libdb-dev))
+BUILDER_DEPFILES := $(HCP_BUILDER_SRC)/Makefile
 $(eval $(call pp_add_layer,\
 	BUILDER,\
 	PREBUILDER,\
 	,\
-	$(BUILDER_DEPS),\
-	,\
-	$(HCP_BUILDER_SRC)/Makefile,\
-	,\
-	))
+	$(BUILDER_DEPS)))
 
 # $1 = package name, used in naming the build layer, dependency targets, etc.
 # $2 = path to source
@@ -85,15 +81,12 @@ $(eval local_compile := $($(N_lower)_CMD_COMPILE))
 $(eval local_install := $($(N_lower)_CMD_INSTALL))
 $(if $($(N_lower)_BUILDER),,$(eval $(N_lower)_BUILDER := BUILDER))
 
+$(eval $N_DEPFILES := $(HCP_BUILDER_SRC)/Makefile)
 $(eval $(call pp_add_layer,
 	LAYER_$N,
 	$($(N_lower)_BUILDER),
 	BUILDER,
-	$(call uniq,$(HCP_BUILD_DEPS_$N) $($(N_lower)_DEPENDS)),
-	,
-	$(HCP_BUILDER_SRC)/Makefile,
-	,
-	))
+	$(call uniq,$(HCP_BUILD_DEPS_$N) $($(N_lower)_DEPENDS))))
 
 $(eval $(call pp_if_empty,local_bootstrap,/bin/true))
 $(eval $(call pp_if_empty,local_configure,/bin/true))

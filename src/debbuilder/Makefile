@@ -1,14 +1,11 @@
 HCP_DEBBUILDER_SRC := $(HCP_SRC)/debbuilder
 
+DEBBUILDER_DEPFILES := $(HCP_DEBBUILDER_SRC)/Makefile
 $(eval $(call pp_add_layer,\
 	DEBBUILDER,\
 	BASE,\
 	,\
-	build-essential devscripts dpkg-dev pkg-config,\
-	,\
-	$(HCP_DEBBUILDER_SRC)/Makefile,\
-	,\
-	))
+	build-essential devscripts dpkg-dev pkg-config))
 
 # pvt_debian_build() - adds rules to build debian packages. This private function
 #      is used by the debian_build() API.
@@ -101,15 +98,12 @@ $(foreach p,$($(dbo_name_lower)_PKGS),\
 
 # Derive a layer that will have our deps installed
 $(eval dbo_build_layer_upper := $(dbo_layer_upper)_$(dbo_name_upper))
+$(eval $(dbo_build_layer_upper)_DEPFILES := $(dbo_file_deps))
 $(eval $(call pp_add_layer,\
 	$(dbo_build_layer_upper),\
 	$(dbo_layer_upper),\
 	$(dbo_layer_upper),\
-	$(dbo_builddeps),\
-	,\
-	$(dbo_file_deps),\
-	,\
-	))
+	$(dbo_builddeps)))
 $(eval dbo_build_layer_dname := $(HCP_$(dbo_build_layer_upper)_DNAME))
 $(eval dbo_build_layer_tfile := $(HCP_$(dbo_build_layer_upper)_TFILE))
 

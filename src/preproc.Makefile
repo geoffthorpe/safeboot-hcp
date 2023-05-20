@@ -61,15 +61,16 @@ endef
 #      expand such dependencies and add them to the installation layer. For
 #      'debbuilder', this should be set automatically. For 'builder', it's
 #      coded.
-# $5 - optional, a Dockerfile stub to be included in the generated Dockerfile
+# $($1_DSTUB)
+#      optional, a Dockerfile stub to be included in the generated Dockerfile
 #      (at the end).
-# $6 - optional, path to the caller's Makefile, and/or any other files that
+# $($1_DEPFILES)
+#      optional, path to the caller's Makefile and/or any other files that
 #      should be listed as dependencies for the re-generation of the layer's
 #      Dockerfile.
-# $7 - an arbitrary number of files in the source directory that should be
-#      mirrored to the output directory (and that the build should depend on).
-# $8 - an arbitrary number of files with absolute paths that should be mirrored
-#      to the output directory (and that the build should depend on).
+# $($1_FILES)
+#      optional, an arbitrary number of files (with absolute paths) that should
+#      be mirrored to the output directory (and that the build will depend on).
 #
 # Silly choice (please forgive): 'ancestor' represents the layer we are deriving
 # from, in docker terms. 'parent' represents the directory we are beneath, in
@@ -83,10 +84,9 @@ $(eval ppa_ancestor_lower := $(shell echo "$(ppa_ancestor_upper)" | tr '[:upper:
 $(eval ppa_parent_upper := $(strip $3))
 $(eval ppa_parent_lower := $(shell echo "$(ppa_parent_upper)" | tr '[:upper:]' '[:lower:]'))
 $(eval ppa_pkg_list := $(strip $4))
-$(eval ppa_dfile_xtra := $(strip $5))
-$(eval ppa_mfile_xtra := $(strip $6))
-$(eval ppa_xtra := $(strip $7))
-$(eval ppa_xtra_abs := $(strip $8))
+$(eval ppa_dfile_xtra := $(strip $($(ppa_name_upper)_DSTUB)))
+$(eval ppa_mfile_xtra := $(strip $($(ppa_name_upper)_DEPFILES)))
+$(eval ppa_xtra := $(strip $($(ppa_name_upper)_FILES)))
 
 $(eval ppa_parent_dir := $(if $(ppa_parent_upper),$(HCP_$(ppa_parent_upper)_OUT),$(HCP_OUT)))
 $(eval ppa_parent_clean := $(if $(ppa_parent_upper),clean_$(ppa_parent_lower),clean))
@@ -139,13 +139,6 @@ $(eval ppa_pkgs_nonlocal += $i))))
 # For each "ppa_xtra" file, add a dependency for it to be copied to the context
 # area too.
 $(foreach i,$(ppa_xtra),
-$(ppa_out_dir)/$i: | $(ppa_out_dir)
-$(ppa_out_dir)/$i: $(ppa_src)/$i
-$(ppa_out_dir)/$i:
-	$Qcp $(ppa_src)/$i $(ppa_out_dir)/$i
-$(eval ppa_copied += $(ppa_out_dir)/$i))
-# Ditto for "ppa_xtra_abs"
-$(foreach i,$(ppa_xtra_abs),
 $(eval j := $(shell basename $i))
 $(ppa_out_dir)/$j: | $(ppa_out_dir)
 $(ppa_out_dir)/$j: $i

@@ -26,21 +26,15 @@ clean_base_origin:
 clean_base_layers: clean_base_origin
 endif
 
-# A change to these files automatically puts (derived) Dockerfiles out of date.
-HCP_BASE_LAYERS_DEPS_COMMON := $(HCP_DEPS_COMMON) \
-				$(HCP_BASE_LAYERS_SRC)/Makefile
 
 # LAYER: 0import
 #      - inherit the debian image we're based on (per hcp/settings.mk)
 
+BASE0_DEPFILES := $(HCP_DEPS_COMMON) $(HCP_BASE_LAYERS_SRC)/Makefile
 $(eval $(call pp_add_layer,\
 	BASE0,\
 	ORIGIN,\
 	BASE_LAYERS,\
-	,\
-	,\
-	$(HCP_BASE_LAYERS_DEPS_COMMON),\
-	,\
 	))
 
 # LAYER: 1apt-source
@@ -57,17 +51,14 @@ $(eval $(call pp_add_layer,\
 
 ifdef HCP_1APT_ENABLE
 
-FILES_1APT := $(shell cd $(HCP_BASE_LAYERS_SRC)/base1 && ls)
 HCP_BASE1_BUILD_ARGS := --build-arg HCP_DEBIAN_NAME=$(HCP_DEBIAN_NAME)
 
+BASE1_FILES := $(shell cd $(HCP_BASE_LAYERS_SRC)/base1 && ls)
+BASE1_DSTUB := $(HCP_BASE_LAYERS_SRC)/1apt-source.Dockerfile
 $(eval $(call pp_add_layer,\
 	BASE1,\
 	BASE0,\
 	BASE_LAYERS,\
-	,\
-	$(HCP_BASE_LAYERS_SRC)/1apt-source.Dockerfile,\
-	,\
-	$(FILES_1APT),\
 	))
 
 ANCESTOR2 := BASE1
@@ -83,33 +74,27 @@ endif # HCP_1APT_ENABLE
 #        spartan and hostile.
 #      - make the container image timezone-compatible with the host.
 
-FILES_2APT := $(shell cd $(HCP_BASE_LAYERS_SRC)/base2 && ls)
+BASE2_FILES := /etc/timezone $(shell find $(HCP_BASE_LAYERS_SRC)/base2 -maxdepth 1 -type f)
+BASE2_DSTUB := $(HCP_BASE_LAYERS_SRC)/2apt-usable.Dockerfile
 
 $(eval $(call pp_add_layer,\
 	BASE2,\
 	$(ANCESTOR2),\
 	BASE_LAYERS,\
-	,\
-	$(HCP_BASE_LAYERS_SRC)/2apt-usable.Dockerfile,\
-	,\
-	$(FILES_2APT),\
-	/etc/timezone))
+	))
 
 # LAYER: 3platform
 #      - installs a common, base-line set of system tools that should show up
 #        in all other container images.
 
-FILES_3PLATFORM := $(shell cd $(HCP_BASE_LAYERS_SRC)/base3 && ls)
+BASE3_FILES := $(shell find $(HCP_BASE_LAYERS_SRC)/base3 -maxdepth 1 -type f)
+BASE3_DSTUB := $(HCP_BASE_LAYERS_SRC)/3platform.Dockerfile
 
 $(eval $(call pp_add_layer,\
 	BASE3,\
 	BASE2,\
 	BASE_LAYERS,\
-	$(HCP_3PLATFORM_XTRA),\
-	$(HCP_BASE_LAYERS_SRC)/3platform.Dockerfile,\
-	,\
-	$(FILES_3PLATFORM),\
-	))
+	$(HCP_3PLATFORM_XTRA)))
 
 # LAYER: 4add-cacerts
 #      - optional, see SAFEBOOT_ADD_CACERTS in hcp/settings.mk
@@ -121,15 +106,13 @@ FILES_4CA_CERT := $(shell find $(HCP_4ADD_CACERTS_PATH) -type f)
 $(if $(strip $(FILES_4CA_CERT)),,\
 	$(error HCP_4ADD_CACERTS_PATH ($(HCP_4ADD_CACERTS_PATH)) contains no CA certs))
 
+BASE4_FILES := $(FILES_4CA_CERT)
+BASE4_DSTUB := $(HCP_BASE_LAYERS_SRC)/4add-cacerts.Dockerfile
 $(eval $(call pp_add_layer,\
 	BASE4,\
 	BASE3,\
 	BASE_LAYERS,\
-	,\
-	$(HCP_BASE_LAYERS_SRC)/4add-cacerts.Dockerfile,\
-	,\
-	,\
-	$(FILES_4CA_CERT)))
+	))
 
 ANCESTOR5 := BASE4
 
@@ -144,10 +127,6 @@ $(eval $(call pp_add_layer,\
 	BASE,\
 	$(ANCESTOR5),\
 	BASE_LAYERS,\
-	,\
-	,\
-	,\
-	,\
 	))
 
 # A wrapper target to build the "base platform" image

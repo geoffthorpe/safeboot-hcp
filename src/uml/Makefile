@@ -13,18 +13,17 @@ MDIRS += $(HCP_UML_OUT)
 
 uml_builder_packages := gcc make xz-utils flex bison bc kmod libvdeplug-dev
 uml_builder_packages += libsystemd-dev
+UML_BUILDER_FILES := $(HCP_UML_SRC)/uml.kconfig $(HCP_UML_SRC)/myshutdown.c\
+		$(HCP_UML_SRC)/sd_notify_ready.c\
+		$(HCP_UML_SRC)/kbuild.sh
+UML_BUILDER_DEPFILES := $(HCP_UML_SRC)/Makefile
+UML_BUILDER_DSTUB := $(HCP_UML_SRC)/kbuild.Dockerfile
 
 $(eval $(call pp_add_layer,\
 	UML_BUILDER,\
 	BUILDER,\
 	UML,\
-	$(uml_builder_packages),\
-	$(HCP_UML_SRC)/kbuild.Dockerfile,\
-	$(HCP_UML_SRC)/Makefile,\
-	,\
-	$(HCP_UML_SRC)/uml.kconfig $(HCP_UML_SRC)/myshutdown.c\
-		$(HCP_UML_SRC)/sd_notify_ready.c\
-		$(HCP_UML_SRC)/kbuild.sh))
+	$(uml_builder_packages)))
 
 ####################################
 # Build the UML kernel and modules #
@@ -89,15 +88,14 @@ endif
 # TODO: actually, is this even used now? hcp/qemu probably bypasses it ... need
 # to sort things out and reconcile.
 
+UML_RUN_FILES := $(HCP_UML_SRC)/start.sh
+UML_RUN_DEPFILES := $(HCP_UML_SRC)/Makefile $(HCP_UML_BUILDER_TFILE)
+UML_RUN_DSTUB := $(HCP_UML_SRC)/run.Dockerfile
 $(eval $(call pp_add_layer,\
 	UML_RUN,\
 	BASE,\
 	UML,\
-	vde2 qemu-system-x86 uml-kbuild,\
-	$(HCP_UML_SRC)/run.Dockerfile,\
-	$(HCP_UML_SRC)/Makefile $(HCP_UML_BUILDER_TFILE),\
-	,\
-	$(HCP_UML_SRC)/start.sh))
+	vde2 qemu-system-x86 uml-kbuild))
 
 ###########################
 ### UML_BOOTSTRAPPER_ROOTFS - for making filesystem and disk images
@@ -115,15 +113,15 @@ $(eval $(call pp_add_layer,\
 # for a password.
 
 # The docker-generated rootfs used to create the imager image.
+UML_BOOTSTRAPPER_ROOTFS_FILES := $(HCP_UML_SRC)/bootstrapper_init.sh \
+				$(HCP_UML_SRC)/hcp_mkext4.sh
+UML_BOOTSTRAPPER_ROOTFS_DEPFILES := $(HCP_UML_SRC)/Makefile $(HCP_UML_BUILDER_TFILE)
+UML_BOOTSTRAPPER_ROOTFS_DSTUB := $(HCP_UML_SRC)/bootstrapper.Dockerfile
 $(eval $(call pp_add_layer,\
 	UML_BOOTSTRAPPER_ROOTFS,\
 	BASE,\
 	UML,\
-	kmod isc-dhcp-client fdisk extlinux initramfs-tools uml-kbuild,\
-	$(HCP_UML_SRC)/bootstrapper.Dockerfile,\
-	$(HCP_UML_SRC)/Makefile $(HCP_UML_BUILDER_TFILE),\
-	,\
-	$(HCP_UML_SRC)/bootstrapper_init.sh $(HCP_UML_SRC)/hcp_mkext4.sh))
+	kmod isc-dhcp-client fdisk extlinux initramfs-tools uml-kbuild))
 
 HCP_UML_BOOTSTRAPPER_FNAME := uml_bootstrapper.ext4
 HCP_UML_BOOTSTRAPPER_BUILT_PATH := $(HCP_UML_OUT)/$(HCP_UML_BOOTSTRAPPER_FNAME)
