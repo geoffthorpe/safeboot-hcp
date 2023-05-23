@@ -1,27 +1,15 @@
 # Docker image naming is controlled here.
 HCP_IMAGE_PREFIX ?= hcp_
-HCP_IMAGE_TAG ?= devel
-# Function for converting '$1' into a fully-qualified docker image name
-HCP_IMAGE=$(HCP_IMAGE_PREFIX)$1:$(HCP_IMAGE_TAG)
+# Function for converting and name ($1) and variant ($2) into a docker image name
+HCP_IMAGE_FN=$(HCP_IMAGE_PREFIX)$1:$2
 
-# And debian packages of HCP code get this version
-HCP_VERSION ?= 0.5
+HCP_VARIANT_LIST ?= buster bullseye
+HCP_VARIANT ?= bullseye
 
-# Specify the underlying (debian-based) docker image to use as the system
-# environment for all operations.
-# - This will affect the versions of numerous system packages that get
-#   installed and used, which may affect the compatibility of any resulting
-#   artifacts.
-# - This gets used directly in the FROM command of the generated Dockerfile, so
-#   "Docker semantics" apply here (in terms of whether it is pulling an image
-#   or a Dockerfile, whether it pulls a named image from a default repository
-#   or one that is specified explicitly, etc).
-# - This baseline container image also gets used as a "utility" container, used
-#   particularly when needing to run cleanup shell-commands and "any image will
-#   do".
-HCP_DEBIAN_NAME ?= bullseye
-HCP_ORIGIN_DNAME ?= debian:$(HCP_DEBIAN_NAME)
-#HCP_ORIGIN_DNAME ?= internal.dockerhub.mycompany.com/library/debian:$(HCP_DEBIAN_NAME)-slim
+$(foreach v,$(HCP_VARIANT_LIST),\
+$(eval HCP_VARIANT_$v ?= debian:$v))
+$(eval HCP_VARIANT_upper := $(shell echo "$(HCP_VARIANT)" | tr '[:lower:]' '[:upper:]'))
+HCP_ORIGIN_DNAME := $(HCP_VARIANT_$(HCP_VARIANT))
 
 # Define this to inhibit all dependency on top-level Makefiles and this
 # settings file.

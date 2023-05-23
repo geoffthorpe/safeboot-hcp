@@ -2,7 +2,8 @@
 
 ENVFILE=$1
 
-if [[ ! -d output || ! -d src/hcp ]]; then
+if [[ ! -d output/$HCP_VARIANT || ! -d src/hcp ]]; then
+	echo >&2 "foo $HCP_VARIANT"
 	echo >&2 "Error, not running from top-level directory"
 	exit 1
 fi
@@ -20,7 +21,7 @@ if [[ -n $XAUTHORITY ]]; then
 elif [[ -f ~/.Xauthority ]]; then
 	XAUTHORITY=~/.Xauthority
 else
-	XAUTHORITY=output/docker-compose.tmpX11/Xauthority
+	XAUTHORITY=output_$HCP_VARIANT/docker-compose.tmpX11/Xauthority
 fi
 echo "XAUTHORITY=$XAUTHORITY" >> $ENVFILE
 

@@ -13,20 +13,6 @@ clean_base_layers:
 clean: clean_base_layers
 endif
 
-# settings.mk defines HCP_ORIGIN_DNAME. To pass "ORIGIN" as the "ancestor" to
-# hcp_image_derive(), we must define a HCP_ORIGIN_TFILE and a corresponding rule.
-HCP_ORIGIN_TFILE := $(HCP_BASE_LAYERS_OUT)/origin.imported
-$(HCP_ORIGIN_TFILE): | $(HCP_BASE_LAYERS_OUT)
-$(HCP_ORIGIN_TFILE):
-	$Qdocker pull $(HCP_ORIGIN_DNAME)
-	$Qtouch $@
-ifneq (,$(wildcard $(HCP_ORIGIN_TFILE)))
-clean_base_origin:
-	$Qrm $(HCP_ORIGIN_TFILE)
-clean_base_layers: clean_base_origin
-endif
-
-
 # LAYER: 0import
 #      - inherit the debian image we're based on (per hcp/settings.mk)
 
@@ -48,8 +34,6 @@ $(eval $(call hcp_image_derive,BASE0))
 #          them get picked up by dependency-handling.
 
 ifdef HCP_1APT_ENABLE
-
-HCP_BASE1_BUILD_ARGS := --build-arg HCP_DEBIAN_NAME=$(HCP_DEBIAN_NAME)
 
 BASE1_IMG_PARENT := BASE0
 BASE1_OUT_PARENT := BASE_LAYERS

@@ -1,9 +1,3 @@
-# The following simply illustrate the concept, which may be useful (or
-# necessary) in enterprises that need to significantly control and/or tweak the
-# underlying OS before all the use-case-specifics get layered on.
-
-ARG HCP_DEBIAN_NAME
-
 # The following kind of thing can be used to change apt's package sources, to
 # point to internal mirrors (e.g. to avoid traversing proxies), get customized
 # or curated versions of packages compared to upstream, etc. Note that the

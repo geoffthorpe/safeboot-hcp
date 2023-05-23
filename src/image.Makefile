@@ -93,7 +93,7 @@ $(eval hid_parent_dir := $(if $(hid_parent_upper),$(HCP_$(hid_parent_upper)_OUT)
 $(eval hid_parent_clean := $(if $(hid_parent_upper),clean_$(hid_parent_lower),clean))
 $(eval hid_parent_src := $(if $(hid_parent_upper),$(HCP_$(hid_parent_upper)_SRC),$(HCP_SRC)))
 $(eval hid_out_dir := $(hid_parent_dir)/$(hid_name_lower))
-$(eval hid_out_dname := $(call HCP_IMAGE,$(hid_name_lower)))
+$(eval hid_out_dname := $(call HCP_IMAGE_FN,$(hid_name_lower),$(HCP_VARIANT)))
 $(eval hid_out_tfile := $(hid_out_dir)/built)
 $(eval hid_out_dfile := $(hid_out_dir)/Dockerfile)
 $(eval hid_src := $(hid_parent_src)/$(hid_name_lower))
@@ -223,8 +223,7 @@ $(if $(hid_pkgs_local_src),
 		trap 'cd $(hid_out_dir) && rm -f $(hid_pkgs_local_fnames)' EXIT; \
 		ln -t $(hid_out_dir) $(hid_pkgs_local_src)),
 	$(eval hid_pkgs_preamble := /bin/true))
-$(hid_out_tfile): $(hid_out_dfile)
-$(hid_out_tfile): $(HCP_$(hid_name_upper)_ANCESTOR_TFILE)
+$(hid_out_tfile): $(hid_out_dfile) $(HCP_$(hid_name_upper)_ANCESTOR_TFILE)
 $(hid_out_tfile): $(hid_pkgs_local_src) $(hid_copied)
 	$Qecho "Building container image $(hid_out_dname)"
 	$Qbash -c " \

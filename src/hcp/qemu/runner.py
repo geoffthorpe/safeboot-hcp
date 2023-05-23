@@ -90,9 +90,12 @@ def run(cmd):
 	subprocess.run(cmd)
 
 # Start up a VDE switch and plug a slirpvde instance into it (for DHCP, DNS,
-# and router)
-run("/usr/legacy/bin/vde_switch -d -s /vdeswitch -M /vdeswitch_mgmt".split())
-# TODO: need to make this configurable;
+# and router). Note, we no longer build vde2 tooling from source, as we have at
+# least one HCP_VARIANT (bullseye) that can has usable tooling in its upstream
+# packages. But if it gets re-enabled, the call to 'vde_switch' must be
+# replaced with '/usr/legacy/bin/vde_switch'.
+run("vde_switch -d -s /vdeswitch -M /vdeswitch_mgmt".split())
+# TODO: need to make all this configurable;
 slirpcmd = [ 'vde_plug', '--daemon', 'vde:///vdeswitch' ]
 slirparg = 'slirp:///dhcp=10.0.2.15/vnameserver=10.0.2.3'
 if slirp:

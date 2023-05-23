@@ -60,7 +60,7 @@ services:
 
     qemu_runner:
         extends: common
-        image: ${HCP_IMAGE_qemu_caboodle}
+        image: ${HCP_IMAGE_qemu_caboodle_bullseye}
         cap_add:
           - SYS_ADMIN
         volumes:

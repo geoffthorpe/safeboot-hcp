@@ -14,7 +14,7 @@ HCP_TESTCREDS_DOCKER_RUN := \
 	--mount type=bind,source=$(HCP_SRC)/reffile,destination=/reffile,readonly \
 	$(FOO_HCP_MOUNT) --env HCP_NO_CONFIG=1 \
 	--entrypoint="" \
-	$(call HCP_IMAGE,caboodle) \
+	$(call HCP_IMAGE_FN,caboodle,$(HCP_VARIANT)) \
 	bash -c
 
 CMD_CREDS_CHOWN := /chowner.sh /reffile/reffile .

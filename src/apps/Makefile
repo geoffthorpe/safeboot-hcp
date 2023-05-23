@@ -43,7 +43,7 @@ endif
 
 CABOODLE_BASE_IMG_PARENT := APPS_PRE_BASE
 CABOODLE_BASE_OUT_PARENT := APPS
-CABOODLE_BASE_PKGS := swtpm-tools tpm2-tools heimdal safeboot vdeplug_slirp vde2
+CABOODLE_BASE_PKGS := swtpm-tools tpm2-tools heimdal safeboot $(VDEDEPS)
 CABOODLE_BASE_DEPFILES := $(HCP_SRC)/apps/Makefile
 $(eval $(call hcp_image_derive,CABOODLE_BASE))
 CABOODLE_IMG_PARENT := CABOODLE_BASE
