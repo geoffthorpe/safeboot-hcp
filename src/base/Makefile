@@ -37,8 +37,9 @@ ifdef HCP_1APT_ENABLE
 
 BASE1_IMG_PARENT := BASE0
 BASE1_OUT_PARENT := BASE_LAYERS
-BASE1_FILES := $(shell cd $(HCP_BASE_LAYERS_SRC)/base1 && ls)
+BASE1_FILES := $(shell find $(HCP_BASE_LAYERS_SRC)/base1 -maxdepth 1 -type f)
 BASE1_DSTUB := $(HCP_BASE_LAYERS_SRC)/1apt-source.Dockerfile
+BASE1_BUILD_ARGS := --build-arg HCP_VARIANT=$(HCP_VARIANT)
 $(eval $(call hcp_image_derive,BASE1))
 
 ANCESTOR2 := BASE1

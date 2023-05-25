@@ -88,6 +88,7 @@ $(eval hid_pkg_list := $(strip $($(hid_name_upper)_PKGS)))
 $(eval hid_dfile_xtra := $(strip $($(hid_name_upper)_DSTUB)))
 $(eval hid_mfile_xtra := $(strip $($(hid_name_upper)_DEPFILES)))
 $(eval hid_xtra := $(strip $($(hid_name_upper)_FILES)))
+$(eval hid_buildargs := $(strip $($(hid_name_upper)_BUILD_ARGS)))
 
 $(eval hid_parent_dir := $(if $(hid_parent_upper),$(HCP_$(hid_parent_upper)_OUT),$(HCP_OUT)))
 $(eval hid_parent_clean := $(if $(hid_parent_upper),clean_$(hid_parent_lower),clean))
@@ -216,7 +217,7 @@ $(if $(HCP_DOCKER_EXPERIMENTAL),
 ,
 	$(eval hid_build_cmd := docker build -t $(hid_out_dname))
 )
-$(eval hid_build_cmd += $(HCP_$(hid_name_upper)_BUILD_ARGS))
+$(eval hid_build_cmd += $(hid_buildargs))
 $(eval hid_build_cmd += -f $(hid_out_dfile) $(hid_out_dir))
 $(if $(hid_pkgs_local_src),
 	$(eval hid_pkgs_preamble := \
